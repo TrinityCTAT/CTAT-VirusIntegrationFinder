@@ -12,10 +12,10 @@ sys.path.insert(0, os.path.sep.join([os.path.dirname(os.path.realpath(__file__))
 from Pipeliner import Pipeliner, Command
 
 import logging
-FORMAT = "%(asctime)-15s %(levelname)s %(module)s.%(name)s.%(funcName)s at %(lineno)d :\n\t%(message)s\n"
-global logger
-logger = logging.getLogger(__file__)
-
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s : %(levelname)s : %(message)s',
+                    datefmt='%H:%M:%S')
 
 def main():
     
@@ -98,7 +98,11 @@ def main():
 
     if patch_db_gtf:
         cmd += " --sjdbGTFfile {} --sjdbOverhang 150 "
-        
+
+    if left_fq[-3:] == ".gz":
+        cmd += " --readFilesCommand 'gunzip -c' "
+
+    
     pipeliner.add_commands([Command(cmd, "star_chimeric")])
     
     
