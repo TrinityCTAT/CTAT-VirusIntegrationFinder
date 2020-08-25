@@ -31,16 +31,11 @@ def main():
     arg_parser.add_argument("--right_fq", type=str, required=False, default="", #intentionally not None
                             help="right fastq file (optional)")
 
-    arg_parser.add_argument("--genome_lib_dir", type=str, default=os.environ.get('CTAT_GENOME_LIB'),
-                            help="genome lib directory - see http://FusionFilter.github.io for details.  Uses env var CTAT_GENOME_LIB as default")
-
     arg_parser.add_argument("--chim_events", type=str, required=True,
                             help="candidate events tsv containing supporting read names")
 
     arg_parser.add_argument("--workdir_base", type=str, required=True,
                             help="base directory for work")
-
-    arg_parser.add_argument("--output_prefix", type=str, required=True)
 
     arg_parser.add_argument("--min_total_reads", type=int, default=2,
                             help="min number of total reads required to pursue")
@@ -50,19 +45,13 @@ def main():
 
     left_fq_filename = os.path.abspath(args_parsed.left_fq)
     right_fq_filename = os.path.abspath(args_parsed.right_fq) if args_parsed.right_fq else ""
-    genome_lib_dir = args_parsed.genome_lib_dir
     chim_events_filename = args_parsed.chim_events
     workdir_base_dir = os.path.abspath(args_parsed.workdir_base)
-    output_prefix = args_parsed.output_prefix
     min_total_reads = args_parsed.min_total_reads
 
 
     if os.path.exists(workdir_base_dir):
         logger.error("Error, workdir_base_dir: [{}] currently exists. Please remove it or specify a new workspace directory to create".format(workdir_base_dir))
-        sys.exit(1)
-
-    if not genome_lib_dir:
-        logger.error("Error, --genome_lib_dir must be specified");
         sys.exit(1)
 
     
@@ -77,6 +66,24 @@ def main():
         logger.info("-extracting evidence reads from {}".format(right_fq_filename))
         capture_event_reads(right_fq_filename, 'reads_R2.fastq', read_to_event_dict, event_to_workdir_dict)
         
+
+    ## log the summary info in the workspace.
+    chim_events_for_eval_filename = os.path.join(workdir_base_dir, "chim_events_for_eval.tsv")
+    with open(chim_events_for_eval_filename, 'wt') as ofh:
+        print("\t".join(["entry", "chrA", "coordA", "orientA", "chrB", "coordB", "orientB", "workdir"]), file=ofh)
+        for event_id, event_info_row in event_info_dict.items():
+            workdir = event_to_workdir_dict[event_id]
+            print("\t".join([event_info_row['entry'],
+                             event_info_row['chrA'],
+                             event_info_row['coordA'],
+                             event_info_row['orientA'],
+                             event_info_row['chrB'],
+                             event_info_row['coordB'],
+                             event_info_row['orientB'],
+                             workdir]), file=ofh)
+            
+
+    logger.info("-see {} for targeted sites info".format(chim_events_for_eval_filename))
     
     
     sys.exit(0)
@@ -92,6 +99,10 @@ def parse_chim_events(chim_events_filename, min_total_reads):
     with open(chim_events_filename, 'rt') as fh:
         reader = csv.DictReader(fh, delimiter='\t')
         for row in reader:
+            
+            if int(row['total_reads']) < min_total_reads:
+                continue
+            
             event_num = row['entry']
             event_info_dict[event_num] = row
             readnames = row['readnames']
