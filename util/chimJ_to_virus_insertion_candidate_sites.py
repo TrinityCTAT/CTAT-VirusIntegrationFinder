@@ -161,7 +161,7 @@ def main():
 
             # print header
             ofh.write("\t".join(["entry", "chrA", "coordA", "orientA", "chrB", "coordB", "orientB", "primary_brkpt_type", "num_primary_reads", "num_supp_reads", "total_reads"]) + "\n") 
-            ofh.write("\t".join(["entry", "chrA", "coordA", "orientA", "chrB", "coordB", "orientB", "primary_brkpt_type", "num_primary_reads", "num_supp_reads", "total_reads", "readnames"]) + "\n") 
+            ofh_full.write("\t".join(["entry", "chrA", "coordA", "orientA", "chrB", "coordB", "orientB", "primary_brkpt_type", "num_primary_reads", "num_supp_reads", "total_reads", "readnames"]) + "\n") 
             
             chim_counter = 0
             for chim_event in all_chim_events:
