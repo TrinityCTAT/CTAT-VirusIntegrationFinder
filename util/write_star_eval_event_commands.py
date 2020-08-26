@@ -57,7 +57,7 @@ def main():
                              "--CPU 1"])
 
             if os.path.exists(right_fq_filename):
-                cmd += "--right_fq {}".format(right_fq_filename)
+                cmd += " --right_fq {}".format(right_fq_filename)
 
             print(cmd, file=ofh)
 
