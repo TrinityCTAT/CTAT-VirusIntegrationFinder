@@ -47,6 +47,10 @@ def main():
 
     optional.add_argument("--max_mate_dist", type=int, required=False, default=100000,
                           help="max distance between mates and max intron length allowed")
+
+    optional.add_argument("--disable_chimeras", action='store_true', default=False,
+                          help="disable chimeric read search detection")
+
     
     args_parsed = arg_parser.parse_args()
     
@@ -57,6 +61,8 @@ def main():
     genome_lib_dir = args_parsed.genome_lib_dir
     patch_db_fasta = os.path.abspath(args_parsed.patch_db_fasta)
     patch_db_gtf = os.path.abspath(args_parsed.patch_db_gtf) if args_parsed.patch_db_gtf else ""
+
+    disable_chimeras_flag = args_parsed.disable_chimeras
     
     if not genome_lib_dir:
         sys.stderr.write("Error, must set --genome_lib_dir or have env var CTAT_GENOME_LIB set")
@@ -87,15 +93,17 @@ def main():
                     "--alignMatesGapMax {}".format(args_parsed.max_mate_dist),
                     "--alignIntronMax {}".format(args_parsed.max_mate_dist),
                     "--readFilesIn {}".format(readFilesIn),
-                    "--chimJunctionOverhangMin 12",
-                    "--chimSegmentMin 12",
-                    "--chimSegmentReadGapMax 3",
                     "--genomeFastaFiles {}".format(patch_db_fasta),
                     "--outSAMfilter KeepAllAddedReferences",
                     "--alignSJstitchMismatchNmax 5 -1 5 5",
                     "--scoreGapNoncan -6" ])
 
 
+    if not disable_chimeras_flag:
+        cmd += " ".join(["--chimJunctionOverhangMin 12",
+                         "--chimSegmentMin 12",
+                         "--chimSegmentReadGapMax 3" ])
+        
     if patch_db_gtf:
         cmd += " --sjdbGTFfile {} --sjdbOverhang 150 "
 

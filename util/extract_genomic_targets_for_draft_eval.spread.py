@@ -32,11 +32,9 @@ def main():
     arg_parser.add_argument("--patch_db_fasta", type=str, required=True,
                             help="patch genome database")
     
-    arg_parser.add_argument("--output_prefix", type=str, required=True,
-                            help="output prefix for fasta and gtf files")
+    arg_parser.add_argument("--workdir_base", type=str, required=True,
+                            help="base directory for work")
 
-    arg_parser.add_argument("--chim_events", type=str, required=True,
-                            help="chimeric events file (ie. prelim.vif.abridged.tsv)")
 
     arg_parser.add_argument("--pad_region_length", type=int, default=1000,
                             help="length around breakpoint to extract genome sequence")
@@ -46,10 +44,14 @@ def main():
 
     genome_lib_dir = args_parsed.genome_lib_dir
     patch_db_fasta = args_parsed.patch_db_fasta
-    output_prefix = args_parsed.output_prefix
+    workdir_base_dir = os.path.abspath(args_parsed.workdir_base)
     pad_region_length = args_parsed.pad_region_length
-    chim_events_filename = args_parsed.chim_events
 
+    chim_events_filename = os.path.join(workdir_base_dir, "chim_events_for_eval.tsv")
+    if not os.path.exists(chim_events_filename):
+        logger.error("Error, cannot locate required file that should exist: {}".format(chim_events_filename))
+
+    
     if not genome_lib_dir:
         logger.error("Error, --genome_lib_dir must be specified");
         sys.exit(1)
@@ -59,14 +61,14 @@ def main():
     
     event_info_dict = parse_chim_events(chim_events_filename)
 
-    write_genome_target_regions(event_info_dict, ref_genome_fasta, patch_db_fasta, output_prefix, pad_region_length)
+    write_genome_target_regions(event_info_dict, ref_genome_fasta, patch_db_fasta, pad_region_length)
     
     
     sys.exit(0)
 
 
 
-def write_genome_target_regions(event_info_dict, ref_genome_fasta, patch_db_fasta, output_prefix, pad_region_length):
+def write_genome_target_regions(event_info_dict, ref_genome_fasta, patch_db_fasta, pad_region_length):
 
     
     patch_db_entries = set()
@@ -76,20 +78,10 @@ def write_genome_target_regions(event_info_dict, ref_genome_fasta, patch_db_fast
             if m:
                 acc = m.group(1)
                 patch_db_entries.add(acc)
-
-
-    out_fasta_filename = output_prefix + ".fasta"
-    out_gtf_filename = output_prefix + ".gtf"
     
 
-    ofh_fasta = open(out_fasta_filename, 'wt')
-    ofh_gtf = open(out_gtf_filename, 'wt')
-
     for event in event_info_dict.values():
-
-        event_num = event['entry']
-
-        event_acc = "candidate_{}".format(event_num)
+        workdir = event['workdir']
 
         chrA = event['chrA']
         coordA = int(event['coordA'])
@@ -99,7 +91,9 @@ def write_genome_target_regions(event_info_dict, ref_genome_fasta, patch_db_fast
         coordB = int(event['coordB'])
         orientB = event['orientB']
 
+
         chrA_fasta_file, chrB_fasta_file = (ref_genome_fasta, patch_db_fasta) if chrB in patch_db_entries else (patch_db_fasta, ref_genome_fasta)
+        
 
         chrA_lend = coordA - pad_region_length
         chrA_rend = coordA + pad_region_length
@@ -117,22 +111,22 @@ def write_genome_target_regions(event_info_dict, ref_genome_fasta, patch_db_fast
 
         # build target sequence and gtf 
         concat_seq = chrA_seq_region
+        target_gtf_filename = os.path.join(workdir, "target.gtf")
         
-        print("\t".join(str(x) for x in [event_acc, "VIF-draft", "region", 1, len(concat_seq), ".", orientA, ".", "{} {}-{}".format(chrA, chrA_lend, chrA_rend)]), file=ofh_gtf)
+        with open(target_gtf_filename, 'wt') as gtf_ofh:
+            print("\t".join(str(x) for x in ["Target", "VIF-draft", "region", 1, len(concat_seq), ".", orientA, ".", "{} {}-{}".format(chrA, chrA_lend, chrA_rend)]), file=gtf_ofh)
 
-        concat_seq += 'N' * 100 # add spacer
+            concat_seq += 'N' * 100 # add spacer
 
-        print("\t".join(str(x) for x in [event_acc, "VIF-draft", "region", len(concat_seq) + 1, len(concat_seq) + len(chrB_seq_region), ".", orientB, ".", "{} {}-{}".format(chrB, chrB_lend, chrB_rend)]), file=ofh_gtf)
+            print("\t".join(str(x) for x in ["Target", "VIF-draft", "region", len(concat_seq) + 1, len(concat_seq) + len(chrB_seq_region), ".", orientB, ".", "{} {}-{}".format(chrB, chrB_lend, chrB_rend)]), file=gtf_ofh)
 
-        concat_seq += chrB_seq_region
+            concat_seq += chrB_seq_region
 
+        target_fasta_filename = os.path.join(workdir, "target.fasta")
+        with open(target_fasta_filename, 'wt') as ofh:
+            print(">Target\n{}".format(concat_seq), file=ofh)
 
-        print(">{}\n{}".format(event_acc, concat_seq), file=ofh_fasta)
-
-
-    ofh_fasta.close()
-    ofh_gtf.close()
-        
+        logger.info("-wrote {} and {}".format(target_gtf_filename, target_fasta_filename))
     
     return
 

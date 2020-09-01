@@ -144,7 +144,7 @@ def main():
 
         chim_events = group_chim_reads_into_events(chim_reads, aggregation_dist)
 
-        # //TODO: can try to link up events here.  
+        # //TODO: can try to link up events into paired insertion points for single events.
 
         all_chim_events.extend(chim_events)
 
@@ -153,15 +153,23 @@ def main():
     all_chim_events = sorted(all_chim_events, key=lambda x: x.get_read_support()[2], reverse=True)
     
 
+    ## #####################
     ## generate final report.
     output_filename_full = output_prefix + ".full.tsv"
     output_filename_abridged = output_prefix + ".abridged.tsv"
+    
+    output_filename_detailed_abridged = output_prefix + ".abridged.detailed.tsv"
+    ofh_detailed = open(output_filename_detailed_abridged, 'wt')
+
     with open(output_filename_abridged, 'wt') as ofh:
         with open(output_filename_full, 'wt') as ofh_full:
 
             # print header
             ofh.write("\t".join(["entry", "chrA", "coordA", "orientA", "chrB", "coordB", "orientB", "primary_brkpt_type", "num_primary_reads", "num_supp_reads", "total_reads"]) + "\n") 
             ofh_full.write("\t".join(["entry", "chrA", "coordA", "orientA", "chrB", "coordB", "orientB", "primary_brkpt_type", "num_primary_reads", "num_supp_reads", "total_reads", "readnames"]) + "\n") 
+
+            ofh_detailed.write("\t".join(["entry", "chrA", "coordA", "orientA", "chrB", "coordB", "orientB", "primary_brkpt_type", "num_primary_reads"]) + "\n") 
+            
             
             chim_counter = 0
             for chim_event in all_chim_events:
@@ -169,6 +177,13 @@ def main():
                 print(str(chim_counter) + "\t" + str(chim_event), file=ofh)
                 supporting_reads = chim_event.get_readnames()
                 print(str(chim_counter) + "\t" + str(chim_event) + "\t" + ",".join(supporting_reads), file=ofh_full)
+
+                # detailed entry-level event report
+                for event in [chim_event] + chim_event.chimeric_events_absorbed:
+                    print(str(chim_counter) + "\t" + event.get_coordstring() + "\t" + str(len(event.chimeric_reads_list)), file=ofh_detailed)
+
+    
+    ofh_detailed.close()
 
     logger.info("-wrote output to {}".format(output_filename_abridged))
     
@@ -209,7 +224,7 @@ def supplements_existing_event(chim_event, chim_events_list, aggregation_dist):
 
             logger.info("-adding {} as supplement to {}".format(str(chim_event), str(prev_chim_event)))
 
-            prev_chim_event.absorb_supporting_reads(chim_event.chimeric_reads_list)
+            prev_chim_event.absorb_nearby_chim_event(chim_event)
 
             return True
 
@@ -283,7 +298,7 @@ class Chimeric_event (Chimeric_read):
     def __init__(self, chimeric_reads_list):
         self.chimeric_reads_list = chimeric_reads_list
 
-        self.chimeric_reads_absorbed = list()  # for reads that also support this event but are either spanning or split w/ different nearby brkpt
+        self.chimeric_events_absorbed = list()  # for neighboring chim events that also support this primary event but are either spanning or split w/ different nearby brkpt
 
         example_read = chimeric_reads_list[0]
         super().__init__(example_read.chrA, example_read.coordA, example_read.orientA,
@@ -292,13 +307,17 @@ class Chimeric_event (Chimeric_read):
 
         
     
-    def absorb_supporting_reads(self, chim_reads_list):
-        self.chimeric_reads_absorbed.extend(chim_reads_list)
-
+    def absorb_nearby_chim_event(self, chim_event):
+        self.chimeric_events_absorbed.append(chim_event)
+        
 
     def get_read_support(self):
         num_chimeric_reads = len(self.chimeric_reads_list)
-        num_absorbed_reads = len(self.chimeric_reads_absorbed)
+
+        num_absorbed_reads = 0
+        for chim_event in self.chimeric_events_absorbed:
+            num_absorbed_reads += len(chim_event.chimeric_reads_list)
+        
         num_total_reads = num_chimeric_reads + num_absorbed_reads
 
         return num_chimeric_reads, num_absorbed_reads, num_total_reads
@@ -306,11 +325,17 @@ class Chimeric_event (Chimeric_read):
     def __repr__(self):
         num_chimeric_reads, num_absorbed_reads, num_total_reads = self.get_read_support()
         return(super().__repr__() + "\t{}\t{}\t{}".format(num_chimeric_reads, num_absorbed_reads, num_total_reads))
+
+    def get_coordstring(self):
+        return(super().__repr__())
+    
     
     def get_readnames(self):
         readnames = list()
-        for chim_read in self.chimeric_reads_list + self.chimeric_reads_absorbed:
-            readnames.append(chim_read.readname)
+
+        for chim_event in [self] + self.chimeric_events_absorbed:
+            for chim_read in chim_event.chimeric_reads_list:
+                readnames.append(chim_read.readname)
 
         return readnames
 
