@@ -69,7 +69,7 @@ def main():
 
     event_to_workdir_dict = build_workspace(event_info_dict.keys(), workdir_base_dir)
     
-    write_genome_target_regions(event_info_dict, patch_regions_fasta_filename, pad_regions_gtf_filename)
+    write_genome_target_regions(event_info_dict, event_to_workdir_dict, patch_regions_fasta_filename, patch_regions_gtf_filename)
     
     logger.info("-extracting evidence reads from {}".format(left_fq_filename))
     capture_event_reads(left_fq_filename, 'reads_R1.fastq', read_to_event_dict, event_to_workdir_dict)
@@ -102,18 +102,17 @@ def main():
 
 
 
-def write_genome_target_regions(event_info_dict, patch_regions_fasta_filename, patch_regions_gtf_filename):
-
-
-    fasta_reader = pysam.Fasta(patch_regions_fasta_filename)
+def write_genome_target_regions(event_info_dict, event_to_workdir_dict, patch_regions_fasta_filename, patch_regions_gtf_filename):
+    
+    fasta_reader = pysam.Fastafile(patch_regions_fasta_filename)
     
     entry_to_gtf_lines = parse_gtf(patch_regions_gtf_filename)
 
 
     for event in event_info_dict.values():
-        workdir = event['workdir']
         entry = event['entry']
-        
+
+        workdir = event_to_workdir_dict[entry]
         
         fasta_acc = "candidate_{}".format(entry)
 
