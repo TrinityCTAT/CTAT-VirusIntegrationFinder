@@ -6,6 +6,8 @@ import argparse
 import subprocess
 import pysam
 import csv
+from collections import defaultdict
+
 
 if sys.version_info[0] < 3:
     raise Exception("This script requires Python 3")
@@ -21,132 +23,134 @@ logging.basicConfig(level=logging.INFO,
 
 def main():
 
-    arg_parser = argparse.ArgumentParser(description="extracts target regions for candidate integration event site for draft evaluation",
+    arg_parser = argparse.ArgumentParser(description="spread fasta and gtf entries across directories",
                                          formatter_class=argparse.RawTextHelpFormatter )
 
 
-    arg_parser.add_argument("--genome_lib_dir", type=str, default=os.environ.get('CTAT_GENOME_LIB'),
-                            help="genome lib directory - see http://FusionFilter.github.io for details.  Uses env var CTAT_GENOME_LIB as default")
-
-
-    arg_parser.add_argument("--patch_db_fasta", type=str, required=True,
-                            help="patch genome database")
+    arg_parser.add_argument("--left_fq", type=str, required=True, default=None,
+                            help="left (or single) fastq file")
     
-    arg_parser.add_argument("--workdir_base", type=str, required=True,
+    arg_parser.add_argument("--right_fq", type=str, required=False, default="", #intentionally not None
+                            help="right fastq file (optional)")
+    
+        
+    arg_parser.add_argument("--chim_events_full", type=str, required=True,
+                            help="candidate events tsv containing supporting read names")
+
+    
+    arg_parser.add_argument("--patch_regions_fasta", type=str, required=True,
+                            help="fasta containing candidate insertion site regions")
+
+    arg_parser.add_argument("--patch_regions_gtf", type=str, required=True,
+                            help="gtf containing candidate insertion site regions")
+    
+
+    arg_parser.add_argument("--output_base_dir", type=str, required=True,
                             help="base directory for work")
 
 
-    arg_parser.add_argument("--pad_region_length", type=int, default=1000,
-                            help="length around breakpoint to extract genome sequence")
+
     
     args_parsed = arg_parser.parse_args()
 
 
-    genome_lib_dir = args_parsed.genome_lib_dir
-    patch_db_fasta = args_parsed.patch_db_fasta
-    workdir_base_dir = os.path.abspath(args_parsed.workdir_base)
-    pad_region_length = args_parsed.pad_region_length
-
-    chim_events_filename = os.path.join(workdir_base_dir, "chim_events_for_eval.tsv")
-    if not os.path.exists(chim_events_filename):
-        logger.error("Error, cannot locate required file that should exist: {}".format(chim_events_filename))
-
+    left_fq_filename = os.path.abspath(args_parsed.left_fq)
+    right_fq_filename = os.path.abspath(args_parsed.right_fq) if args_parsed.right_fq else ""
     
-    if not genome_lib_dir:
-        logger.error("Error, --genome_lib_dir must be specified");
-        sys.exit(1)
-
-    ref_genome_fasta = os.path.join(genome_lib_dir, "ref_genome.fa")
-
+    workdir_base_dir = os.path.abspath(args_parsed.output_base_dir)
     
-    event_info_dict = parse_chim_events(chim_events_filename)
+    chim_events_filename = args_parsed.chim_events_full
 
-    write_genome_target_regions(event_info_dict, ref_genome_fasta, patch_db_fasta, pad_region_length)
+    patch_regions_fasta_filename = args_parsed.patch_regions_fasta
+    patch_regions_gtf_filename = args_parsed.patch_regions_gtf
+        
+
+    read_to_event_dict, event_info_dict = parse_chim_events(chim_events_filename)
+
+    event_to_workdir_dict = build_workspace(event_info_dict.keys(), workdir_base_dir)
     
+    write_genome_target_regions(event_info_dict, patch_regions_fasta_filename, pad_regions_gtf_filename)
     
+    logger.info("-extracting evidence reads from {}".format(left_fq_filename))
+    capture_event_reads(left_fq_filename, 'reads_R1.fastq', read_to_event_dict, event_to_workdir_dict)
+
+    if right_fq_filename:
+        logger.info("-extracting evidence reads from {}".format(right_fq_filename))
+        capture_event_reads(right_fq_filename, 'reads_R2.fastq', read_to_event_dict, event_to_workdir_dict)
+        
+
+    ## log the summary info in the workspace.
+    chim_events_for_eval_filename = os.path.join(workdir_base_dir, "chim_events_for_eval.tsv")
+    with open(chim_events_for_eval_filename, 'wt') as ofh:
+        print("\t".join(["entry", "chrA", "coordA", "orientA", "chrB", "coordB", "orientB", "workdir"]), file=ofh)
+        for event_id, event_info_row in event_info_dict.items():
+            workdir = event_to_workdir_dict[event_id]
+            print("\t".join([event_info_row['entry'],
+                             event_info_row['chrA'],
+                             event_info_row['coordA'],
+                             event_info_row['orientA'],
+                             event_info_row['chrB'],
+                             event_info_row['coordB'],
+                             event_info_row['orientB'],
+                             workdir]), file=ofh)
+            
+
+    logger.info("-see {} for targeted sites info".format(chim_events_for_eval_filename))
+    
+
     sys.exit(0)
 
 
 
-def write_genome_target_regions(event_info_dict, ref_genome_fasta, patch_db_fasta, pad_region_length):
+def write_genome_target_regions(event_info_dict, patch_regions_fasta_filename, patch_regions_gtf_filename):
 
+
+    fasta_reader = pysam.Fasta(patch_regions_fasta_filename)
     
-    patch_db_entries = set()
-    with open(patch_db_fasta, 'rt') as fh:
-        for line in fh:
-            m = re.search("^>(\S+)", line)
-            if m:
-                acc = m.group(1)
-                patch_db_entries.add(acc)
-    
+    entry_to_gtf_lines = parse_gtf(patch_regions_gtf_filename)
+
 
     for event in event_info_dict.values():
         workdir = event['workdir']
-
-        chrA = event['chrA']
-        coordA = int(event['coordA'])
-        orientA = event['orientA']
-
-        chrB = event['chrB']
-        coordB = int(event['coordB'])
-        orientB = event['orientB']
-
-
-        chrA_fasta_file, chrB_fasta_file = (ref_genome_fasta, patch_db_fasta) if chrB in patch_db_entries else (patch_db_fasta, ref_genome_fasta)
+        entry = event['entry']
         
-
-        chrA_lend = coordA - pad_region_length
-        chrA_rend = coordA + pad_region_length
-        if chrA_lend < 1:
-            chrA_lend = 1
-                    
-        chrA_seq_region = extract_seq_region(chrA_fasta_file, chrA, chrA_lend, chrA_rend, orientA)
-
-        chrB_lend = coordB - pad_region_length
-        chrB_rend = coordB + pad_region_length
-        if chrB_lend < 1:
-            chrB_lend = 1
-
-        chrB_seq_region = extract_seq_region(chrB_fasta_file, chrB, chrB_lend, chrB_rend, orientB)
-
-        # build target sequence and gtf 
-        concat_seq = chrA_seq_region
-        target_gtf_filename = os.path.join(workdir, "target.gtf")
         
-        with open(target_gtf_filename, 'wt') as gtf_ofh:
-            print("\t".join(str(x) for x in ["Target", "VIF-draft", "region", 1, len(concat_seq), ".", orientA, ".", "{} {}-{}".format(chrA, chrA_lend, chrA_rend)]), file=gtf_ofh)
+        fasta_acc = "candidate_{}".format(entry)
 
-            concat_seq += 'N' * 100 # add spacer
-
-            print("\t".join(str(x) for x in ["Target", "VIF-draft", "region", len(concat_seq) + 1, len(concat_seq) + len(chrB_seq_region), ".", orientB, ".", "{} {}-{}".format(chrB, chrB_lend, chrB_rend)]), file=gtf_ofh)
-
-            concat_seq += chrB_seq_region
-
+        fasta_entry = fasta_reader.fetch(fasta_acc)
         target_fasta_filename = os.path.join(workdir, "target.fasta")
-        with open(target_fasta_filename, 'wt') as ofh:
-            print(">Target\n{}".format(concat_seq), file=ofh)
-
+        with open(target_fasta_filename, 'wt') as fasta_ofh:
+            fasta_ofh.write(str(fasta_entry))
+        
+                
+        target_gtf_filename = os.path.join(workdir, "target.gtf")
+        with open(target_gtf_filename, 'wt') as gtf_ofh:
+            gtf_ofh.write(entry_to_gtf_lines[fasta_acc])
+        
         logger.info("-wrote {} and {}".format(target_gtf_filename, target_fasta_filename))
     
     return
 
-        
-        
 
-def extract_seq_region(fasta_filename, chr, lend, rend, orient):
 
-    cmd = "samtools faidx {} {}:{}-{}".format(fasta_filename, chr, lend, rend, orient)
+def parse_gtf(patch_regions_gtf_filename) :
 
-    if orient == '-':
-        cmd += " --reverse-complement"
+    entry_to_gtf_lines = defaultdict(str)
 
-    result = "".join(subprocess.check_output(cmd, shell=True, encoding='utf-8').split("\n")[1:])
-        
-    return result
+    with open(patch_regions_gtf_filename) as fh:
+        for line in fh:
+            vals = line.split("\t")
+            if len(vals) < 7:
+                continue
+            contig_acc = vals[0]
+            entry_to_gtf_lines[contig_acc] += line
+
+    return entry_to_gtf_lines
+
 
 
 def parse_chim_events(chim_events_filename):
-
+    read_to_event_dict = dict()
     event_info_dict = dict()
 
     csv.field_size_limit(int(1e6))
@@ -156,11 +160,52 @@ def parse_chim_events(chim_events_filename):
         for row in reader:
             event_num = row['entry']
             event_info_dict[event_num] = row
+            readnames = row['readnames']
+            for readname in readnames.split(","):
+                if readname in read_to_event_dict:
+                    logger.error("-error, readname {} already assigned to different event".format(readname))
+                else:
+                    read_to_event_dict[readname] = event_num
 
-    return event_info_dict
-    
-            
-    
+    return read_to_event_dict, event_info_dict
+
+
+
+def build_workspace(event_nums_list, workdir_base_dir):
+
+    event_to_workdir_dict = dict()
+
+    for event_num in event_nums_list:
+        event_workdir = os.path.sep.join([workdir_base_dir, "event_{}".format(event_num)])
+        os.makedirs(event_workdir)
+        event_to_workdir_dict[event_num] = event_workdir
+        
+    return event_to_workdir_dict
+
+
+def capture_event_reads(input_fq_filename, output_fq_filename, read_to_event_dict, event_to_workdir_dict):
+
+    reads_want = read_to_event_dict.copy()
+
+    with pysam.FastxFile(input_fq_filename) as fh:
+        for entry in fh:
+            readname = entry.name
+            #print(readname)
+            if readname in reads_want:
+                event_num = read_to_event_dict[readname]
+                workdir = event_to_workdir_dict[event_num]
+                reads_filename = os.path.join(workdir, output_fq_filename)
+                with open(reads_filename, 'at') as ofh:
+                    print("\n".join(["@" + readname,
+                                     entry.sequence,
+                                     '+',
+                                     entry.quality]), file=ofh)
+                    
+
+    return
+
+
+
     
 
 
