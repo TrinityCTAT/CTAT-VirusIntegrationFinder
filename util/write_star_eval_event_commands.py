@@ -54,8 +54,9 @@ def main():
             cmd = " ".join([ os.path.join(UTILDIR, "STAR_nonchimeric_patchless_runner.py"),
                              "--genome_fa {}".format(target_genome_fa),
                              "--left_fq {}".format(left_fq_filename),
-                             "--CPU 1"])
-
+                             "--CPU 1",
+                             "-O {}".format(workdir) ])
+            
             if os.path.exists(right_fq_filename):
                 cmd += " --right_fq {}".format(right_fq_filename)
 

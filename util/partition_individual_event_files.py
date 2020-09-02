@@ -119,7 +119,7 @@ def write_genome_target_regions(event_info_dict, event_to_workdir_dict, patch_re
         fasta_entry = fasta_reader.fetch(fasta_acc)
         target_fasta_filename = os.path.join(workdir, "target.fasta")
         with open(target_fasta_filename, 'wt') as fasta_ofh:
-            fasta_ofh.write(str(fasta_entry))
+            print(">{}\n{}".format(fasta_acc, str(fasta_entry)), file=fasta_ofh)
         
                 
         target_gtf_filename = os.path.join(workdir, "target.gtf")

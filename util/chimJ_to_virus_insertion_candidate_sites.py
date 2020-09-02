@@ -55,11 +55,14 @@ def main():
                         help="database of the additional genome targets")
 
 
-    parser.add_argument("--aggregation_dist", type=int, required=False, default=100,
+    parser.add_argument("--aggregation_dist", type=int, required=False, default=500,
                         help="distance around top chimeric event breakpoint for aggregating supporting reads")
 
     parser.add_argument("--output_prefix", "-o", dest="output_prefix", type=str, required=True,
                         help = "output prefix")
+
+    parser.add_argument("--no_remove_duplicates_flag", action='store_true', default=False,
+                        help="do not exclude duplicate alignments")
     
     args_parsed = parser.parse_args()
 
@@ -67,6 +70,8 @@ def main():
     patch_db_fasta_filename = args_parsed.patch_db_fasta
     aggregation_dist = args_parsed.aggregation_dist
     output_prefix = args_parsed.output_prefix
+
+    remove_duplicates_flag = not args_parsed.no_remove_duplicates_flag
     
     ## get list of patch_db entries.
     patch_db_entries = set()
@@ -107,20 +112,25 @@ def main():
             if not (chrA in patch_db_entries) ^ (chrB in patch_db_entries):
                 # must involve just the host genome and a patch db entry
                 continue
+
+
+            token = "^".join(vals[0:6] + vals[10:])
+            hashed_token = hash(token)
+            
+            #print("{} -> {}".format(hashed_token, token))
+            if remove_duplicates_flag and hashed_token in duplicate_read_catcher:
+                logger.info("-DUPLICATE: {}".format(line))
+                continue
+                
+            duplicate_read_catcher.add(hashed_token)
+            
             
             ## reorient so host genome is always in the + reference orientation.
             if (
                 (chrA in patch_db_entries and  orientB == '-')
                 or
                 (chrB in patch_db_entries and orientA == '-') ):
-
-
-                token = hash("^".join(vals[0:6] + vals[10:]))
-                if token in duplicate_read_catcher:
-                    continue
-
-                duplicate_read_catcher.add(token)
-                
+                            
                 # swap them so that the host chr shows up in + orient.
                 (chrA, coordA, orientA,
                  chrB, coordB, orientB) = (chrB, coordB, opposite_orientation[orientB],
