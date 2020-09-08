@@ -109,7 +109,7 @@ def main():
 
 
     ## extract targets for review
-    cmd = " ".join([ os.path.join(UTILDIR, "extract_genomic_targets_for_draft_eval.py"),
+    cmd = " ".join([ os.path.join(UTILDIR, "extract_chimeric_genomic_targets.py"),
                      "--genome_lib_dir {}".format(genome_lib_dir),
                      "--patch_db_fasta {}".format(viral_db_fasta),
                      "--output_prefix {}".format("extracted.pad1k"),
@@ -133,8 +133,25 @@ def main():
 
     pipeliner.add_commands([Command(cmd, "star_chimeric_prelim_candidates")]) 
 
+    ## remove duplicate alignments
+    pipeliner.add_commands([Command("samtools index VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.bam", "index_star_bam")]) 
+
+    cmd = " ".join([os.path.join(UTILDIR, "bam_mark_duplicates.py"),
+                    "-i VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.bam",
+                    "-o VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.dups_removed.bam",
+                    "-r" ] )
+    pipeliner.add_commands([Command(cmd, "star_chimeric_prelim_rmdups")])
+    pipeliner.add_commands([Command("samtools index VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.dups_removed.bam", "index_star_rmdups_bam")]) 
+    
+    ## score alignments.
+    cmd = " ".join([os.path.join(UTILDIR, "chimeric_contig_evidence_analyzer.py"),
+                    "--patch_db_bam VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.dups_removed.bam",
+                    "--patch_db_gtf extracted.pad1k.gtf",
+                    "> VIF_starChim_prelim_candidates/VIF.evidence_counts.tsv"])
+    pipeliner.add_commands([Command(cmd, "chim_contig_evidence_counts")])
 
 
+    
 
     ## Run pipeline
     pipeliner.run()
