@@ -94,33 +94,44 @@ def write_genome_target_regions(event_info_dict, ref_genome_fasta, patch_db_fast
         chrA = event['chrA']
         coordA = int(event['coordA'])
         orientA = event['orientA']
+        coordA = coordA - 1 if orientA == '+' else coordA + 1
+        
 
         chrB = event['chrB']
         coordB = int(event['coordB'])
         orientB = event['orientB']
+        coordB = coordB + 1 if orientB == '+' else coordB - 1
 
         brkpt_type = event['primary_brkpt_type']
         
         chrA_fasta_file, chrB_fasta_file = (ref_genome_fasta, patch_db_fasta) if chrB in patch_db_entries else (patch_db_fasta, ref_genome_fasta)
 
         chrA_lend = coordA - pad_region_length
-        chrA_rend = coordA
-        if brkpt_type != 'Split':
-            chrA_rend += pad_region_length
-            
+        chrA_rend = coordA + pad_region_length
         if chrA_lend < 1:
             chrA_lend = 1
-                    
+
+        if brkpt_type == 'Split':
+            # adjust only the non-breaking side
+            if orientA == '+':
+                chrA_rend = coordA
+            else:
+                chrA_lend = coordA
+                            
         chrA_seq_region = extract_seq_region(chrA_fasta_file, chrA, chrA_lend, chrA_rend, orientA)
 
-        chrB_lend = coordB
-        if brkpt_type != 'Split':
-            chrB_lend -= pad_region_length
-        
+        chrB_lend = coordB - pad_region_length
         chrB_rend = coordB + pad_region_length
         if chrB_lend < 1:
             chrB_lend = 1
-
+        
+        if brkpt_type == 'Split':
+            if orientB == '+':
+                chrB_lend = coordB
+            else:
+                chrB_rend = coordB
+        
+        
         chrB_seq_region = extract_seq_region(chrB_fasta_file, chrB, chrB_lend, chrB_rend, orientB)
 
         # build target sequence and gtf 
@@ -128,7 +139,7 @@ def write_genome_target_regions(event_info_dict, ref_genome_fasta, patch_db_fast
         
         print("\t".join(str(x) for x in [event_acc, "VIF-draft", "region", 1, len(concat_seq), ".", orientA, ".", "{} {}-{}".format(chrA, chrA_lend, chrA_rend)]), file=ofh_gtf)
 
-        concat_seq += 'N' * 100 # add spacer
+        #concat_seq += 'N' * 10 # add spacer
 
         print("\t".join(str(x) for x in [event_acc, "VIF-draft", "region", len(concat_seq) + 1, len(concat_seq) + len(chrB_seq_region), ".", orientB, ".", "{} {}-{}".format(chrB, chrB_lend, chrB_rend)]), file=ofh_gtf)
 
