@@ -21,10 +21,14 @@ def main():
     parser.add_argument("--output_bam", "-o", dest="output_bam", required=True, type=str,
                         help="output bam file")
 
+    parser.add_argument("--remove_dups", "-r", dest='remove_dups', action='store_true', default=False,
+                        help='instead of marking duplicates, just remove them')
+    
     args = parser.parse_args()
 
     input_bam_filename = args.input_bam
     output_bam_filename = args.output_bam
+    remove_dups_flag = args.remove_dups
     
     bamreader = pysam.AlignmentFile(input_bam_filename, "rb")
 
@@ -89,7 +93,8 @@ def main():
         if duplicate_flag:
             read.is_duplicate = True
 
-        bamwriter.write(read)
+        if (not duplicate_flag) or (duplicate_flag and not remove_dups_flag):
+            bamwriter.write(read)
             
         prev_chrom = chrom
         prev_start = start
