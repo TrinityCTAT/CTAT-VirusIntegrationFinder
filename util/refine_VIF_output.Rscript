@@ -1,0 +1,43 @@
+#!/usr/bin/env Rscript
+
+
+main = function () {
+    
+    suppressPackageStartupMessages(library("argparse"))
+    suppressPackageStartupMessages(library("tidyverse"))
+        
+    parser = ArgumentParser()
+    parser$add_argument("--prelim_counts", help="prelim counts file", required=TRUE, nargs=1)
+    parser$add_argument("--vif_counts", help="vif counts file", required=TRUE)
+    parser$add_argument("--output", help="output filename", required=TRUE)
+    
+    args = parser$parse_args()
+    
+    
+    prelim_counts_filename = args$prelim_counts
+    vif_counts_filename = args$vif_counts
+    output_filename = args$output
+
+
+    prelim_counts = read.table(prelim_counts_filename, header=T, sep="\t", stringsAsFactors = F)
+    prelim_counts$contig = paste0("candidate_", prelim_counts$entry)
+    
+    vif_counts = read.table(vif_counts_filename, header=T, sep="\t", stringsAsFactors = F)
+    
+    data = full_join(prelim_counts, vif_counts, by='contig')
+
+    data = data %>% select(contig, chrA, coordA, orientA, chrB, coordB, orientB, split, span, total) %>%
+              filter(total > 0) %>%
+              arrange(desc(total))
+    
+    write.table(data, file=output_filename, row.names=F, sep="\t", quote=F)
+        
+    
+    quit(save = "no", status = 0, runLast = FALSE)
+
+}
+
+
+if (length(sys.calls())==0) {
+    main()
+}
