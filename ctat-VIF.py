@@ -68,7 +68,7 @@ def main():
     optional.add_argument("--remove_duplicates", action='store_true', default=False, help="remove duplicate alignments")
     
     args_parsed = arg_parser.parse_args()
-
+    
 
     left_fq = os.path.abspath(args_parsed.left_fq)
     right_fq = os.path.abspath(args_parsed.right_fq) if args_parsed.right_fq else ""
@@ -78,7 +78,11 @@ def main():
     viral_db_gtf = os.path.abspath(args_parsed.viral_db_gtf) if args_parsed.viral_db_gtf else ""
 
     remove_duplicates_flag = args_parsed.remove_duplicates
-    
+
+    output_prefix = args_parsed.out_prefix
+
+    if remove_duplicates_flag:
+        output_prefix = output_prefix + ".DupsRm"
     
     if not genome_lib_dir:
         sys.stderr.write("Error, must set --genome_lib_dir or have env var CTAT_GENOME_LIB set")
@@ -104,26 +108,28 @@ def main():
     
     pipeliner.add_commands([Command(cmd, "star_chimeric_initial")])
 
+    local_output_prefix = "prelim.vif.dups_rm={}".format(remove_duplicates_flag)
+    
     ## run virus integration site analysis, genereate report.
     cmd = " ".join([ os.path.join(UTILDIR, "chimJ_to_virus_insertion_candidate_sites.py"),
                      "--chimJ {}".format("VIF_starChim_init/Chimeric.out.junction"),
                      "--patch_db_fasta {}".format(viral_db_fasta),
-                     "--output_prefix prelim.vif" ])
+                     "--output_prefix {}".format(local_output_prefix) ])
 
     if remove_duplicates_flag:
         cmd += " --remove_duplicates"
     
-    pipeliner.add_commands([Command(cmd, "chimJ_to_insertion_candidates")])
-
-
+    pipeliner.add_commands([Command(cmd, "chimJ_to_insertion_candidates.dups_removed={}".format(remove_duplicates_flag))])
+    
+    
     ## extract targets for review
     cmd = " ".join([ os.path.join(UTILDIR, "extract_chimeric_genomic_targets.py"),
                      "--genome_lib_dir {}".format(genome_lib_dir),
                      "--patch_db_fasta {}".format(viral_db_fasta),
                      "--output_prefix {}".format("extracted.pad1k"),
-                     "--chim_events {}".format("prelim.vif.abridged.tsv"),
+                     "--chim_events {}.abridged.tsv".format(local_output_prefix),
                      "--pad_region_length 1000"])
-
+    
     pipeliner.add_commands([Command(cmd, "extract_draft_candidates_fasta_n_gtf")])
     
 
@@ -160,12 +166,12 @@ def main():
 
     
     ## score alignments.
-    scored_alignments_file = "VIF_starChim_prelim_candidates/VIF.evidence_counts.dupsremoved={}.tsv".format(remove_duplicates_flag)
+    scored_alignments_file = "VIF_starChim_prelim_candidates/VIF.evidence_counts.rmdups={}.tsv".format(remove_duplicates_flag)
     cmd = " ".join([os.path.join(UTILDIR, "chimeric_contig_evidence_analyzer.py"),
                     "--patch_db_bam {}".format(chimeric_bam),
                     "--patch_db_gtf extracted.pad1k.gtf",
                     "> {}".format(scored_alignments_file) ])
-    pipeliner.add_commands([Command(cmd, "chim_contig_evidence_counts.dupsremoved={}".format(remove_duplicates_flag))])
+    pipeliner.add_commands([Command(cmd, "chim_contig_evidence_counts.rmdups={}".format(remove_duplicates_flag))])
     
     
     ## Run pipeline
