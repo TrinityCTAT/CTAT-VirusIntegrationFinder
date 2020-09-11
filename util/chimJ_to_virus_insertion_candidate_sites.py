@@ -61,8 +61,8 @@ def main():
     parser.add_argument("--output_prefix", "-o", dest="output_prefix", type=str, required=True,
                         help = "output prefix")
 
-    parser.add_argument("--no_remove_duplicates_flag", action='store_true', default=False,
-                        help="do not exclude duplicate alignments")
+    parser.add_argument("--remove_duplicates_flag", action='store_true', default=False,
+                        help="exclude duplicate alignments")
     
     args_parsed = parser.parse_args()
 
@@ -71,7 +71,7 @@ def main():
     aggregation_dist = args_parsed.aggregation_dist
     output_prefix = args_parsed.output_prefix
 
-    remove_duplicates_flag = not args_parsed.no_remove_duplicates_flag
+    remove_duplicates_flag = args_parsed.remove_duplicates_flag
     
     ## get list of patch_db entries.
     patch_db_entries = set()
@@ -118,11 +118,12 @@ def main():
             hashed_token = hash(token)
             
             #print("{} -> {}".format(hashed_token, token))
-            if remove_duplicates_flag and hashed_token in duplicate_read_catcher:
-                logger.info("-DUPLICATE: {}".format(line))
-                continue
-                
-            duplicate_read_catcher.add(hashed_token)
+            if remove_duplicates_flag:
+                if hashed_token in duplicate_read_catcher:
+                    logger.info("-DUPLICATE: {}".format(line))
+                    continue
+                else:
+                    duplicate_read_catcher.add(hashed_token)
             
             
             ## reorient so host genome is always in the + reference orientation.

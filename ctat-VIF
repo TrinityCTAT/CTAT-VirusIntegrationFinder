@@ -64,6 +64,8 @@ def main():
     optional.add_argument("--out_prefix", type=str, default='vif', help="output filename prefix")
     optional.add_argument("--CPU", required=False, type=int, default=4,
                           help="number of threads for multithreaded processes")
+
+    optional.add_argument("--remove_duplicates", action='store_true', default=False, help="remove duplicate alignments")
     
     args_parsed = arg_parser.parse_args()
 
@@ -74,6 +76,9 @@ def main():
     genome_lib_dir = os.path.abspath(args_parsed.genome_lib_dir)
     viral_db_fasta = os.path.abspath(args_parsed.viral_db_fasta)
     viral_db_gtf = os.path.abspath(args_parsed.viral_db_gtf) if args_parsed.viral_db_gtf else ""
+
+    remove_duplicates_flag = args_parsed.remove_duplicates
+    
     
     if not genome_lib_dir:
         sys.stderr.write("Error, must set --genome_lib_dir or have env var CTAT_GENOME_LIB set")
@@ -105,6 +110,9 @@ def main():
                      "--patch_db_fasta {}".format(viral_db_fasta),
                      "--output_prefix prelim.vif" ])
 
+    if remove_duplicates_flag:
+        cmd += " --remove_duplicates"
+    
     pipeliner.add_commands([Command(cmd, "chimJ_to_insertion_candidates")])
 
 
@@ -133,26 +141,33 @@ def main():
 
     pipeliner.add_commands([Command(cmd, "star_chimeric_prelim_candidates")]) 
 
-    ## remove duplicate alignments
-    pipeliner.add_commands([Command("samtools index VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.bam", "index_star_bam")]) 
 
-    cmd = " ".join([os.path.join(UTILDIR, "bam_mark_duplicates.py"),
-                    "-i VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.bam",
-                    "-o VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.dups_removed.bam",
-                    "-r" ] )
-    pipeliner.add_commands([Command(cmd, "star_chimeric_prelim_rmdups")])
-    pipeliner.add_commands([Command("samtools index VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.dups_removed.bam", "index_star_rmdups_bam")]) 
+    chimeric_bam = "VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.bam"
+    
+    if remove_duplicates_flag:
+        ## remove duplicate alignments
+        pipeliner.add_commands([Command("samtools index VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.bam", "index_star_bam")]) 
+
+        chimeric_bam_dups_removed = "VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.dups_removed.bam"
+        cmd = " ".join([os.path.join(UTILDIR, "bam_mark_duplicates.py"),
+                        "-i {}".format(chimeric_bam),
+                        "-o {}".format(chimeric_bam_dups_removed),
+                        "-r" ] )
+        pipeliner.add_commands([Command(cmd, "star_chimeric_prelim_rmdups")])
+        pipeliner.add_commands([Command("samtools index VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.dups_removed.bam", "index_star_rmdups_bam")]) 
+
+        chimeric_bam = chimeric_bam_dups_removed
+
     
     ## score alignments.
+    scored_alignments_file = "VIF_starChim_prelim_candidates/VIF.evidence_counts.dupsremoved={}.tsv".format(remove_duplicates_flag)
     cmd = " ".join([os.path.join(UTILDIR, "chimeric_contig_evidence_analyzer.py"),
-                    "--patch_db_bam VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.dups_removed.bam",
+                    "--patch_db_bam {}".format(chimeric_bam),
                     "--patch_db_gtf extracted.pad1k.gtf",
-                    "> VIF_starChim_prelim_candidates/VIF.evidence_counts.tsv"])
-    pipeliner.add_commands([Command(cmd, "chim_contig_evidence_counts")])
-
-
+                    "> {}".format(scored_alignments_file) ])
+    pipeliner.add_commands([Command(cmd, "chim_contig_evidence_counts.dupsremoved={}".format(remove_duplicates_flag))])
     
-
+    
     ## Run pipeline
     pipeliner.run()
 
