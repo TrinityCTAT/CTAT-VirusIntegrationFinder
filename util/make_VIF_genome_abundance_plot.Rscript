@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-
+options(bitmapType='cairo') # needed to avoid X11 issue
 
 condense_data = function(data) {
     
