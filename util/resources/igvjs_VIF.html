@@ -30,7 +30,7 @@
 </head>
 
 <body>
-<h2>Fusion Inspector</h2>
+<h2>Variant Insertion Site Inspector</h2>
 
 <div class="constainer-fluid" id="sampleHeader" style="background-color: #E7E7EF">
     <nav class="navbar navbar-default" style="background-color: #E7E7EF">
@@ -159,8 +159,7 @@
                 showKaryo: false,
                 locus: initialFusion,
                 reference: {
-                    fastaURL: "__PREFIX__.fa",
-                    cytobandURL: "cytoBand.txt",
+                    fastaURL: "__PREFIX__.fa"
                 },
                 tracks: [
                     {
@@ -171,7 +170,7 @@
                     {
                         label: "ref_annot",
                         url: "__PREFIX__.bed",
-                        displayMode: "SQUISHED",
+                        displayMode: "EXPANDED",
                         indexed: false,
                         order: 10,
                         type: "annotation",
@@ -179,28 +178,17 @@
                     },
 
                     {
-                        url: "__PREFIX__.junction_reads.bam",
+                        url: "__PREFIX__.reads.bam",
                         label: "Junction_Reads_Alignments",
                         type: "bam",
-                        height: 100,
+                        height: 400,
                         indexed: true,
+	                    "viewAsPairs" : true,
                         visibilityWindow: 2000000,
                         order: 45
                     }
                 ]
             };
-
-        if (data["__PREFIX__.gmap_trinity_GG.fusions.gff3.bed"]) {
-            options.tracks.push({
-                label: "Trinity_Fusion",
-                url: "__PREFIX__.gmap_trinity_GG.fusions.gff3.bed",
-                displayMode: "EXPANDED",
-                color: "green",
-                indexed: false,
-                order: 30,
-                type: "bed"
-            });
-        }
 
         return igv.createBrowser(divBrowser, options)
 
@@ -259,10 +247,11 @@
 
     function loadFusionDataTable() {
 
-        var forcedHeaderKeyOrder = ['Fusion', 'Junction Reads', 'Spanning Fragments', 'Splice Type', 'Left Gene', 'Left Chr', 'Left Pos', 'Left Strand', 'Right Gene', 'Right Chr', 'Right Pos', "Right Strand"];
+        var forcedHeaderKeyOrder = ['Fusion', 'Junction Reads', 'Spanning Fragments', 'total', 'chrA', 'coordA', 'orientA',  'chrB', 'coordB', 'orientB'];
 
         var fusionKeys = [];
-        for (var fusionKey in fusionInspectorState.cache.json.fusions[0]) {
+        //for (var fusionKey in fusionInspectorState.cache.json.fusions[0]) {
+	    for (var fusionKey in forcedHeaderKeyOrder) {
             if (fusionInspectorState.cache.json.fusions[0].hasOwnProperty(fusionKey)) {
                 fusionKeys.push(fusionKey);
             }
