@@ -98,9 +98,9 @@
             // If it is hidden the files load as 200 (full file) as opposed
             // to 206, whichis needed for indexed reading as igv web needs it.
             loadIGVBrowser(
-                getFusionAnnotationFromRow('Fusion', curFusionRow),
-                getFusionAnnotationFromRow('Junction Reads', curFusionRow),
-                getFusionAnnotationFromRow('Spanning Fragments', curFusionRow)
+                getFusionAnnotationFromRow('contig', curFusionRow),
+                getFusionAnnotationFromRow('split', curFusionRow),
+                getFusionAnnotationFromRow('span', curFusionRow)
             );//loadIGVBrowser
         });//#fusionTable
 
@@ -247,7 +247,7 @@
 
     function loadFusionDataTable() {
 
-        var forcedHeaderKeyOrder = ['Fusion', 'Junction Reads', 'Spanning Fragments', 'total', 'chrA', 'coordA', 'orientA',  'chrB', 'coordB', 'orientB'];
+        var forcedHeaderKeyOrder = ['contig', 'split', 'span', 'total', 'chrA', 'coordA', 'orientA',  'chrB', 'coordB', 'orientB'];
 
         var fusionKeys = [];
         //for (var fusionKey in fusionInspectorState.cache.json.fusions[0]) {

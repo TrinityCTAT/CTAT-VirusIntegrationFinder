@@ -20,14 +20,22 @@ main = function () {
 
 
     prelim_counts = read.table(prelim_counts_filename, header=T, sep="\t", stringsAsFactors = F)
-    prelim_counts$contig = paste0("candidate_", prelim_counts$entry)
+    prelim_counts = prelim_counts %>% rename(contig = entry,
+                                             prelim.total = total,
+                                             prelim.primary_brkpt_type = primary_brkpt_type,
+                                             prelim.num_primary_reads = num_primary_reads,
+                                             prelim.num_supp_reads = num_supp_reads)
+
+    prelim_counts = prelim_counts %>% select(contig, chrA, coordA, orientA, chrB, coordB, orientB,
+                                             prelim.primary_brkpt_type, prelim.num_primary_reads, prelim.num_supp_reads, prelim.total)
     
     vif_counts = read.table(vif_counts_filename, header=T, sep="\t", stringsAsFactors = F)
     
     data = full_join(prelim_counts, vif_counts, by='contig')
 
-    data = data %>% select(contig, chrA, coordA, orientA, chrB, coordB, orientB, split, span, total) %>%
-              filter(total > 0) %>%
+    data[is.na(data)] = 0
+    
+    data = data %>% select(contig, chrA, coordA, orientA, chrB, coordB, orientB, prelim.primary_brkpt_type, prelim.total, split, span, total) %>%
               arrange(desc(total))
     
     write.table(data, file=output_filename, row.names=F, sep="\t", quote=F)

@@ -99,7 +99,7 @@ main = function () {
     data = read.table(vif_report, header=T, sep="\t", stringsAsFactors = F)
     data = condense_data(data)
     p = make_chr_plot(data)
-    png(output_png)
+    png(output_png, width=800, height=400)
     plot(p)
     dev.off()
     
