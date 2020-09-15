@@ -219,7 +219,9 @@ def main():
 
     ## extract targets for review
 
-    chim_targets_file_prefix = "chimeric_contigs"
+    chim_targets_file_prefix = "chimeric_contigs.rmdups-{}".format(
+        remove_duplicates_flag
+    )
 
     cmd = " ".join(
         [
