@@ -84,3 +84,19 @@ WORKDIR $SRC
 COPY ./CTAT-VirusIntegrationFinder/  /usr/local/bin/
 
 
+## Samtools
+ENV SAMTOOLS_VERSION=1.9
+
+RUN SAMTOOLS_URL="https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2" && \
+   cd $SRC && \
+      wget $SAMTOOLS_URL && \
+         tar xvf samtools-${SAMTOOLS_VERSION}.tar.bz2 && \
+            cd samtools-${SAMTOOLS_VERSION}/htslib-${SAMTOOLS_VERSION} && ./configure && make && make install && \
+               cd ../ && ./configure --without-curses && make && make install
+
+
+RUN R -e 'BiocManager::install("argparse")'
+
+
+RUN apt-get install -y  libxml2-dev 
+RUN R -e ' BiocManager::install("tidyverse")'
