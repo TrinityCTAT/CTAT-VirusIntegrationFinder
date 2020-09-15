@@ -81,8 +81,6 @@ RUN R -e 'BiocManager::install("tidyverse")'
 
 WORKDIR $SRC
 
-COPY ./CTAT-VirusIntegrationFinder/  /usr/local/bin/
-
 
 ## Samtools
 ENV SAMTOOLS_VERSION=1.9
@@ -100,3 +98,9 @@ RUN R -e 'BiocManager::install("argparse")'
 
 RUN apt-get install -y  libxml2-dev 
 RUN R -e ' BiocManager::install("tidyverse")'
+
+
+
+COPY ./CTAT-VirusIntegrationFinder/  /usr/local/bin/
+
+
