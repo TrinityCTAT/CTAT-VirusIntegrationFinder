@@ -156,7 +156,7 @@ def main():
 
     pipeliner.add_commands([Command(cmd, "star_chimeric_initial")])
 
-    local_output_prefix = "prelim.vif.dups_rm={}".format(remove_duplicates_flag)
+    local_output_prefix = "prelim.vif.dups_rm-{}".format(remove_duplicates_flag)
 
     ## run virus integration site analysis, genereate report.
     cmd = " ".join(
@@ -175,7 +175,7 @@ def main():
         [
             Command(
                 cmd,
-                "chimJ_to_insertion_candidates.dups_removed={}".format(
+                "chimJ_to_insertion_candidates.rmdups-{}".format(
                     remove_duplicates_flag
                 ),
             )
@@ -206,30 +206,30 @@ def main():
             "--patch_db_fasta {}".format("extracted.pad1k.fasta"),
             "--disable_chimeras",
             "--genome_lib_dir {}".format(genome_lib_dir),
-            "-O VIF_starChim_prelim_candidates",
+            "-O VIF_starChimContigs",
         ]
     )
 
     if right_fq:
         cmd += " --right_fq {}".format(right_fq)
 
-    pipeliner.add_commands([Command(cmd, "star_chimeric_prelim_candidates")])
+    pipeliner.add_commands([Command(cmd, "star_chimeric")])
 
-    chimeric_bam = "VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.bam"
+    chimeric_bam = "VIF_starChimContigs/Aligned.sortedByCoord.out.bam"
 
     if remove_duplicates_flag:
         ## remove duplicate alignments
         pipeliner.add_commands(
             [
                 Command(
-                    "samtools index VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.bam",
+                    "samtools index VIF_starChimContigs/Aligned.sortedByCoord.out.bam",
                     "index_star_bam",
                 )
             ]
         )
 
         chimeric_bam_dups_removed = (
-            "VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.dups_removed.bam"
+            "VIF_starChimContigs/Aligned.sortedByCoord.out.dups_removed.bam"
         )
         cmd = " ".join(
             [
@@ -243,7 +243,7 @@ def main():
         pipeliner.add_commands(
             [
                 Command(
-                    "samtools index VIF_starChim_prelim_candidates/Aligned.sortedByCoord.out.dups_removed.bam",
+                    "samtools index VIF_starChimContigs/Aligned.sortedByCoord.out.dups_removed.bam",
                     "index_star_rmdups_bam",
                 )
             ]
@@ -252,7 +252,7 @@ def main():
         chimeric_bam = chimeric_bam_dups_removed
 
     ## score alignments.
-    scored_alignments_file = "VIF_starChim_prelim_candidates/VIF.evidence_counts.rmdups={}.tsv".format(
+    scored_alignments_file = "VIF_starChimContigs/VIF.evidence_counts.rmdups-{}.tsv".format(
         remove_duplicates_flag
     )
     cmd = " ".join(
@@ -267,7 +267,7 @@ def main():
         [
             Command(
                 cmd,
-                "chim_contig_evidence_counts.rmdups={}".format(remove_duplicates_flag),
+                "chim_contig_evidence_counts.rmdups-{}".format(remove_duplicates_flag),
             )
         ]
     )
@@ -283,7 +283,7 @@ def main():
         ]
     )
     pipeliner.add_commands(
-        [Command(cmd, "final_summary_tsv.rmdups={}".format(remove_duplicates_flag))]
+        [Command(cmd, "final_summary_tsv.rmdups-{}".format(remove_duplicates_flag))]
     )
 
     ## generate genome wide insertion site abundance plot
@@ -298,13 +298,89 @@ def main():
         ]
     )
     pipeliner.add_commands(
-        [Command(cmd, "genomewide_plot.rmdups={}".format(remove_duplicates_flag))]
+        [Command(cmd, "genomewide_plot.rmdups-{}".format(remove_duplicates_flag))]
+    )
+
+    pipeliner = add_igv_vis_cmds(
+        pipeliner,
+        summary_output_tsv,
+        "VIF_starChimContigs/Aligned.sortedByCoord.out.bam",
+        "extracted.pad1k.gtf",
+        "extracted.pad1k.fasta",
+        output_prefix,
     )
 
     ## Run pipeline
     pipeliner.run()
 
     sys.exit(0)
+
+
+def add_igv_vis_cmds(
+    pipeliner,
+    summary_results_tsv,
+    alignment_bam,
+    chim_targets_gtf,
+    chim_targets_fasta,
+    output_prefix,
+):
+
+    # make json for igvjs
+    json_filename = output_prefix + ".json"
+    cmd = " ".join(
+        [
+            os.path.join(UTILDIR, "create_insertion_site_inspector_js.py"),
+            "--VIF_summary_tsv",
+            summary_results_tsv,
+            "--json_outfile",
+            json_filename,
+        ]
+    )
+    chckpt_prefix = os.path.basename(json_filename) + "-chckpt"
+    pipeliner.add_commands([Command(cmd, chckpt_prefix)])
+
+    # make bed for igvjs
+    bed_filename = output_prefix + ".bed"
+    cmd = " ".join(
+        [
+            os.path.join(UTILDIR, "region_gtf_to_bed.py"),
+            chim_targets_gtf,
+            ">",
+            bed_filename,
+        ]
+    )
+    pipeliner.add_commands([Command(cmd, os.path.basename(bed_filename) + "-chckpt")])
+
+    # prep for making the report:
+    igv_reads_filename = output_prefix + ".reads.bam"
+    cmd = "ln -sf {} {}".format(alignment_bam, igv_reads_filename)
+    pipeliner.add_commands(
+        [Command(cmd, os.path.basename(igv_reads_filename) + "-chckpt")]
+    )
+
+    fa_filename = output_prefix + ".fa"
+    cmd = "ln -sf {} {}".format(chim_targets_fasta, fa_filename)
+    pipeliner.add_commands([Command(cmd, os.path.basename(fa_filename) + "-chckpt")])
+
+    # generate the html
+    html_filename = output_prefix + ".igvjs.html"
+    cmd = " ".join(
+        [
+            os.path.join(UTILDIR, "make_VIF_igvjs_html.py"),
+            "--html_template {}".format(
+                os.path.join(UTILDIR, "resources", "igvjs_VIF.html")
+            ),
+            "--fusions_json",
+            json_filename,
+            "--input_file_prefix",
+            output_prefix,
+            "--html_output",
+            html_filename,
+        ]
+    )
+    pipeliner.add_commands([Command(cmd, os.path.basename(html_filename) + "-chckpt")])
+
+    return pipeliner
 
 
 if __name__ == "__main__":
