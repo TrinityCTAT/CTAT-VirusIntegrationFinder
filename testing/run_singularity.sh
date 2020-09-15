@@ -1,0 +1,1 @@
+singularity exec -e -H `pwd` -B $CTAT_GENOME_LIB ../Docker/ctat_vif.v0.0.1.simg ctat-VIF.py --viral_db_fasta HPV16.fa --left_fq V42_hpv16chim_1.fastq.gz --right_fq V42_hpv16chim_2.fastq.gz --genome_lib_dir $CTAT_GENOME_LIB  -O singularity.outdir --CPU 10
