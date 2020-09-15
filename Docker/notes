@@ -1,0 +1,1 @@
+gsutil cp ctat_vif.v0.0.1.simg gs://trinityctatvirusintegrationfinding/SINGULARITY/ctat_vif.v0.0.1.simg
