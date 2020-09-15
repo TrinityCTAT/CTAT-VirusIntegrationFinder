@@ -1,4 +1,4 @@
-s#!/bin/bash
+#!/bin/bash
 
 VERSION=`cat VERSION.txt`
 
