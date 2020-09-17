@@ -34,6 +34,8 @@ VERSION = "__BLEEDING_EDGE__"
 BASEDIR = os.path.dirname(os.path.abspath(__file__))
 UTILDIR = os.sep.join([BASEDIR, "util"])
 
+MAX_IGVJS_COVERAGE_DEPTH = 100
+
 
 def main():
 
@@ -303,7 +305,7 @@ def main():
         chimeric_bam = chimeric_bam_dups_removed
 
     ## score alignments.
-    scored_alignments_file = "{}/VIF.evidence_counts.rmdups-{}.tsv".format(
+    scored_alignments_prefix = "{}/VIF.evidence_counts.rmdups-{}".format(
         VIF_starChimContigs_outdir, remove_duplicates_flag
     )
     cmd = " ".join(
@@ -311,7 +313,7 @@ def main():
             os.path.join(UTILDIR, "chimeric_contig_evidence_analyzer.py"),
             "--patch_db_bam {}".format(chimeric_bam),
             "--patch_db_gtf {}.gtf".format(chim_targets_file_prefix),
-            "> {}".format(scored_alignments_file),
+            "--output_prefix {}".format(scored_alignments_prefix),
         ]
     )
     pipeliner.add_commands(
@@ -329,7 +331,7 @@ def main():
         [
             os.path.join(UTILDIR, "refine_VIF_output.Rscript"),
             "--prelim_counts {}".format(prelim_chim_events_file),
-            "--vif_counts {}".format(scored_alignments_file),
+            "--vif_counts {}.evidence_counts.tsv".format(scored_alignments_prefix),
             "--output {}".format(summary_output_tsv),
         ]
     )
@@ -355,7 +357,7 @@ def main():
     pipeliner = add_igv_vis_cmds(
         pipeliner,
         summary_output_tsv,
-        chimeric_bam,
+        "{}.evidence.bam".format(scored_alignments_prefix),
         "{}.gtf".format(chim_targets_file_prefix),
         "{}.fasta".format(chim_targets_file_prefix),
         output_prefix,
@@ -404,9 +406,25 @@ def add_igv_vis_cmds(
 
     # prep for making the report:
     igv_reads_filename = output_prefix + ".reads.bam"
-    cmd = "ln -sf {} {}".format(alignment_bam, igv_reads_filename)
+    # cmd = "ln -sf {} {}".format(alignment_bam, igv_reads_filename)
+
+    cmd = " ".join(
+        [
+            os.path.join(UTILDIR, "bamsifter", "bamsifter"),
+            "-c {}".format(MAX_IGVJS_COVERAGE_DEPTH),
+            "-o {}".format(igv_reads_filename),
+            alignment_bam,
+        ]
+    )
+
     pipeliner.add_commands(
-        [Command(cmd, os.path.basename(igv_reads_filename) + "-chckpt")]
+        [
+            Command(
+                cmd,
+                os.path.basename(igv_reads_filename)
+                + "-sift{}-chckpt".format(MAX_IGVJS_COVERAGE_DEPTH),
+            )
+        ]
     )
 
     fa_filename = output_prefix + ".fa"
