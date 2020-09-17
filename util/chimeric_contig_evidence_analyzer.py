@@ -23,66 +23,79 @@ logging.basicConfig(level=logging.INFO,
 
 def main():
     
-    arg_parser = argparse.ArgumentParser(description="counts spanning and split evidence reads\n" +
-                                         "two run modes:\n" +
-                                         " - use a single bam and gtf\n" +
-                                         " or \n" +
-                                         " - give a partitioned data directory and it will iterate through all entries.\n\n",
+    arg_parser = argparse.ArgumentParser(description="counts spanning and split evidence reads\n",
                                          formatter_class=argparse.RawTextHelpFormatter
                                         )
     
 
-    arg_parser.add_argument("--patch_db_bam", type=str, required=False, default=None,
+    arg_parser.add_argument("--patch_db_bam", type=str, required=True, default=None,
                             help="patch genome aligned bam")
 
-    arg_parser.add_argument("--patch_db_gtf", type=str, required=False, default=None,
+    arg_parser.add_argument("--patch_db_gtf", type=str, required=True, default=None,
                             help="patch gtf")
 
-    arg_parser.add_argument("--partitioned_dir", type=str, required=False, default=None,
-                            help="partitioned data directory, expect to find: 'chim_events_for_eval.tsv' in that dir.")
+    arg_parser.add_argument("--output_prefix", type=str, required=True,
+                            help="output file prefix for bam and tsv")
 
+    arg_parser.add_argument("--min_anchor", type=int, default=25, required=False,
+                            help="minimum num aligned bases on both sides of the breakpoint")
 
+    arg_parser.add_argument("--max_end_clip", type=int, default=10, required=False,
+                            help="maximum amount of read end clipping")
+    
     args = arg_parser.parse_args()
 
     bam_file = args.patch_db_bam
     gtf_file = args.patch_db_gtf
-    partitioned_dir = args.partitioned_dir
+    output_prefix = args.output_prefix
+    min_anchor = args.min_anchor
+    max_end_clip = args.max_end_clip
 
-    if not ((bam_file != None and gtf_file != None) ^ (partitioned_dir != None)):
-        arg_parser.print_help()
-        sys.exit(1)
+    output_tsv = output_prefix + ".evidence_counts.tsv"
+    output_bam_filename = output_prefix + ".evidence.bam"
+    
+    ofh_tsv = open(output_tsv, 'wt')
 
+    print("\t".join(["contig", "split", "span", "total"]), file=ofh_tsv)  # report header
 
     
-    print("\t".join(["contig", "split", "span", "total"]))  # report header
+
+    contig_readnames_want_set = analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip)
+
+    ofh_tsv.close()
+
+    # write the bam file
+    logger.info("writing read alignment evidence bam")
+    samfile = pysam.AlignmentFile(bam_file, "rb")
+    outbam = pysam.AlignmentFile(output_bam_filename, 'wb', template=samfile)
     
-    if partitioned_dir:
-        chim_events_file = os.path.join(partitioned_dir, "chim_events_for_eval.tsv")
-        if not os.path.exists(chim_events_file):
-            raise RuntimeError("Error, cannot locate expected file: {}".format(chim_events_file))
-        with open(chim_events_file) as fh:
-            csv_reader = csv.DictReader(fh, delimiter="\t")
-            for row in csv_reader:
-                workdir = row['workdir']
-                target_bam = os.path.join(workdir, "Aligned.sortedByCoord.out.bam")
-                target_gtf = os.path.join(workdir, "target.gtf")
-                analyze_bam_n_gtf(target_bam, target_gtf)
+    for aligned_read in samfile:
+        if aligned_read.is_secondary:
+            continue
         
-    else:
-        analyze_bam_n_gtf(bam_file, gtf_file)
+        contig = samfile.get_reference_name(aligned_read.reference_id)
+        read_name = aligned_read.query_name
+        if read_name in contig_readnames_want_set[contig]:
+            outbam.write(aligned_read)
 
+    samfile.close()
+    outbam.close()
+    
 
     sys.exit(0)
 
         
-def analyze_bam_n_gtf(bam_file, gtf_file):
+def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip):
+
+    samfile = pysam.AlignmentFile(bam_file, "rb")
+
     
     contig_to_region_pair_dict = parse_region_pairs_from_gtf(gtf_file)
     
-    samfile = pysam.AlignmentFile(bam_file, "rb")
-
     read_to_contig_and_type = defaultdict(dict)
-    init_contig_support = defaultdict(int)
+    contig_readnames_to_anchor_lengths = defaultdict(dict)
+
+    logger.info("examining aligned reads")
     
     for aligned_read in samfile:
         contig = samfile.get_reference_name(aligned_read.reference_id)
@@ -98,44 +111,114 @@ def analyze_bam_n_gtf(bam_file, gtf_file):
 
         max_rend = max(mate_start, align_rend)
 
-        # check fragment span
-        if read_name in read_to_contig_and_type[contig] and  read_to_contig_and_type[contig][read_name] == 'split':
-            # already handled this one
-            init_contig_support[contig] +=1
+        if excessive_clipping(aligned_read, max_end_clip):
+            continue
+
+        if read_name in read_to_contig_and_type[contig] and read_to_contig_and_type[contig][read_name] == 'split':
+            # already handled the upstream mate
+            update_anchor_lengths(contig_readnames_to_anchor_lengths[contig][read_name], brkpt, align_blocks)
             continue
         
-        if align_start < brkpt and max_rend > brkpt:
+        # check fragment span
+        if read_name in contig_readnames_to_anchor_lengths[contig] or (align_start < brkpt and max_rend > brkpt):
             # fragment overlaps breakpoint.
-            read_to_contig_and_type[contig][read_name] = 'span'
-            init_contig_support[contig] +=1
+
+
+            if read_name not in contig_readnames_to_anchor_lengths[contig]:
+                # init it
+                contig_readnames_to_anchor_lengths[contig][read_name] = [0,0]
+                read_to_contig_and_type[contig][read_name] = 'span' # default
+            
+            update_anchor_lengths(contig_readnames_to_anchor_lengths[contig][read_name], brkpt, align_blocks)
             
             # see if we have evidence for a split read
             # which involves a single read spanning the breakpoint
-            if align_rend > brkpt:
+            if align_start < brkpt and align_rend > brkpt:
                 # upgrade to split read
                 read_to_contig_and_type[contig][read_name] = 'split'
                 
+    
+    logger.info("counting up passing reads")
+    # count up the passing reads.
+    contig_to_passing_reads = defaultdict(set)
+    for contig in contig_readnames_to_anchor_lengths:
+        counter = 0
+        for readname in contig_readnames_to_anchor_lengths[contig]:
+            anchor_lengths = contig_readnames_to_anchor_lengths[contig][readname]
+            if anchor_lengths[0] >= min_anchor and anchor_lengths[1] >= min_anchor:
+                contig_to_passing_reads[contig].add(readname)
+                counter += 1
+                #print("{}\t{}\t{}\t{}".format(counter, contig, readname, str(anchor_lengths)))
+                
+    ## report entries
+    logger.info("reporting contig evidence counts")
+                
+    sorted_contigs = sorted(contig_to_passing_reads.keys(), key=lambda x: len(contig_to_passing_reads[x]), reverse=True)
 
-    ## count'em up
-    sorted_contigs = sorted(init_contig_support.keys(), key=lambda x: init_contig_support[x], reverse=True)
 
-        
+    # prioritize multimappers according to contig support.
+    final_passing_contig_reads = defaultdict(set)
+    
     read_seen = set()
     for contig in sorted_contigs:
         type_counter = defaultdict(int)
-        for read in read_to_contig_and_type[contig]:
+        for read in contig_to_passing_reads[contig]:
             if read not in read_seen:
                 type = read_to_contig_and_type[contig][read]
                 type_counter[type] += 1
                 read_seen.add(read)
+                final_passing_contig_reads[contig].add(read)
 
         num_split = type_counter.get('split', 0)
         num_span = type_counter.get('span', 0)
         num_total = num_split + num_span
     
-        print("\t".join([contig, str(num_split), str(num_span), str(num_total)]))
+        print("\t".join([contig, str(num_split), str(num_span), str(num_total)]), file=ofh_tsv)
 
-    return
+    return final_passing_contig_reads
+
+
+
+
+
+def update_anchor_lengths(anchor_len_list, brkpt, aligned_blocks):
+
+    this_read_anchor_len_list = [0,0]
+
+    for align_block in aligned_blocks:
+        (lend, rend) = align_block
+        if rend < brkpt:
+            this_read_anchor_len_list[0] += rend - lend + 1
+        elif lend > brkpt:
+            this_read_anchor_len_list[1] += rend - lend + 1
+        else:
+            this_read_anchor_len_list[0] += brkpt - lend
+            this_read_anchor_len_list[1] += rend - brkpt
+
+    if this_read_anchor_len_list[0] > anchor_len_list[0]:
+        anchor_len_list[0] = this_read_anchor_len_list[0]
+
+    if this_read_anchor_len_list[1] > anchor_len_list[1]:
+        anchor_len_list[1] = this_read_anchor_len_list[1]
+
+
+def excessive_clipping(aligned_read, max_end_clip):
+
+    cigartuples = aligned_read.cigartuples
+
+    #for cigartuple in cigartuples:
+    #    print("tuple: {}".format(str(cigartuple)))
+    
+    # see https://pysam.readthedocs.io/en/latest/api.html#pysam.AlignedSegment.cigartuples
+    # cigar codes: S=4, H=5
+    
+    if cigartuples[0][0] in (4, 5) and cigartuples[0][1] > max_end_clip:
+        return True
+
+    if len(cigartuples) > 1 and cigartuples[-1][0] in (4, 5) and cigartuples[-1][1] > max_end_clip:
+        return True
+
+    return False
 
 
 

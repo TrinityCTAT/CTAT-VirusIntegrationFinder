@@ -63,6 +63,9 @@ def main():
         chrom = bamreader.get_reference_name(read.reference_id)
         start = read.reference_start
         read_name = read.query_name
+
+        if read.is_secondary:
+            continue
         
         if chrom != prev_chrom:
             reinit_new_contig()
