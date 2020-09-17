@@ -6,7 +6,7 @@ import argparse
 import subprocess
 import math
 import pysam
-from collections import defaultdict
+from collections import defaultdict, Counter
 import csv
 
 if sys.version_info[0] < 3:
@@ -37,11 +37,18 @@ def main():
     arg_parser.add_argument("--output_prefix", type=str, required=True,
                             help="output file prefix for bam and tsv")
 
-    arg_parser.add_argument("--min_anchor", type=int, default=25, required=False,
+    arg_parser.add_argument("--min_anchor", type=int, default=30, required=False,
                             help="minimum num aligned bases on both sides of the breakpoint")
 
     arg_parser.add_argument("--max_end_clip", type=int, default=10, required=False,
                             help="maximum amount of read end clipping")
+
+
+    arg_parser.add_argument("--min_seq_entropy", type=float, default=1.0, required=False,
+                            help='min sequence entropy for consideration as evidence')
+
+    arg_parser.add_argument("--min_per_id", type=int, default=95, required=False,
+                            help='min percent identity for an aligned read')
     
     args = arg_parser.parse_args()
 
@@ -50,6 +57,8 @@ def main():
     output_prefix = args.output_prefix
     min_anchor = args.min_anchor
     max_end_clip = args.max_end_clip
+    min_seq_entropy = args.min_seq_entropy
+    min_per_id = args.min_per_id
 
     output_tsv = output_prefix + ".evidence_counts.tsv"
     output_bam_filename = output_prefix + ".evidence.bam"
@@ -60,7 +69,7 @@ def main():
 
     
 
-    contig_readnames_want_set = analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip)
+    contig_readnames_want_set = analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min_seq_entropy, min_per_id)
 
     ofh_tsv.close()
 
@@ -85,7 +94,7 @@ def main():
     sys.exit(0)
 
         
-def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip):
+def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min_seq_entropy, min_per_id):
 
     samfile = pysam.AlignmentFile(bam_file, "rb")
 
@@ -96,10 +105,22 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip):
     contig_readnames_to_anchor_lengths = defaultdict(dict)
 
     logger.info("examining aligned reads")
+
+    contig_readnames_to_excessive_soft_clip = defaultdict(set)
     
     for aligned_read in samfile:
         contig = samfile.get_reference_name(aligned_read.reference_id)
         read_name = aligned_read.query_name
+
+        if not aligned_read.mapping_quality > 0:
+            continue
+
+        if seq_entropy(aligned_read.query_sequence) < min_seq_entropy:
+            continue
+
+        if per_id(aligned_read) < min_per_id:
+            continue
+
         
         brkpt = contig_to_region_pair_dict[contig][0]['rend']
 
@@ -111,19 +132,24 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip):
 
         max_rend = max(mate_start, align_rend)
 
-        if excessive_clipping(aligned_read, max_end_clip):
-            continue
+        
 
         if read_name in read_to_contig_and_type[contig] and read_to_contig_and_type[contig][read_name] == 'split':
             # already handled the upstream mate
-            update_anchor_lengths(contig_readnames_to_anchor_lengths[contig][read_name], brkpt, align_blocks)
+            if excessive_clipping(aligned_read, max_end_clip):
+                contig_readnames_to_excessive_soft_clip[contig].add(read_name)
+            else:
+                update_anchor_lengths(contig_readnames_to_anchor_lengths[contig][read_name], brkpt, align_blocks)
             continue
         
         # check fragment span
         if read_name in contig_readnames_to_anchor_lengths[contig] or (align_start < brkpt and max_rend > brkpt):
             # fragment overlaps breakpoint.
-
-
+            
+            if excessive_clipping(aligned_read, max_end_clip):
+                contig_readnames_to_excessive_soft_clip[contig].add(read_name)
+                continue
+            
             if read_name not in contig_readnames_to_anchor_lengths[contig]:
                 # init it
                 contig_readnames_to_anchor_lengths[contig][read_name] = [0,0]
@@ -143,7 +169,13 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip):
     contig_to_passing_reads = defaultdict(set)
     for contig in contig_readnames_to_anchor_lengths:
         counter = 0
+
+        excessively_softclipped_reads = contig_readnames_to_excessive_soft_clip[contig]
+        
         for readname in contig_readnames_to_anchor_lengths[contig]:
+            if readname in excessively_softclipped_reads:
+                continue
+            
             anchor_lengths = contig_readnames_to_anchor_lengths[contig][readname]
             if anchor_lengths[0] >= min_anchor and anchor_lengths[1] >= min_anchor:
                 contig_to_passing_reads[contig].add(readname)
@@ -220,6 +252,41 @@ def excessive_clipping(aligned_read, max_end_clip):
 
     return False
 
+
+def seq_entropy(sequence):
+
+    # lazy, using code from here: https://onestopdataanalysis.com/shannon-entropy/
+
+    m = len(sequence)
+    bases = Counter([tmp_base for tmp_base in sequence])
+     
+    shannon_entropy_value = 0
+    for base in bases:
+        # number of residues
+        n_i = bases[base]
+        # n_i (# residues type i) / M (# residues in column)
+        p_i = n_i / float(m)
+        entropy_i = p_i * (math.log(p_i, 2))
+        shannon_entropy_value += entropy_i
+        
+    return shannon_entropy_value * -1
+
+
+def per_id(aligned_read):
+
+    cigartuples = aligned_read.cigartuples
+
+    num_matches = 0
+    for cigar in cigartuples:
+        if cigar[0] == 0:
+            # M
+            num_matches += cigar[1]
+
+    mismatches = aligned_read.get_tag("nM")
+
+    per_id = (num_matches - mismatches) / num_matches * 100.0
+
+    return(per_id)
 
 
 def parse_region_pairs_from_gtf(gtf_file):
