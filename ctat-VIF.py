@@ -160,7 +160,34 @@ def main():
 
     pipeliner.add_commands([Command(cmd, "star_chimeric_initial")])
 
-    pipeliner.run()
+    virus_aligned_bam_file = "VIF_starChim_init/Aligned.sortedByCoord.out.bam"
+
+    if remove_duplicates_flag:
+
+        virus_aligned_bam_file_rmdups = virus_aligned_bam_file + ".rmdups.bam"
+        cmd = " ".join(
+            [
+                os.path.join(UTILDIR, "bam_mark_duplicates.py"),
+                "-i {}".format(virus_aligned_bam_file),
+                "-o {}".format(virus_aligned_bam_file_rmdups),
+                "-r",
+            ]
+        )
+        pipeliner.add_commands([Command(cmd, "star_init_rmdups")])
+        pipeliner.add_commands(
+            [
+                Command(
+                    "samtools index " + virus_aligned_bam_file_rmdups,
+                    "index_star_init_rmdups_bam",
+                )
+            ]
+        )
+
+        virus_aligned_bam_file = (
+            virus_aligned_bam_file_rmdups  # for later coverage analysis.
+        )
+
+    pipeliner.run()  # run the init pipeline separately from downstream pipeline.
 
     ## ###############
     ## Post STAR-Init
@@ -354,6 +381,24 @@ def main():
         [Command(cmd, "genomewide_plot.final.rmdups-{}".format(remove_duplicates_flag))]
     )
 
+    ## generate summary virus coverage plots and mapping statistics:
+    cmd = " ".join(
+        [
+            os.path.join(UTILDIR, "plot_top_virus_coverage.Rscript"),
+            "--vif_report {}".format(summary_output_tsv),
+            "--bam {}".format(virus_aligned_bam_file),
+            "--output_prefix {}".format(output_prefix),
+        ]
+    )
+    pipeliner.add_commands(
+        [
+            Command(
+                cmd, "virus_cov_plots_n_stats.rmdups-{}".format(remove_duplicates_flag)
+            )
+        ]
+    )
+
+    ## add IGVjs html
     pipeliner = add_igv_vis_cmds(
         pipeliner,
         summary_output_tsv,
