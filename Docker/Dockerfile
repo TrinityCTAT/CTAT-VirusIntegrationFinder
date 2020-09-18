@@ -102,5 +102,6 @@ RUN R -e ' BiocManager::install("tidyverse")'
 
 
 COPY ./CTAT-VirusIntegrationFinder/  /usr/local/bin/
+RUN  cd /usr/local/bin/util/bamsifter && make
 
 
