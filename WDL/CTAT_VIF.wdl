@@ -53,6 +53,7 @@ task CTAT_BAM_TO_FASTQ {
 task CTAT_UNTAR_FASTQS {
 
   File fastq_pair_tar_gz
+  String Docker
 
   command {
 
@@ -67,7 +68,14 @@ task CTAT_UNTAR_FASTQS {
     File right_fq = select_first(glob("*_2.fastq"))
   }
 
-
+  runtime {
+            docker: Docker
+            disks: "local-disk 500 SSD"
+            memory: "10G"
+            cpu: "4"
+            preemptible: 0
+            maxRetries: 3
+    }
 }
 
 
@@ -153,7 +161,8 @@ workflow ctat_VIF_wf {
 
       call CTAT_UNTAR_FASTQS {
         input:
-          fastq_pair_tar_gz=fastq_pair_tar_gz
+          fastq_pair_tar_gz=fastq_pair_tar_gz,
+          Docker=Docker
       }
     }
 
