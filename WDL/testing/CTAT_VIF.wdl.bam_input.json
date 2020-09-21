@@ -1,0 +1,11 @@
+{
+    "ctat_VIF_wf.genome_lib_tar":"GRCh38_gencode_v22_CTAT_lib_Apr032020.tar",
+    "ctat_VIF_wf.viral_db_fasta":"HPV16.fa",
+    "ctat_VIF_wf.sample_name":"V42",
+    "ctat_VIF_wf.rnaseq_aligned_bam":"Aligned.sortedByCoord.out.bam",
+    "ctat_VIF_wf.Docker":"trinityctat/ctat_vif:latest"
+}
+
+
+
+
