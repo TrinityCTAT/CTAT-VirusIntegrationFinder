@@ -96,8 +96,8 @@ def main():
                     "--genomeFastaFiles {}".format(patch_db_fasta),
                     "--outSAMfilter KeepAllAddedReferences",
                     "--alignSJstitchMismatchNmax 5 -1 5 5",
-                    "--scoreGapNoncan -6" ])
-
+                    "--scoreGapNoncan -6 " ])
+    
 
     if not disable_chimeras_flag:
         cmd += " ".join(["--chimJunctionOverhangMin 12",
