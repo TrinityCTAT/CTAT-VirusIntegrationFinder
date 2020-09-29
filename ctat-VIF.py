@@ -74,13 +74,6 @@ def main():
     required.add_argument(
         "--viral_db_fasta", type=str, required=True, help="viral db fasta file"
     )
-    optional.add_argument(
-        "--viral_db_gtf",
-        type=str,
-        required=False,
-        default=None,
-        help="viral db gtf file",
-    )
 
     optional.add_argument(
         "-O",
@@ -117,9 +110,6 @@ def main():
     output_dir = os.path.abspath(args_parsed.output_dir)
     genome_lib_dir = os.path.abspath(args_parsed.genome_lib_dir)
     viral_db_fasta = os.path.abspath(args_parsed.viral_db_fasta)
-    viral_db_gtf = (
-        os.path.abspath(args_parsed.viral_db_gtf) if args_parsed.viral_db_gtf else ""
-    )
 
     remove_duplicates_flag = args_parsed.remove_duplicates
 
