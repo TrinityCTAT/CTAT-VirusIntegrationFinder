@@ -33,7 +33,7 @@ RUN SAMTOOLS_URL="https://github.com/samtools/samtools/releases/download/${SAMTO
          tar xvf samtools-${SAMTOOLS_VERSION}.tar.bz2 && \
             cd samtools-${SAMTOOLS_VERSION}/htslib-${SAMTOOLS_VERSION} && ./configure && make && make install && \
                cd ../ && ./configure --without-curses && make && make install
-               
+
 
 ## STAR Aligner
 WORKDIR $SRC
@@ -96,7 +96,7 @@ RUN SAMTOOLS_URL="https://github.com/samtools/samtools/releases/download/${SAMTO
 RUN R -e 'BiocManager::install("argparse")'
 
 
-RUN apt-get install -y  libxml2-dev 
+RUN apt-get install -y  libxml2-dev
 RUN R -e ' BiocManager::install("tidyverse")'
 
 
@@ -111,3 +111,5 @@ RUN  cd /usr/local/bin/util/bamsifter && make
 WORKDIR $SRC
 RUN wget https://github.com/broadinstitute/picard/releases/download/2.20.3/picard.jar
 ENV PICARD_HOME $SRC
+
+RUN pip install pandas
