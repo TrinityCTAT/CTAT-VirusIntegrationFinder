@@ -186,7 +186,6 @@ task CTAT_VIF {
         File virus_insertion_candidates_tsv="VIF/~{sample_name}.insertion_site_candidates.tsv"
         File prelim_virus_insertion_plot="VIF/prelim.vif.rmdups-False.abridged.tsv.genome_plot.png"
         File virus_insertion_plot="VIF/~{sample_name}.insertion_site_candidates.genome_plot.png"
-        File virus_insertion_plot="VIF/~{sample_name}.insertion_site_candidates.genome_plot.png"
         File virus_read_counts_summary="VIF/~{sample_name}.virus_read_counts_summary.tsv"
         File virus_genome_coverage_plots="VIF/~{sample_name}.virus_coverage_plots.pdf"
         File vif_igv_report_html="VIF/~{sample_name}.igvjs.html"
@@ -195,6 +194,7 @@ task CTAT_VIF {
         File vif_chimeric_targets_fa="VIF/~{sample_name}.fa"
         File virus_aligned_reads_bam="VIF/~{sample_name}.virus.reads.bam"
         File virus_igv_report_html="VIF/~{sample_name}.virus.igvjs.html"
+        File report_html="VIF/~{sample_name}.html"
     }
 
     runtime {
