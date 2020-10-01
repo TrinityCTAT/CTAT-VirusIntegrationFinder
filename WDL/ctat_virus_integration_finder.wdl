@@ -165,6 +165,8 @@ task CTAT_VIF {
         Boolean remove_duplicates
 
     }
+    String output_prefix = if(remove_duplicates) then "VIF/" + sample_name + ".DupsRm"  else "VIF/" + sample_name
+
     command <<<
 
         set -e
@@ -183,15 +185,15 @@ task CTAT_VIF {
     >>>
 
     output {
-        File virus_insertion_candidates_tsv="VIF/~{sample_name}.insertion_site_candidates.tsv"
-        File virus_read_counts_summary="VIF/~{sample_name}.virus_read_counts_summary.tsv"
-        File vif_aligned_reads_bam="VIF/~{sample_name}.reads.bam"
-        File vif_chimeric_targets_bed="VIF/~{sample_name}.bed"
-        File vif_chimeric_targets_fa="VIF/~{sample_name}.fa"
-        File virus_aligned_reads_bam="VIF/~{sample_name}.virus.reads.bam"
-        File virus_igv_report_html="VIF/~{sample_name}.virus.igvjs.html"
-        File vif_igv_report_html="VIF/~{sample_name}.igvjs.html"
-        File report_html="VIF/~{sample_name}.html"
+        File virus_insertion_candidates_tsv="~{output_prefix}.insertion_site_candidates.tsv"
+        File virus_read_counts_summary="~{output_prefix}.virus_read_counts_summary.tsv"
+        File vif_aligned_reads_bam="~{output_prefix}.reads.bam"
+        File vif_chimeric_targets_bed="~{output_prefix}.bed"
+        File vif_chimeric_targets_fa="~{output_prefix}.fa"
+        File virus_aligned_reads_bam="~{output_prefix}.virus.reads.bam"
+        File virus_igv_report_html="~{output_prefix}.virus.igvjs.html"
+        File vif_igv_report_html="~{output_prefix}.igvjs.html"
+        File report_html="~{output_prefix}.html"
     }
 
     runtime {
