@@ -7,7 +7,7 @@
     <meta name="author" content="">
     <link rel="shortcut icon" href="https://igv.org/web/img/favicon.ico">
 
-    <title>IGV </title>
+    <title>VIF</title>
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
@@ -30,9 +30,8 @@
 </head>
 
 <body>
-<h2>Variant Insertion Site Inspector</h2>
 
-<div class="constainer-fluid" id="sampleHeader" style="background-color: #E7E7EF">
+<div class="container-fluid" id="sampleHeader" style="background-color: #E7E7EF">
     <nav class="navbar navbar-default" style="background-color: #E7E7EF">
         <!--<div class="col-xs-3" id="sampleId"><p class="navbar-text"><b>Sample:</b></p></div>-->
 
@@ -53,7 +52,7 @@
 <!-- Start tabs header -->
 <ul id="tabDescription" class="nav nav-tabs">
     <li role="presentation" id="tabBrowser_tab" class="active"><a href="#tabBrowser" data-toggle="tab">Browse All
-        Fusions</a></li>
+        Integrations</a></li>
     <!-- <li role="presentation" id="igvTab"><a href="#igvBrowser" data-toggle="tab">IGV Detail</a></li> -->
 </ul>
 <!-- End tabs header -->
@@ -214,19 +213,6 @@
         // $("#FusionSpanningDetail").html("<p class='navbar-text'><b>Spanning Read Count:</b> " + fusionSpanFrags + "</p>");
     }
 
-    function orderTableKeysBeginning(arrayToOrder, forcedOrder) {
-        var newArray = [];
-        for (arrayElement = 0; arrayElement < arrayToOrder.length; arrayElement++) {
-            if (!(forcedOrder.indexOf(arrayToOrder[arrayElement]) >= 0)) {
-                newArray.push(arrayToOrder[arrayElement]);
-            }
-        }
-        return (forcedOrder.concat(newArray));
-    }
-
-    function toTableRowHeaderElement(tableRowValue) {
-        return '<th>' + tableRowValue + '</th>';
-    }
 
     function toTableBodyElement(fusionEntry, orderedHeaderKeys) {
         var bodyRow = '<tr>';
