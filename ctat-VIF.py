@@ -161,6 +161,11 @@ def main():
 
     if remove_duplicates_flag:
         virus_aligned_bam_file_rmdups = virus_aligned_bam_file + ".rmdups.bam"
+
+        pipeliner.add_commands(
+            [Command("samtools index " + virus_aligned_bam_file, "index_star_init_rmdups_virus_bam", )]
+        )
+
         cmd = " ".join(
             [
                     os.path.join(UTILDIR, "bam_mark_duplicates.py"),
@@ -174,7 +179,7 @@ def main():
             [
                     Command(
                         "samtools index " + virus_aligned_bam_file_rmdups,
-                        "index_star_init_rmdups_bam",
+                        "index_star_init_rmdups_bam"
                     )
             ]
         )

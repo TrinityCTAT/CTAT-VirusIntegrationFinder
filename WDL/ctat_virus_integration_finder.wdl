@@ -14,6 +14,7 @@ workflow ctat_virus_integration_finder {
         String disk = "500 SSD"
         Int cpu = 10
         Int preemptible = 2
+        Boolean remove_duplicates = false
     }
 
     if (defined(rnaseq_aligned_bam)) {
@@ -47,6 +48,7 @@ workflow ctat_virus_integration_finder {
             viral_db_fasta=viral_db_fasta,
             left_fq=left_fq_use,
             right_fq=right_fq_use,
+            remove_duplicates=remove_duplicates,
             docker=docker,
             cpu=cpu,
             memory=memory,
@@ -55,17 +57,14 @@ workflow ctat_virus_integration_finder {
     }
     output {
         File virus_insertion_candidates_tsv=CTAT_VIF.virus_insertion_candidates_tsv
-        File prelim_virus_insertion_plot=CTAT_VIF.prelim_virus_insertion_plot
-        File virus_insertion_plot=CTAT_VIF.virus_insertion_plot
-        File virus_insertion_plot=CTAT_VIF.virus_insertion_plot
         File virus_read_counts_summary=CTAT_VIF.virus_read_counts_summary
-        File virus_genome_coverage_plots=CTAT_VIF.virus_genome_coverage_plots
         File vif_igv_report_html=CTAT_VIF.vif_igv_report_html
         File vif_aligned_reads_bam=CTAT_VIF.vif_aligned_reads_bam
         File vif_chimeric_targets_bed=CTAT_VIF.vif_chimeric_targets_bed
         File vif_chimeric_targets_fa=CTAT_VIF.vif_chimeric_targets_fa
         File virus_aligned_reads_bam=CTAT_VIF.virus_aligned_reads_bam
         File virus_igv_report_html=CTAT_VIF.virus_igv_report_html
+        File report_html=CTAT_VIF.report_html
     }
 
 }
@@ -163,8 +162,11 @@ task CTAT_VIF {
         String memory
         Int preemptible
         String disk
+        Boolean remove_duplicates
 
     }
+    String output_prefix = if(remove_duplicates) then "VIF/" + sample_name + ".DupsRm"  else "VIF/" + sample_name
+
     command <<<
 
         set -e
@@ -178,23 +180,20 @@ task CTAT_VIF {
         --viral_db_fasta ~{viral_db_fasta} \
         --CPU $(nproc) \
         --genome_lib_dir `pwd`/ctat_genome_lib_build_dir \
-        -O VIF --out_prefix ~{sample_name}
-
+        -O VIF --out_prefix ~{sample_name} \
+        ~{true='--remove_duplicates' false='' remove_duplicates}
     >>>
 
     output {
-        File virus_insertion_candidates_tsv="VIF/~{sample_name}.insertion_site_candidates.tsv"
-        File prelim_virus_insertion_plot="VIF/prelim.vif.rmdups-False.abridged.tsv.genome_plot.png"
-        File virus_insertion_plot="VIF/~{sample_name}.insertion_site_candidates.genome_plot.png"
-        File virus_read_counts_summary="VIF/~{sample_name}.virus_read_counts_summary.tsv"
-        File virus_genome_coverage_plots="VIF/~{sample_name}.virus_coverage_plots.pdf"
-        File vif_igv_report_html="VIF/~{sample_name}.igvjs.html"
-        File vif_aligned_reads_bam="VIF/~{sample_name}.reads.bam"
-        File vif_chimeric_targets_bed="VIF/~{sample_name}.bed"
-        File vif_chimeric_targets_fa="VIF/~{sample_name}.fa"
-        File virus_aligned_reads_bam="VIF/~{sample_name}.virus.reads.bam"
-        File virus_igv_report_html="VIF/~{sample_name}.virus.igvjs.html"
-        File report_html="VIF/~{sample_name}.html"
+        File virus_insertion_candidates_tsv="~{output_prefix}.insertion_site_candidates.tsv"
+        File virus_read_counts_summary="~{output_prefix}.virus_read_counts_summary.tsv"
+        File vif_aligned_reads_bam="~{output_prefix}.reads.bam"
+        File vif_chimeric_targets_bed="~{output_prefix}.bed"
+        File vif_chimeric_targets_fa="~{output_prefix}.fa"
+        File virus_aligned_reads_bam="~{output_prefix}.virus.reads.bam"
+        File virus_igv_report_html="~{output_prefix}.virus.igvjs.html"
+        File vif_igv_report_html="~{output_prefix}.igvjs.html"
+        File report_html="~{output_prefix}.html"
     }
 
     runtime {

@@ -36,6 +36,7 @@ class Pipeliner(object):
 
     _checkpoint_dir = None
     _cmds_list = []
+    _unique_checkpoints = set()
 
     def __init__(self, checkpoint_dir):
 
@@ -43,9 +44,9 @@ class Pipeliner(object):
 
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
-            
+
         self._checkpoint_dir = checkpoint_dir
-    
+
 
 
     def add_commands(self, cmds_list):
@@ -56,23 +57,26 @@ class Pipeliner(object):
                 errmsg = "Pipeliner::add_commmands - Error, cmd {} is not a Command or ParallelCommandList object".format(cmd)
                 logger.critical(errmsg)
                 raise(RuntimeError(errmsg))
-            
+
+            if cmd.get_checkpoint() in self._unique_checkpoints:
+                raise ValueError('Duplicate checkpoint {}'.format(cmd.get_checkpoint()))
+            self._unique_checkpoints.add(cmd.get_checkpoint())
             self._cmds_list.append(cmd)
 
-    
+
     def num_cmds(self):
         return len(self._cmds_list)
 
 
     def run(self):
         for cmd in self._cmds_list:
-            
+
             checkpoint_dir = self._checkpoint_dir
             cmd.run(checkpoint_dir)
 
         # since all commands executed successfully, remove them from the current cmds list
         self._cmds_list = list()
-    
+
         return
 
 
@@ -93,7 +97,7 @@ class Command(object):
 
     def get_ignore_error_setting(self):
         return self._ignore_error
- 
+
 
     def __repr__(self):
         return self._cmd
@@ -161,7 +165,7 @@ class ParallelCommandThread(threading.Thread):
 
         # track job completion and capture success/failure
         self._paraCmdListObj._num_running -= 1
-        
+
         if ret != 0:
             self._paraCmdListObj._num_errors += 1
 
@@ -185,14 +189,14 @@ class ParallelCommandList(object):
         if os.path.exists(full_path_parallel_job_checkpoint_file):
             logger.info("Parallel command series already completed, so skipping. Checkpoint found as: {}".format(full_path_parallel_job_checkpoint_file))
             return
-        
+
         ## run parallel command series, no more than _num_threads simultaneously.
-        
+
         cmd_idx = 0
         while cmd_idx < len(self._cmdlist):
 
             if self._num_running < self._num_threads:
-                
+
                 cmdstr = self._cmdlist[cmd_idx]
 
                 checkpoint_file = "{}.tid-{}".format(parallel_job_checkpoint_file, cmd_idx)
@@ -219,20 +223,20 @@ class ParallelCommandList(object):
                 raise RuntimeError(errmsg)
         else:
             logger.info("All parallel commands succeeded.")
-        
+
         run_cmd("touch {}".format(full_path_parallel_job_checkpoint_file))
 
         logger.info("done running parallel command series.")
-        
+
         return
 
 
 if __name__ == '__main__':
 
     logging.basicConfig(level=logging.INFO)
-    
+
     checkpoint_dir = "/tmp/checkpoints_dir." + str(time.time())
-    
+
     pipeliner = Pipeliner(checkpoint_dir)
 
     pipeliner.add_commands([Command("echo hello!", "hello.ok")])
@@ -243,11 +247,11 @@ if __name__ == '__main__':
     cmdlist = [ "echo {} && sleep {}".format(x, max_x + 1 - x) for x in range(1,max_x) ]
     num_threads = 4
     pipeliner.add_commands([ParallelCommandList(cmdlist, "trypara.ok", num_threads)])
-    
-    
+
+
     pipeliner.run()
 
     shutil.rmtree(checkpoint_dir)
 
     sys.exit(0)
-    
+
