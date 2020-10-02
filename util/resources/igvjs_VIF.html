@@ -7,7 +7,7 @@
     <meta name="author" content="">
     <link rel="shortcut icon" href="https://igv.org/web/img/favicon.ico">
 
-    <title>VIF</title>
+    <title></title>
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
@@ -31,8 +31,8 @@
 
 <body>
 
-<div class="container-fluid" id="sampleHeader" style="background-color: #E7E7EF">
-    <nav class="navbar navbar-default" style="background-color: #E7E7EF">
+<div class="container-fluid" id="sampleHeader">
+<!--    <nav class="navbar navbar-default" style="background-color: #E7E7EF">-->
         <!--<div class="col-xs-3" id="sampleId"><p class="navbar-text"><b>Sample:</b></p></div>-->
 
         <!-- disabling for now... need callback to change from igv selector
@@ -42,11 +42,11 @@
         <div class="col-xs-3" id="FusionSpanningDetail"><p class="navbar-text"><b>Spanning Read Count:</b> Not Selected
         </p></div>
          -->
-    </nav>
+<!--    </nav>-->
 </div>
 
 <!-- End fusion details -->
-<hr>
+
 
 <!-- Start tabs -->
 <!-- Start tabs header -->
@@ -60,7 +60,7 @@
 <!-- Start tabs content -->
 <div class="tab-content" id="tabContent">
     <!-- Start Data Table Tab -->
-    <div role="tabpanel" id="tabBrowser" class="tab-pane fade in active" data-toggle="tab">
+    <div role="tabpanel" id="tabBrowser" class="tab-pane active" data-toggle="tab">
         <!-- Start data table -->
         <div class="table-responsive">
             <table id="fusionTable" class="table table-striped table-bordered table-hover active" style="cursor:pointer"
@@ -126,7 +126,7 @@
 
             // Add and show tab for IGV
             $('#tabDescription').append('<li role="presentation" id="igvTab"><a href="#igvBrowser" data-toggle="tab">IGV Detail</a></li>');
-            $('#tabContent').append('<div role="tabpanel" id="igvBrowser" class="tab-panel fade"></div>');
+            $('#tabContent').append('<div role="tabpanel" id="igvBrowser" class="tab-pane"></div>');
 
             $('.nav-tabs a[href="#igvBrowser"]').tab('show');
 
