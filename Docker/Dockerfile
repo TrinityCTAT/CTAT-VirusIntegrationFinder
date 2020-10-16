@@ -109,12 +109,10 @@ ENV PICARD_HOME $SRC
 
 RUN pip install pandas
 
+
 ## directly incorporate ctat-VIF
+## install CTAT-VirusIntegrationFinder
 
 COPY ./CTAT-VirusIntegrationFinder/  /usr/local/bin/
 RUN  cd /usr/local/bin/util/bamsifter && make
-
-
-
-
 
