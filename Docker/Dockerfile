@@ -100,11 +100,6 @@ RUN apt-get install -y  libxml2-dev
 RUN R -e ' BiocManager::install("tidyverse")'
 
 
-
-COPY ./CTAT-VirusIntegrationFinder/  /usr/local/bin/
-RUN  cd /usr/local/bin/util/bamsifter && make
-
-
 ####
 ## Picard tools
 
@@ -113,3 +108,11 @@ RUN wget https://github.com/broadinstitute/picard/releases/download/2.20.3/picar
 ENV PICARD_HOME $SRC
 
 RUN pip install pandas
+
+
+## install CTAT-VirusIntegrationFinder
+
+COPY ./CTAT-VirusIntegrationFinder/  /usr/local/bin/
+RUN  cd /usr/local/bin/util/bamsifter && make
+
+
