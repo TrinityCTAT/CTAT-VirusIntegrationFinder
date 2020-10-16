@@ -36,13 +36,13 @@
     <nav class="navbar navbar-default" style="background-color: #E7E7EF">
         <!--<div class="col-xs-3" id="sampleId"><p class="navbar-text"><b>Sample:</b></p></div>-->
 
-		<!-- disabling for now... need callback to change from igv selector
+        <!-- disabling for now... need callback to change from igv selector
         <div class="col-xs-3" id="FusionNameDetail"><p class="navbar-text"><b>Fusion Name:</b> Not Selected</p></div>
         <div class="col-xs-3" id="FusionJunctionDetail"><p class="navbar-text"><b>Junction Read Count:</b> Not Selected
         </p></div>
         <div class="col-xs-3" id="FusionSpanningDetail"><p class="navbar-text"><b>Spanning Read Count:</b> Not Selected
         </p></div>
- 		-->
+         -->
     </nav>
 </div>
 
@@ -73,14 +73,14 @@
 <script type="text/javascript">
     <!-- start igv report here -->
 
-    "use strict;"
+    "use strict;";
     var fusionInspectorState = {
         cache: {
             tabs: [],
             json: tableJson
         },
         browserMade: false
-    }
+    };
 
     $(document).ready(function () {
 
@@ -93,14 +93,13 @@
 
         $('#fusionTable tbody').on('click', 'tr', function () {
             curFusionRow = fusionInspectorState.cache.fusionTable.row(this).data();
-            console.log(curFusionRow);
             // IGV browser has to be visible when the files are loaded.
             // If it is hidden the files load as 200 (full file) as opposed
             // to 206, whichis needed for indexed reading as igv web needs it.
             loadIGVBrowser(
-                getFusionAnnotationFromRow('contig', curFusionRow),
-                getFusionAnnotationFromRow('split', curFusionRow),
-                getFusionAnnotationFromRow('span', curFusionRow)
+                getFusionAnnotationFromRow(igvSearchKey, curFusionRow),
+                // getFusionAnnotationFromRow('split', curFusionRow),
+                // getFusionAnnotationFromRow('span', curFusionRow)
             );//loadIGVBrowser
         });//#fusionTable
 
@@ -112,10 +111,10 @@
         // Thanks to //stackoverflow.com/questions/20705905/bootstrap-3-jquery-event-for-active-tab-change
         $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
             $('#fusionTable').DataTable().columns.adjust().draw();
-        })
+        });
 
 
-    }) //JSON read
+    }); //JSON read
 
 
     function loadIGVBrowser(curFusion, curJunctionReads, curSpanningReads) {
@@ -127,8 +126,8 @@
         if (!fusionInspectorState.cache["curBrowser"]) {
 
             // Add and show tab for IGV
-            $('#tabDescription').append('<li role="presentation" id="igvTab"><a href="#igvBrowser" data-toggle="tab">IGV Detail</a></li>')
-            $('#tabContent').append('<div role="tabpanel" id="igvBrowser" class="tab-panel fade"></div>')
+            $('#tabDescription').append('<li role="presentation" id="igvTab"><a href="#igvBrowser" data-toggle="tab">IGV Detail</a></li>');
+            $('#tabContent').append('<div role="tabpanel" id="igvBrowser" class="tab-panel fade"></div>');
 
             $('.nav-tabs a[href="#igvBrowser"]').tab('show');
 
@@ -136,7 +135,7 @@
                 .then(function (browser) {
                     fusionInspectorState.cache["curBrowser"] = browser;
                     igv.visibilityChange();
-                })
+                });
 
 
         } else {
@@ -183,34 +182,34 @@
                         type: "bam",
                         height: 400,
                         indexed: true,
-	                    "viewAsPairs" : true,
+                        "viewAsPairs": true,
                         visibilityWindow: 2000000,
                         order: 45
                     }
                 ]
             };
 
-        return igv.createBrowser(divBrowser, options)
+        return igv.createBrowser(divBrowser, options);
 
 
     }
 
     function goToFusion(fusionChr) { //, fusionBreakRight, fusionBreakLeft ){
 
-        var location = fusionChr
-        console.log("searching on location")
+        var location = fusionChr;
+        console.log("searching on location");
         console.log(location);
         $('.nav-tabs a[href="#igvBrowser"]').tab('show');
         fusionInspectorState.cache.curBrowser.search(location)
             .then(function (ignore) {
                 igv.visibilityChange();
-            })
+            });
 
     }
 
     function setFusionDetails(fusionName, fusionJunctReads, fusionSpanFrags) {
         // diabling for now - need igv callback
-	    // $("#FusionNameDetail").html("<p class='navbar-text'><b>Fusion Name:</b> " + fusionName + "</p>");
+        // $("#FusionNameDetail").html("<p class='navbar-text'><b>Fusion Name:</b> " + fusionName + "</p>");
         // $("#FusionJunctionDetail").html("<p class='navbar-text'><b>Junction Read Count:</b> " + fusionJunctReads + "</p>");
         // $("#FusionSpanningDetail").html("<p class='navbar-text'><b>Spanning Read Count:</b> " + fusionSpanFrags + "</p>");
     }
@@ -240,39 +239,60 @@
     function getFusionAnnotationFromRow(infoHeader, dataRow) {
         var index = fusionInspectorState.cache.fusionKeys.indexOf(infoHeader);
         if (index == -1) {
-            return (undefined);
+            return undefined;
         }
-        return (dataRow[index]);
+        return dataRow[index];
     }
+
+    var igvSearchKey;
 
     function loadFusionDataTable() {
 
-        var forcedHeaderKeyOrder = ['contig', 'split', 'span', 'total', 'chrA', 'coordA', 'orientA',  'chrB', 'coordB', 'orientB'];
-
-        var fusionKeys = [];
-        //for (var fusionKey in fusionInspectorState.cache.json.fusions[0]) {
-	    for (var fusionKey in forcedHeaderKeyOrder) {
-            if (fusionInspectorState.cache.json.fusions[0].hasOwnProperty(fusionKey)) {
-                fusionKeys.push(fusionKey);
-            }
+        var headerColumnOrder = ['contig', 'split', 'span', 'total', 'chrA', 'coordA', 'orientA', 'chrB', 'coordB', 'orientB'];
+        var virusHeaderColumnOrder = ['virus', 'chim_reads', 'mapped', 'seqlen'];
+        headerColumnOrder = headerColumnOrder.concat(virusHeaderColumnOrder);
+        var nameToIndex = {};
+        for (var i = 0; i < headerColumnOrder.length; i++) {
+            nameToIndex[headerColumnOrder[i]] = i;
         }
+        var fusionKeys = Object.keys(fusionInspectorState.cache.json.fusions[0]);
+        fusionKeys.sort((a, b) => {
+            var aIndex = nameToIndex[a];
+            var bIndex = nameToIndex[b];
+            if (aIndex !== undefined && bIndex !== undefined) {
+                return aIndex - bIndex;
+            }
+            if (aIndex !== undefined) {
+                return -1;
+            }
+            if (bIndex !== undefined) {
+                return 1;
+            }
+
+            a = a.toLowerCase();
+            b = b.toLowerCase();
+            return a - b;
+        });
+        igvSearchKey = fusionKeys.indexOf('contig') !== -1 ? 'contig' : 'virus';
+
 
         // Make data table header and footer
         var fusionTable = $('#fusionTable');
         var fusionHeader = [];
-        for (var header = 0; header < forcedHeaderKeyOrder.length; header++) {
-            fusionHeader.push('<th>' + forcedHeaderKeyOrder[header] + '</th>');
+        for (var header = 0; header < fusionKeys.length; header++) {
+            fusionHeader.push('<th>' + fusionKeys[header] + '</th>');
         }
+
         fusionTable.append('<thead><tr>' + fusionHeader.join('') + '</tr></thead>');
         fusionTable.append('<tfoot><tr>' + fusionHeader.join('') + '</tr></tfoot>');
 
-        fusionInspectorState.cache["fusionKeys"] = orderTableKeysBeginning(forcedHeaderKeyOrder, fusionKeys);
+        fusionInspectorState.cache["fusionKeys"] = fusionKeys; //orderTableKeysBeginning(forcedHeaderKeyOrder, fusionKeys);
 
         // Add data table body (in order of forced fusion header)
         fusionTable.append('<tbody>');
         for (var fusionIndex = 0; fusionIndex < fusionInspectorState.cache.json.fusions.length; fusionIndex++) {
             var fusionEntry = fusionInspectorState.cache.json.fusions[fusionIndex];
-            fusionTable.append(toTableBodyElement(fusionEntry, forcedHeaderKeyOrder));
+            fusionTable.append(toTableBodyElement(fusionEntry, fusionKeys));
         }
         fusionTable.append('</tbody>');
 
