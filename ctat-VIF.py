@@ -247,10 +247,6 @@ def main():
 
     pipeliner.run()
 
-    if count_num_candidates(prelim_chim_events_file) == 0:
-        logger.info("- no preliminary candidates identified.  exiting now.\n")
-        sys.exit(0)
-
     ## generate genome wide insertion site abundance plot
     prelim_genome_wide_abundance_plot = prelim_chim_events_file + ".genome_plot.png"
 
@@ -269,8 +265,44 @@ def main():
         ]
     )
 
+    ## ############################################################
+    ## generate summary virus coverage plots and mapping statistics:
+
+    cmd = " ".join(
+        [
+            os.path.join(UTILDIR, "plot_top_virus_coverage.Rscript"),
+            "--vif_report {}".format(prelim_chim_events_file),
+            "--bam {}".format(virus_aligned_bam_file),
+            "--output_prefix {}".format(output_prefix),
+        ]
+    )
+    pipeliner.add_commands(
+        [
+            Command(
+                cmd, "virus_cov_plots_n_stats.rmdups-{}".format(remove_duplicates_flag)
+            )
+        ]
+    )
+    virus_read_counts = "{}.virus_read_counts.png".format(output_prefix)
+    virus_read_counts_log = "{}.virus_read_counts_log.png".format(output_prefix)
+
+    ## add IGVjs virus html
+    pipeliner = add_igv_viral_vis_cmds(
+        pipeliner,
+        summary_results_tsv=output_prefix + ".virus_read_counts_summary.tsv",
+        alignment_bam=virus_aligned_bam_file,
+        fasta=viral_db_fasta,
+        output_prefix=output_prefix + ".virus",
+    )
+
+    pipeliner.run()
+
     if STAR_INIT_ONLY:
         logger.info("--star_init_only flag set. Stopping here.")
+        sys.exit(0)
+
+    if count_num_candidates(prelim_chim_events_file) == 0:
+        logger.info("- no preliminary candidates identified.  exiting now.\n")
         sys.exit(0)
 
     ########################################################################
@@ -420,24 +452,6 @@ def main():
         [Command(cmd, "genomewide_plot.final.rmdups-{}".format(remove_duplicates_flag))]
     )
 
-    ## generate summary virus coverage plots and mapping statistics:
-    cmd = " ".join(
-        [
-            os.path.join(UTILDIR, "plot_top_virus_coverage.Rscript"),
-            "--vif_report {}".format(summary_output_tsv),
-            "--bam {}".format(virus_aligned_bam_file),
-            "--output_prefix {}".format(output_prefix),
-        ]
-    )
-    pipeliner.add_commands(
-        [
-            Command(
-                cmd, "virus_cov_plots_n_stats.rmdups-{}".format(remove_duplicates_flag)
-            )
-        ]
-    )
-    virus_read_counts = "{}.virus_read_counts.png".format(output_prefix)
-    virus_read_counts_log = "{}.virus_read_counts_log.png".format(output_prefix)
     images = [
         (prelim_genome_wide_abundance_plot, "Preliminary Genome Wide Abundance"),
         (genome_wide_abundance_plot, "Genome Wide Abundance"),
@@ -449,7 +463,8 @@ def main():
 
     for virus_coverage_plot in virus_coverage_plots:
         images.append((virus_coverage_plot, "na"))
-    ## add IGVjs html
+
+    ## add IGVjs html for FI-like view
     pipeliner = add_igv_vis_cmds(
         pipeliner,
         summary_output_tsv,
@@ -458,14 +473,6 @@ def main():
         "{}.fasta".format(chim_targets_file_prefix),
         output_prefix,
         images,
-    )
-    ## add IGVjs virus html
-    pipeliner = add_igv_viral_vis_cmds(
-        pipeliner,
-        summary_results_tsv=output_prefix + ".virus_read_counts_summary.tsv",
-        alignment_bam=virus_aligned_bam_file,
-        fasta=viral_db_fasta,
-        output_prefix=output_prefix + ".virus",
     )
 
     ## Run pipeline

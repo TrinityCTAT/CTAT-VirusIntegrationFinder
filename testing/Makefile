@@ -16,6 +16,10 @@ singularity:
 	singularity exec -e -H `pwd` -B {$CTAT_GENOME_LIB} ../Docker/ctat_vif.*.simg ctat-VIF.py --viral_db_fasta HPV16.fa --left_fq V42_hpv16chim_1.fastq.gz --right_fq V42_hpv16chim_2.fastq.gz --genome_lib_dir ${CTAT_GENOME_LIB}  -O VIF.singularity.outdir --CPU 10
 
 
+novirus:
+	../ctat-VIF.py --left_fq test.novirus.reads_1.fastq.gz --right_fq test.novirus.reads_2.fastq.gz --viral_db_fasta HPV16.fa -O VIF.novirus.outdir
+
+
 
 clean:
 	rm -rf ./VIF.*.outdir
