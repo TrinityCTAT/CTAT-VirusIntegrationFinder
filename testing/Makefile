@@ -4,6 +4,9 @@
 test:
 	../ctat-VIF.py --left_fq V42_hpv16chim_1.fastq.gz --right_fq V42_hpv16chim_2.fastq.gz --viral_db_fasta HPV16.fa -O VIF.full.no_remove_dups.outdir
 
+all: test star_init_only remove_dups novirus
+
+
 star_init_only:
 	../ctat-VIF.py --left_fq V42_hpv16chim_1.fastq.gz --right_fq V42_hpv16chim_2.fastq.gz --viral_db_fasta HPV16.fa -O VIF.star_init_only.outdir --star_init_only
 
