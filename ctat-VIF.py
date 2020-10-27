@@ -301,7 +301,10 @@ def main():
         logger.info("--star_init_only flag set. Stopping here.")
         sys.exit(0)
 
-    if count_num_candidates(prelim_chim_events_file) == 0:
+    num_prelim_chim_events = count_num_candidates(prelim_chim_events_file)
+    logger.info("- found {} preliminary chimeric events".format(num_prelim_chim_events))
+
+    if num_prelim_chim_events == 0:
         logger.info("- no preliminary candidates identified.  exiting now.\n")
         sys.exit(0)
 
