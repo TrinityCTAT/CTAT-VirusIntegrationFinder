@@ -215,9 +215,7 @@ def main():
     )
     pipeliner = Pipeliner(checkpoints_dir)
 
-    local_output_prefix = "{}.prelim.vif.rmdups-{}".format(
-        output_prefix, remove_duplicates_flag
-    )
+    local_output_prefix = "{}.prelim".format(output_prefix)
 
     ## run virus integration site analysis, generate report.
     cmd = " ".join(
