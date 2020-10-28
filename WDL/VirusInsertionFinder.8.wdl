@@ -15,6 +15,7 @@ workflow ctat_virus_integration_finder {
         Int cpu = 10
         Int preemptible = 2
         Boolean remove_duplicates = false
+        Boolean star_init_only = false
     }
 
     if (defined(rnaseq_aligned_bam)) {
@@ -49,6 +50,7 @@ workflow ctat_virus_integration_finder {
             left_fq=left_fq_use,
             right_fq=right_fq_use,
             remove_duplicates=remove_duplicates,
+            star_init_only=star_init_only,
             docker=docker,
             cpu=cpu,
             memory=memory,
@@ -56,15 +58,18 @@ workflow ctat_virus_integration_finder {
             disk=disk
     }
     output {
-        File virus_insertion_candidates_tsv=CTAT_VIF.virus_insertion_candidates_tsv
-        File virus_read_counts_summary=CTAT_VIF.virus_read_counts_summary
-        File vif_igv_report_html=CTAT_VIF.vif_igv_report_html
-        File vif_aligned_reads_bam=CTAT_VIF.vif_aligned_reads_bam
-        File vif_chimeric_targets_bed=CTAT_VIF.vif_chimeric_targets_bed
-        File vif_chimeric_targets_fa=CTAT_VIF.vif_chimeric_targets_fa
-        File virus_aligned_reads_bam=CTAT_VIF.virus_aligned_reads_bam
-        File virus_igv_report_html=CTAT_VIF.virus_igv_report_html
-        File report_html=CTAT_VIF.report_html
+
+      File vif_prelim_insertion_candidates_tsv=CTAT_VIF.vif_prelim_insertion_candidates_tsv
+      File virus_read_counts_summary=CTAT_VIF.virus_read_counts_summary
+      File virus_aligned_reads_bam=CTAT_VIF.virus_aligned_reads_bam
+      File virus_igv_report_html=CTAT_VIF.virus_igv_report_html
+      
+      File? virus_insertion_candidates_tsv=CTAT_VIF.virus_insertion_candidates_tsv
+      File? vif_chimeric_targets_fa=CTAT_VIF.vif_chimeric_targets_fa
+      File? vif_chimeric_targets_bed=CTAT_VIF.vif_chimeric_targets_bed
+      File? vif_aligned_reads_bam=CTAT_VIF.vif_aligned_reads_bam
+      File? vif_igv_report_html=CTAT_VIF.vif_igv_report_html
+      
     }
 
 }
@@ -163,10 +168,11 @@ task CTAT_VIF {
         Int preemptible
         String disk
         Boolean remove_duplicates
+        Boolean star_init_only
 
     }
     String output_prefix = if(remove_duplicates) then "VIF/" + sample_name + ".DupsRm"  else "VIF/" + sample_name
-
+    
     command <<<
 
         set -e
@@ -175,25 +181,32 @@ task CTAT_VIF {
         tar xvf ~{genome_lib_tar}
 
         ctat-VIF.py \
-        --left_fq ~{left_fq} \
-        --right_fq ~{right_fq} \
-        --viral_db_fasta ~{viral_db_fasta} \
-        --CPU $(nproc) \
-        --genome_lib_dir `pwd`/ctat_genome_lib_build_dir \
-        -O VIF --out_prefix ~{sample_name} \
-        ~{true='--remove_duplicates' false='' remove_duplicates}
+            --left_fq ~{left_fq} \
+            --right_fq ~{right_fq} \
+            --viral_db_fasta ~{viral_db_fasta} \
+            --CPU $(nproc) \
+            --genome_lib_dir `pwd`/ctat_genome_lib_build_dir \
+            -O VIF --out_prefix ~{sample_name} \
+            ~{true='--remove_duplicates' false='' remove_duplicates} \
+            ~{true='--star_init_only' false='' star_init_only}
+      
     >>>
 
     output {
-        File virus_insertion_candidates_tsv="~{output_prefix}.insertion_site_candidates.tsv"
+
+        File vif_prelim_insertion_candidates_tsv = "~{output_prefix}.prelim.abridged.tsv"
+        File vif_prelim_insertion_candidates_png = "~{output_prefix}.prelim.abridged.tsv.genome_plot.png"
         File virus_read_counts_summary="~{output_prefix}.virus_read_counts_summary.tsv"
-        File vif_aligned_reads_bam="~{output_prefix}.reads.bam"
-        File vif_chimeric_targets_bed="~{output_prefix}.bed"
-        File vif_chimeric_targets_fa="~{output_prefix}.fa"
         File virus_aligned_reads_bam="~{output_prefix}.virus.reads.bam"
         File virus_igv_report_html="~{output_prefix}.virus.igvjs.html"
-        File vif_igv_report_html="~{output_prefix}.igvjs.html"
-        File report_html="~{output_prefix}.html"
+        
+        # if full process completed, outputs below will be generated
+        File? virus_insertion_candidates_tsv="~{output_prefix}.insertion_site_candidates.tsv"
+        File? vif_chimeric_targets_fa="~{output_prefix}.fa"
+        File? vif_chimeric_targets_bed="~{output_prefix}.bed"
+        File? vif_aligned_reads_bam="~{output_prefix}.reads.bam"
+        File? vif_igv_report_html="~{output_prefix}.igvjs.html"
+      
     }
 
     runtime {
