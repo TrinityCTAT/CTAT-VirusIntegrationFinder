@@ -58,8 +58,9 @@ workflow ctat_virus_integration_finder {
             disk=disk
     }
     output {
-
+      
       File vif_prelim_insertion_candidates_tsv=CTAT_VIF.vif_prelim_insertion_candidates_tsv
+      File vif_prelim_insertion_candidates_png=CTAT_VIF.vif_prelim_insertion_candidates_png
       File virus_read_counts_summary=CTAT_VIF.virus_read_counts_summary
       File virus_aligned_reads_bam=CTAT_VIF.virus_aligned_reads_bam
       File virus_igv_report_html=CTAT_VIF.virus_igv_report_html
