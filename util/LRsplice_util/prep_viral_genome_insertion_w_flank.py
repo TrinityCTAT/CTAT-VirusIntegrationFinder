@@ -89,6 +89,9 @@ def main():
         logger.error("Error, --genome_lib_dir must be specified")
         sys.exit(1)
 
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
     insertion_event = parse_insertion_event(virus_insertion_tsv)
 
     genome_left_struct, virus_struct, genome_right_struct = model_virus_insertion(
@@ -125,14 +128,16 @@ def build_virus_insertion_sequence(
 
     out_fasta_filename = os.path.join(output_dir, output_prefix + ".fasta")
     out_gtf_filename = os.path.join(output_dir, output_prefix + ".gtf")
+    out_gtf_virus_only_filename = os.path.join(output_dir, output_prefix + ".virus-only.gtf")
 
     ofh_fasta = open(out_fasta_filename, "wt")
     ofh_gtf = open(out_gtf_filename, "wt")
-
+    ofh_virus_gtf = open(out_gtf_virus_only_filename, "wt")
+    
     left_host_gtf, right_host_gtf = extract_host_genome_annotations(
         genome_left_struct, genome_right_struct, ref_annot_gtf
     )
-
+    
     left_genomic_region_seq = extract_seq_region(
         ref_genome_fasta,
         genome_left_struct["chrom"],
@@ -162,7 +167,7 @@ def build_virus_insertion_sequence(
 
     # left host
     left_genome_start = genome_left_struct["lend"]
-    concat_seq = left_genome_region_seq
+    concat_seq = left_genomic_region_seq
     for gtf_line in left_host_gtf:
         vals = gtf_line.split("\t")
         vals[0] = "imodel"
@@ -194,7 +199,10 @@ def build_virus_insertion_sequence(
         vals[4] = str(pseudo_start + int(vals[4]))
 
         print("\t".join(vals), file=ofh_gtf)
-        concat_seq += virus_genome_seq
+        print("\t".join(vals), file=ofh_virus_gtf)
+        
+    # add virus seq
+    concat_seq += virus_genome_seq
 
     # right host
     right_genome_start = genome_right_struct["lend"]
@@ -202,18 +210,19 @@ def build_virus_insertion_sequence(
     for gtf_line in right_host_gtf:
         vals = gtf_line.split("\t")
         vals[0] = "imodel"
-        vals[3] = str(int(vals[3]) - right_genome_start + pseudo_start)
-        vals[4] = str(int(vals[4]) - right_genome_start + pseudo_start)
+        vals[3] = str(int(vals[3]) - right_genome_start + pseudo_start +1)
+        vals[4] = str(int(vals[4]) - right_genome_start + pseudo_start +1)
 
         print("\t".join(vals), file=ofh_gtf)
 
-    concat_seq += right_genome_region_seq
+    concat_seq += right_genomic_region_seq
 
-    print(">{}\n{}".format(event_acc, concat_seq), file=ofh_fasta)
+    print(">{}\n{}".format("imodel", concat_seq), file=ofh_fasta)
 
     ofh_fasta.close()
     ofh_gtf.close()
-
+    ofh_virus_gtf.close()
+    
     return
 
 
@@ -255,7 +264,12 @@ def extract_host_genome_annotations(
     with open(ref_annot_gtf) as fh:
         for line in fh:
             line = line.rstrip()
+            if line[0] == "#":
+                continue
             vals = line.split("\t")
+            if len(vals) < 8:
+                continue
+            
             newline = feature_in_range(vals, genome_left_struct)
             if newline:
                 left_genome_annots.append(newline)
@@ -273,7 +287,8 @@ def extract_virus_genome_annotations(viral_db_gtf, virus_acc):
 
     with open(viral_db_gtf) as fh:
         for line in fh:
-            line = line.rstripp()
+            
+            line = line.rstrip()
             vals = line.split("\t")
 
             if vals[0] == virus_acc:
@@ -296,15 +311,17 @@ def feature_in_range(vals, genome_struct):
 
     newline = None
 
-    if lend < genome_struct["rend"] and rend > genome_struct["lend"]:
-
+    if (vals[0] == genome_struct['chrom'] and
+        lend < genome_struct["rend"] and
+        rend > genome_struct["lend"]):
+        
         # got overlap
 
         if lend < genome_struct["lend"]:
-            vals[3] = genome_struct["lend"]
+            vals[3] = str(genome_struct["lend"])
 
         if rend > genome_struct["rend"]:
-            vals[4] = genome_struct["rend"]
+            vals[4] = str(genome_struct["rend"])
 
         newline = "\t".join(vals)
 
@@ -339,7 +356,7 @@ def model_virus_insertion(insertion_event, flank_mb):
     coordB = int(insertion_event["coordB"])
     orientB = insertion_event["orientB"]
 
-    flank_bp = int(flank_mb) * 1e6
+    flank_bp = int(int(flank_mb) * 1e6)
 
     if re.match("chr", chrA):
         assert orientA == "+", "Error, host genome chr is not in + orient as expected"
