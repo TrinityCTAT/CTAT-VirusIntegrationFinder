@@ -255,7 +255,7 @@ def main():
 
     cmd = " ".join( [ os.path.join(LRsplice_UTILDIR, "partition_alignments_virus_vs_host.py"),
                       "--bam {}".format( os.path.join(output_dir, LRsplice_bam)),
-                      "--virus_only_GTF {}".format( os.path.join(output_dir, output_prefix + ".virus-only.gtf") ),
+                      "--virus_only_gtf {}".format( os.path.join(output_dir, output_prefix + ".virus-only.gtf") ),
                       "--outdir {}".format(output_dir),
                       "--output_prefix {}".format(output_prefix) ] )
 

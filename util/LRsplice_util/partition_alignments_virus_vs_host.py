@@ -56,7 +56,7 @@ def main():
     virus_reads_bam_file = os.path.join(output_dir, output_prefix + ".virus-only.bam")
     virus_reads_bam_writer = pysam.AlignmentFile(virus_reads_bam_file, "wb", template=samfile)
 
-    fusion_reads_bam_file = os.path.join(output_dir, output_prefix + "host-virus.fusions.bam")
+    fusion_reads_bam_file = os.path.join(output_dir, output_prefix + ".host-virus.fusions.bam")
     fusion_reads_bam_writer = pysam.AlignmentFile(fusion_reads_bam_file, "wb", template=samfile)
 
     # write reads to corresponding partitions.
