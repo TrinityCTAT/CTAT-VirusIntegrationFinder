@@ -39,7 +39,7 @@ def main():
     required.add_argument(
         "--left_fq",
         type=str,
-        required=False,
+        required=True,
         default=None,
         help="left (or single) fastq file",
     )
@@ -205,9 +205,22 @@ def main():
         [Command(cmd, "star.LRsplice.rmdups-{}".format(remove_duplicates_flag))]
     )
 
+
+
+
     LRsplice_bam = os.path.join(
         output_dir, "Aligned.sortedByCoord.out.bam"
     )
+    
+    pipeliner.add_commands(
+        [
+            Command(
+                "samtools index " + LRsplice_bam,
+                "index_LRsplice_bam",
+                )
+            ]
+    )
+    
     
     if remove_duplicates_flag:
         ## remove duplicate alignments
@@ -238,6 +251,16 @@ def main():
 
         LRsplice_bam = LRsplice_bam_dups_removed
 
+
+
+    cmd = " ".join( [ os.path.join(LRsplice_UTILDIR, "partition_alignments_virus_vs_host.py"),
+                      "--bam {}".format( os.path.join(output_dir, LRsplice_bam)),
+                      "--virus_only_GTF {}".format( os.path.join(output_dir, output_prefix + ".virus-only.gtf") ),
+                      "--outdir {}".format(output_dir),
+                      "--output_prefix {}".format(output_prefix) ] )
+
+    pipeliner.add_commands( [ Command(cmd, "partition_alignments_virus_vs_host") ])
+    
 
     ## Run pipeline
     pipeliner.run()

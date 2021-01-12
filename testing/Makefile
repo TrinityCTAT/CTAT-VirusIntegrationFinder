@@ -24,6 +24,12 @@ novirus:
 
 
 
+
+LRsplice:
+	../util/ctat-VIF.longrange_virus_splice.py --left_fq V42_hpv16chim_1.fastq.gz --right_fq V42_hpv16chim_2.fastq.gz --virus_insertions_tsv __testdata/test.GRCH38.insertion_candidates.tsv --viral_db_fasta  /seq/RNASEQ/HPV_EinsteinMed/HPV_Genomes/All_HPV_Types/HPVs_db.fasta --viral_db_gtf  /seq/RNASEQ/HPV_EinsteinMed/HPV_Genomes/All_HPV_Types/HPVs_db.annots.gtf --flank 1 
+
+
+
 clean:
 	rm -rf ./VIF.*.outdir
 
