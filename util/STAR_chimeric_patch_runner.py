@@ -105,7 +105,7 @@ def main():
                          "--chimSegmentReadGapMax 3" ])
         
     if patch_db_gtf:
-        cmd += " --sjdbGTFfile {} --sjdbOverhang 150 "
+        cmd += " --sjdbGTFfile {} --sjdbOverhang 150 ".format(patch_db_gtf)
 
     if left_fq[-3:] == ".gz":
         cmd += " --readFilesCommand 'gunzip -c' "
