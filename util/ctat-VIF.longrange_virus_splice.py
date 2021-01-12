@@ -19,6 +19,8 @@ import logging
 FORMAT = "%(asctime)-15s %(levelname)s %(module)s.%(name)s.%(funcName)s at %(lineno)d :\n\t%(message)s\n"
 global logger
 logger = logging.getLogger()
+logging.basicConfig(format=FORMAT, level=logging.DEBUG)
+
 BASEDIR = os.path.dirname(os.path.abspath(__file__))
 UTILDIR = BASEDIR
 LRsplice_UTILDIR = os.path.join(BASEDIR, "LRsplice_util")

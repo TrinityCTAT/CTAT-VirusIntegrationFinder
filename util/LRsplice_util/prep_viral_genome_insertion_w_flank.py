@@ -179,6 +179,16 @@ def build_virus_insertion_sequence(
     # virus
     pseudo_start = len(concat_seq)
     virus_genome_seq_len = len(virus_genome_seq)
+
+    ## add entry for just the length of the virus for easy identification:
+    virus_region = ["imodel", "virus", "region",
+                     str(pseudo_start + 1), str(pseudo_start + virus_genome_seq_len),
+                     ".", virus_struct["orient"], ".",
+                     "gene_id \"{}\"".format(virus_struct["virus"]) ]
+    print("\t".join(virus_region), file=ofh_gtf)
+    print("\t".join(virus_region), file=ofh_virus_gtf)
+    
+
     for gtf_line in virus_genome_gtf:
         vals = gtf_line.split("\t")
         vals[0] = "imodel"
