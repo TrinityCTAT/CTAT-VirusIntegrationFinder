@@ -75,6 +75,13 @@ def main():
         help="length (in MB) of genome regions flanking the virus insertion",
     )
 
+    arg_parser.add_argument(
+        "--terminal_ext_len",
+        type=int,
+        required=False,
+        default=15,
+        help="length of genome extensions on both sides of the virus insertion yielding short terminal duplications, intended to retain short splice signals at splice breakpts")
+
     args_parsed = arg_parser.parse_args()
 
     genome_lib_dir = args_parsed.genome_lib_dir
@@ -84,6 +91,7 @@ def main():
     output_prefix = args_parsed.output_prefix
     flank_mb = args_parsed.flank
     virus_insertion_tsv = args_parsed.virus_insertion
+    terminal_ext_len = args_parsed.terminal_ext_len
 
     if not genome_lib_dir:
         logger.error("Error, --genome_lib_dir must be specified")
@@ -95,7 +103,7 @@ def main():
     insertion_event = parse_insertion_event(virus_insertion_tsv)
 
     genome_left_struct, virus_struct, genome_right_struct = model_virus_insertion(
-        insertion_event, flank_mb
+        insertion_event, flank_mb, terminal_ext_len
     )
 
     build_virus_insertion_sequence(
@@ -356,7 +364,7 @@ def parse_insertion_event(insertion_event_filename):
     )
 
 
-def model_virus_insertion(insertion_event, flank_mb):
+def model_virus_insertion(insertion_event, flank_mb, terminal_ext_len):
 
     chrA = insertion_event["chrA"]
     coordA = int(insertion_event["coordA"])
@@ -401,6 +409,13 @@ def model_virus_insertion(insertion_event, flank_mb):
 
         genome_right_struct = {"chrom": chrB, "lend": coordB, "rend": coordB + flank_bp}
 
+
+    # adjust coordinates for terminal extension lengths
+    if terminal_ext_len > 0:
+        genome_left_struct['rend'] += terminal_ext_len
+        genome_right_struct['lend'] -= terminal_ext_len
+
+    
     return genome_left_struct, virus_struct, genome_right_struct
 
 
