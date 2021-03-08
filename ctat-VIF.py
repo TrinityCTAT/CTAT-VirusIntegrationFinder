@@ -4,6 +4,7 @@
 import argparse
 import glob
 import os
+
 import sys
 
 if sys.version_info[0] < 3:
@@ -81,6 +82,14 @@ def main():
     )
 
     optional.add_argument(
+        "--gtf",
+        type=str,
+        required=False,
+        default=None,
+        help="host gtf file",
+    )
+
+    optional.add_argument(
         "-O",
         "--output_dir",
         dest="output_dir",
@@ -118,6 +127,7 @@ def main():
     genome_lib_dir = os.path.abspath(args_parsed.genome_lib_dir)
     viral_db_fasta = os.path.abspath(args_parsed.viral_db_fasta)
     viral_db_gtf = os.path.abspath(args_parsed.viral_db_gtf) if args_parsed.viral_db_gtf else ""
+    gtf = os.path.abspath(args_parsed.gtf)
     remove_duplicates_flag = args_parsed.remove_duplicates
 
     output_prefix = args_parsed.out_prefix
@@ -430,7 +440,8 @@ def main():
         "{}.gtf".format(chim_targets_file_prefix),
         "{}.fasta".format(chim_targets_file_prefix),
         output_prefix,
-        images
+        images,
+        gtf=gtf
     )
     ## add IGVjs virus html
     pipeliner = add_igv_viral_vis_cmds(
@@ -455,8 +466,9 @@ def add_igv_viral_vis_cmds(
         output_prefix,
 
 ):
-    # make json for igvjs
+
     json_filename = output_prefix + ".json"
+    # make json for igvjs
     cmd = " ".join(
         [
                 os.path.join(UTILDIR, "create_insertion_site_inspector_js.py"),
@@ -534,15 +546,32 @@ def add_igv_vis_cmds(
         chim_targets_gtf,
         chim_targets_fasta,
         output_prefix,
-        images
+        images,
+        gtf
 ):
+    summary_results_tsv_with_genes =   os.path.abspath('summary.results.genes.tsv')
+
+    cmd = " ".join(
+        [
+                os.path.join(UTILDIR, "find_closest.py"),
+                "-i",
+                summary_results_tsv,
+                "-o",
+                summary_results_tsv_with_genes,
+                '--gtf',
+                gtf
+        ]
+    )
+    chckpt_prefix = "closest-genes-chckpt"
+    pipeliner.add_commands([Command(cmd, chckpt_prefix)])
+
     # make json for igvjs
     json_filename = output_prefix + ".json"
     cmd = " ".join(
         [
                 os.path.join(UTILDIR, "create_insertion_site_inspector_js.py"),
                 "--VIF_summary_tsv",
-                summary_results_tsv,
+                summary_results_tsv_with_genes,
                 "--json_outfile",
                 json_filename,
         ]
