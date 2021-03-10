@@ -103,11 +103,12 @@ RUN STAR_URL="https://github.com/alexdobin/STAR/archive/${STAR_VERSION}.tar.gz" 
 
 WORKDIR $SRC
 
-ENV VIF_CO="17c24a9bd82e22a7150ec7864a44cfbfe6a37e2c"
+ENV VIF_CO="3e48b729c099827983c63b772823e5e4fc45f9cd"
 
 RUN git clone --recursive https://github.com/broadinstitute/CTAT-VirusIntegrationFinder.git && \
         cd CTAT-VirusIntegrationFinder && \
         git checkout ${VIF_CO} && \
+        git submodule init && git submodule update && \
         mv * $BIN && \
 	    cd ${BIN}/util/bamsifter && make
 
