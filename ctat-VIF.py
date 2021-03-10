@@ -27,8 +27,8 @@ ch = logging.StreamHandler(sys.stdout)
 ch.setLevel(logging.INFO)
 logger.addHandler(ch)
 
-# VERSION = "__BLEEDING_EDGE__"
-VERSION = "0.1.0"
+VERSION = "__BLEEDING_EDGE__"
+# VERSION = "0.1.0"
 
 BASEDIR = os.path.dirname(os.path.abspath(__file__))
 UTILDIR = os.sep.join([BASEDIR, "util"])
