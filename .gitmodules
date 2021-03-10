@@ -1,3 +1,6 @@
 [submodule "util/bamsifter"]
 	path = util/bamsifter
 	url = https://github.com/trinityrnaseq/bamsifter.git
+[submodule "CTAT-VirusIntegrationFinder.wiki"]
+	path = CTAT-VirusIntegrationFinder.wiki
+	url = https://github.com/broadinstitute/CTAT-VirusIntegrationFinder.wiki.git
