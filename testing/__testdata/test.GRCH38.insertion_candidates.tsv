@@ -1,0 +1,4 @@
+contig	chrA	coordA	orientA	chrB	coordB	orientB	prelim.primary_brkpt_type	prelim.total	split	span	total
+chr11~117344940~+~HPV16~1215~+	chr11	117344940	+	HPV16	1215	+	Split	117	33	79	112
+chr18~73320805~+~HPV16~7409~-	chr18	73320805	+	HPV16	7409	-	Split	168	31	72	103
+chr6~64935774~+~HPV16~4034~-	chr6	64935774	+	HPV16	4034	-	Split	177	30	70	100

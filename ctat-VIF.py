@@ -108,17 +108,28 @@ def main():
         help="remove duplicate alignments",
     )
 
+    optional.add_argument(
+        "--star_init_only",
+        action="store_true",
+        default=False,
+        help="only perform initial STAR chimeric junction analysis",
+    )
+
     args_parsed = arg_parser.parse_args()
 
     left_fq = os.path.abspath(args_parsed.left_fq)
     right_fq = os.path.abspath(args_parsed.right_fq) if args_parsed.right_fq else ""
     if left_fq == right_fq:
-        raise ValueError('Left and right fastqs are the same.')
+        raise ValueError("Left and right fastqs are the same.")
     output_dir = os.path.abspath(args_parsed.output_dir)
     genome_lib_dir = os.path.abspath(args_parsed.genome_lib_dir)
     viral_db_fasta = os.path.abspath(args_parsed.viral_db_fasta)
-    viral_db_gtf = os.path.abspath(args_parsed.viral_db_gtf) if args_parsed.viral_db_gtf else ""
+    viral_db_gtf = (
+        os.path.abspath(args_parsed.viral_db_gtf) if args_parsed.viral_db_gtf else ""
+    )
     remove_duplicates_flag = args_parsed.remove_duplicates
+
+    STAR_INIT_ONLY = args_parsed.star_init_only
 
     output_prefix = args_parsed.out_prefix
 
@@ -144,11 +155,11 @@ def main():
     ## run STAR using all viruses, select viruses
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "STAR_chimeric_patch_runner.py"),
-                "--left_fq {}".format(left_fq),
-                "--patch_db_fasta {}".format(viral_db_fasta),
-                "--genome_lib_dir {}".format(genome_lib_dir),
-                "-O VIF_starChim_init",
+            os.path.join(UTILDIR, "STAR_chimeric_patch_runner.py"),
+            "--left_fq {}".format(left_fq),
+            "--patch_db_fasta {}".format(viral_db_fasta),
+            "--genome_lib_dir {}".format(genome_lib_dir),
+            "-O VIF_starChim_init",
         ]
     )
 
@@ -163,29 +174,34 @@ def main():
         virus_aligned_bam_file_rmdups = virus_aligned_bam_file + ".rmdups.bam"
 
         pipeliner.add_commands(
-            [Command("samtools index " + virus_aligned_bam_file, "index_star_init_rmdups_virus_bam", )]
+            [
+                Command(
+                    "samtools index " + virus_aligned_bam_file,
+                    "index_star_init_rmdups_virus_bam",
+                )
+            ]
         )
 
         cmd = " ".join(
             [
-                    os.path.join(UTILDIR, "bam_mark_duplicates.py"),
-                    "-i {}".format(virus_aligned_bam_file),
-                    "-o {}".format(virus_aligned_bam_file_rmdups),
-                    "-r",
+                os.path.join(UTILDIR, "bam_mark_duplicates.py"),
+                "-i {}".format(virus_aligned_bam_file),
+                "-o {}".format(virus_aligned_bam_file_rmdups),
+                "-r",
             ]
         )
         pipeliner.add_commands([Command(cmd, "star_init_rmdups")])
         pipeliner.add_commands(
             [
-                    Command(
-                        "samtools index " + virus_aligned_bam_file_rmdups,
-                        "index_star_init_rmdups_bam"
-                    )
+                Command(
+                    "samtools index " + virus_aligned_bam_file_rmdups,
+                    "index_star_init_rmdups_bam",
+                )
             ]
         )
 
         virus_aligned_bam_file = (
-                virus_aligned_bam_file_rmdups  # for later coverage analysis.
+            virus_aligned_bam_file_rmdups  # for later coverage analysis.
         )
 
     pipeliner.run()  # run the init pipeline separately from downstream pipeline.
@@ -199,15 +215,15 @@ def main():
     )
     pipeliner = Pipeliner(checkpoints_dir)
 
-    local_output_prefix = "prelim.vif.rmdups-{}".format(remove_duplicates_flag)
+    local_output_prefix = "{}.prelim".format(output_prefix)
 
-    ## run virus integration site analysis, genereate report.
+    ## run virus integration site analysis, generate report.
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "chimJ_to_virus_insertion_candidate_sites.py"),
-                "--chimJ {}".format("VIF_starChim_init/Chimeric.out.junction"),
-                "--patch_db_fasta {}".format(viral_db_fasta),
-                "--output_prefix {}".format(local_output_prefix),
+            os.path.join(UTILDIR, "chimJ_to_virus_insertion_candidate_sites.py"),
+            "--chimJ {}".format("VIF_starChim_init/Chimeric.out.junction"),
+            "--patch_db_fasta {}".format(viral_db_fasta),
+            "--output_prefix {}".format(local_output_prefix),
         ]
     )
 
@@ -216,41 +232,86 @@ def main():
 
     pipeliner.add_commands(
         [
-                Command(
-                    cmd,
-                    "chimJ_to_insertion_candidates.rmdups-{}".format(
-                        remove_duplicates_flag
-                    ),
-                )
+            Command(
+                cmd,
+                "chimJ_to_insertion_candidates.rmdups-{}".format(
+                    remove_duplicates_flag
+                ),
+            )
         ]
     )
 
-    prelim_chim_events_file = "{}.abridged.tsv".format(local_output_prefix)  # generated by above
+    prelim_chim_events_file = "{}.abridged.tsv".format(
+        local_output_prefix
+    )  # generated by above
 
     pipeliner.run()
-
-    if count_num_candidates(prelim_chim_events_file) == 0:
-        logger.info("- no preliminary candidates identified.  exiting now.\n")
-        sys.exit(0)
 
     ## generate genome wide insertion site abundance plot
     prelim_genome_wide_abundance_plot = prelim_chim_events_file + ".genome_plot.png"
 
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "make_VIF_genome_abundance_plot.Rscript"),
-                "--vif_report {}".format(prelim_chim_events_file),
-                "--output_png {}".format(prelim_genome_wide_abundance_plot),
+            os.path.join(UTILDIR, "make_VIF_genome_abundance_plot.Rscript"),
+            "--vif_report {}".format(prelim_chim_events_file),
+            "--output_png {}".format(prelim_genome_wide_abundance_plot),
+            " || : ", # dont crash on error here
         ]
     )
     pipeliner.add_commands(
         [
-                Command(
-                    cmd, "genomewide_plot.prelim.rmdups-{}".format(remove_duplicates_flag)
-                )
+            Command(
+                cmd, "genomewide_plot.prelim.rmdups-{}".format(remove_duplicates_flag)
+            )
         ]
     )
 
+    ## ############################################################
+    ## generate summary virus coverage plots and mapping statistics:
+
+    cmd = " ".join(
+        [
+            os.path.join(UTILDIR, "plot_top_virus_coverage.Rscript"),
+            "--vif_report {}".format(prelim_chim_events_file),
+            "--bam {}".format(virus_aligned_bam_file),
+            "--output_prefix {}".format(output_prefix),
+            " || : ", # dont crash on error here
+        ]
+    )
+    pipeliner.add_commands(
+        [
+            Command(
+                cmd, "virus_cov_plots_n_stats.rmdups-{}".format(remove_duplicates_flag)
+            )
+        ]
+    )
+    virus_read_counts = "{}.virus_read_counts.png".format(output_prefix)
+    virus_read_counts_log = "{}.virus_read_counts_log.png".format(output_prefix)
+
+    ## add IGVjs virus html
+    pipeliner = add_igv_viral_vis_cmds(
+        pipeliner,
+        summary_results_tsv=output_prefix + ".virus_read_counts_summary.tsv",
+        alignment_bam=virus_aligned_bam_file,
+        fasta=viral_db_fasta,
+        output_prefix=output_prefix + ".virus",
+    )
+
+    pipeliner.run()
+
+    if STAR_INIT_ONLY:
+        logger.info("--star_init_only flag set. Stopping here.")
+        sys.exit(0)
+
+    num_prelim_chim_events = count_num_candidates(prelim_chim_events_file)
+    logger.info("- found {} preliminary chimeric events".format(num_prelim_chim_events))
+
+    if num_prelim_chim_events == 0:
+        logger.info("- no preliminary candidates identified.  exiting now.\n")
+        sys.exit(0)
+
+    ########################################################################
+    ## FusionInspector style analysis of virus/host fusion contig candidates
     ## extract targets for review
 
     chim_targets_file_prefix = "chimeric_contigs.rmdups-{}".format(
@@ -259,23 +320,23 @@ def main():
 
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "extract_chimeric_genomic_targets.py"),
-                "--genome_lib_dir {}".format(genome_lib_dir),
-                "--patch_db_fasta {}".format(viral_db_fasta),
-                "--output_prefix {}".format(chim_targets_file_prefix),
-                "--chim_events {}".format(prelim_chim_events_file),
-                "--pad_region_length 1000",
+            os.path.join(UTILDIR, "extract_chimeric_genomic_targets.py"),
+            "--genome_lib_dir {}".format(genome_lib_dir),
+            "--patch_db_fasta {}".format(viral_db_fasta),
+            "--output_prefix {}".format(chim_targets_file_prefix),
+            "--chim_events {}".format(prelim_chim_events_file),
+            "--pad_region_length 1000",
         ]
     )
 
     pipeliner.add_commands(
         [
-                Command(
-                    cmd,
-                    "extract_draft_candidates_fasta_n_gtf.rmdups-{}".format(
-                        remove_duplicates_flag
-                    ),
-                )
+            Command(
+                cmd,
+                "extract_draft_candidates_fasta_n_gtf.rmdups-{}".format(
+                    remove_duplicates_flag
+                ),
+            )
         ]
     )
 
@@ -287,12 +348,12 @@ def main():
 
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "STAR_chimeric_patch_runner.py"),
-                "--left_fq {}".format(left_fq),
-                "--patch_db_fasta {}".format("{}.fasta".format(chim_targets_file_prefix)),
-                "--disable_chimeras",
-                "--genome_lib_dir {}".format(genome_lib_dir),
-                "-O " + VIF_starChimContigs_outdir,
+            os.path.join(UTILDIR, "STAR_chimeric_patch_runner.py"),
+            "--left_fq {}".format(left_fq),
+            "--patch_db_fasta {}".format("{}.fasta".format(chim_targets_file_prefix)),
+            "--disable_chimeras",
+            "--genome_lib_dir {}".format(genome_lib_dir),
+            "-O " + VIF_starChimContigs_outdir,
         ]
     )
 
@@ -310,7 +371,7 @@ def main():
     if remove_duplicates_flag:
         ## remove duplicate alignments
         pipeliner.add_commands(
-            [Command("samtools index " + chimeric_bam, "index_star_bam", )]
+            [Command("samtools index " + chimeric_bam, "index_star_bam",)]
         )
 
         chimeric_bam_dups_removed = os.path.join(
@@ -318,19 +379,19 @@ def main():
         )
         cmd = " ".join(
             [
-                    os.path.join(UTILDIR, "bam_mark_duplicates.py"),
-                    "-i {}".format(chimeric_bam),
-                    "-o {}".format(chimeric_bam_dups_removed),
-                    "-r",
+                os.path.join(UTILDIR, "bam_mark_duplicates.py"),
+                "-i {}".format(chimeric_bam),
+                "-o {}".format(chimeric_bam_dups_removed),
+                "-r",
             ]
         )
         pipeliner.add_commands([Command(cmd, "star_chimeric_prelim_rmdups")])
         pipeliner.add_commands(
             [
-                    Command(
-                        "samtools index " + chimeric_bam_dups_removed,
-                        "index_star_rmdups_bam",
-                    )
+                Command(
+                    "samtools index " + chimeric_bam_dups_removed,
+                    "index_star_rmdups_bam",
+                )
             ]
         )
 
@@ -342,26 +403,26 @@ def main():
     )
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "chimeric_contig_evidence_analyzer.py"),
-                "--patch_db_bam {}".format(chimeric_bam),
-                "--patch_db_gtf {}.gtf".format(chim_targets_file_prefix),
-                "--output_prefix {}".format(scored_alignments_prefix),
+            os.path.join(UTILDIR, "chimeric_contig_evidence_analyzer.py"),
+            "--patch_db_bam {}".format(chimeric_bam),
+            "--patch_db_gtf {}.gtf".format(chim_targets_file_prefix),
+            "--output_prefix {}".format(scored_alignments_prefix),
         ]
     )
     pipeliner.add_commands(
         [
-                Command(
-                    cmd,
-                    "chim_contig_evidence_counts.rmdups-{}".format(remove_duplicates_flag),
-                )
+            Command(
+                cmd,
+                "chim_contig_evidence_counts.rmdups-{}".format(remove_duplicates_flag),
+            )
         ]
     )
 
     pipeliner.run()
 
     if (
-            count_num_candidates("{}.evidence_counts.tsv".format(scored_alignments_prefix))
-            == 0
+        count_num_candidates("{}.evidence_counts.tsv".format(scored_alignments_prefix))
+        == 0
     ):
         logger.info("-no ChimContig-based insertion events supported.  existing now.\n")
         sys.exit(0)
@@ -370,10 +431,10 @@ def main():
     summary_output_tsv = output_prefix + ".insertion_site_candidates.tsv"
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "refine_VIF_output.Rscript"),
-                "--prelim_counts {}".format(prelim_chim_events_file),
-                "--vif_counts {}.evidence_counts.tsv".format(scored_alignments_prefix),
-                "--output {}".format(summary_output_tsv),
+            os.path.join(UTILDIR, "refine_VIF_output.Rscript"),
+            "--prelim_counts {}".format(prelim_chim_events_file),
+            "--vif_counts {}.evidence_counts.tsv".format(scored_alignments_prefix),
+            "--output {}".format(summary_output_tsv),
         ]
     )
     pipeliner.add_commands(
@@ -382,47 +443,34 @@ def main():
 
     ## generate genome wide insertion site abundance plot
     genome_wide_abundance_plot = (
-            output_prefix + ".insertion_site_candidates.genome_plot.png"
+        output_prefix + ".insertion_site_candidates.genome_plot.png"
     )
 
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "make_VIF_genome_abundance_plot.Rscript"),
-                "--vif_report {}".format(summary_output_tsv),
-                "--output_png {}".format(genome_wide_abundance_plot),
+            os.path.join(UTILDIR, "make_VIF_genome_abundance_plot.Rscript"),
+            "--vif_report {}".format(summary_output_tsv),
+            "--output_png {}".format(genome_wide_abundance_plot),
+            " || : ", # dont crash on error here
         ]
     )
     pipeliner.add_commands(
         [Command(cmd, "genomewide_plot.final.rmdups-{}".format(remove_duplicates_flag))]
     )
 
-    ## generate summary virus coverage plots and mapping statistics:
-    cmd = " ".join(
-        [
-                os.path.join(UTILDIR, "plot_top_virus_coverage.Rscript"),
-                "--vif_report {}".format(summary_output_tsv),
-                "--bam {}".format(virus_aligned_bam_file),
-                "--output_prefix {}".format(output_prefix),
-        ]
-    )
-    pipeliner.add_commands(
-        [
-                Command(
-                    cmd, "virus_cov_plots_n_stats.rmdups-{}".format(remove_duplicates_flag)
-                )
-        ]
-    )
-    virus_read_counts = "{}.virus_read_counts.png".format(output_prefix)
-    virus_read_counts_log = "{}.virus_read_counts_log.png".format(output_prefix)
-    images = [(prelim_genome_wide_abundance_plot, 'Preliminary Genome Wide Abundance'),
-              (genome_wide_abundance_plot, 'Genome Wide Abundance'), (virus_read_counts, 'Virus Read Counts'),
-              (virus_read_counts_log, 'Virus Read Counts Log10')]
+    images = [
+        (prelim_genome_wide_abundance_plot, "Preliminary Genome Wide Abundance"),
+        (genome_wide_abundance_plot, "Genome Wide Abundance"),
+        (virus_read_counts, "Virus Read Counts"),
+        (virus_read_counts_log, "Virus Read Counts Log10"),
+    ]
 
-    virus_coverage_plots = glob.glob('{}.virus_coverage_*.png'.format(output_prefix))
+    virus_coverage_plots = glob.glob("{}.virus_coverage_*.png".format(output_prefix))
 
     for virus_coverage_plot in virus_coverage_plots:
-        images.append((virus_coverage_plot, 'na'))
-    ## add IGVjs html
+        images.append((virus_coverage_plot, "na"))
+
+    ## add IGVjs html for FI-like view
     pipeliner = add_igv_vis_cmds(
         pipeliner,
         summary_output_tsv,
@@ -430,15 +478,7 @@ def main():
         "{}.gtf".format(chim_targets_file_prefix),
         "{}.fasta".format(chim_targets_file_prefix),
         output_prefix,
-        images
-    )
-    ## add IGVjs virus html
-    pipeliner = add_igv_viral_vis_cmds(
-        pipeliner,
-        summary_results_tsv=output_prefix + ".virus_read_counts_summary.tsv",
-        alignment_bam=virus_aligned_bam_file,
-        fasta=viral_db_fasta,
-        output_prefix=output_prefix + '.virus',
+        images,
     )
 
     ## Run pipeline
@@ -448,22 +488,17 @@ def main():
 
 
 def add_igv_viral_vis_cmds(
-        pipeliner,
-        summary_results_tsv,
-        alignment_bam,
-        fasta,
-        output_prefix,
-
+    pipeliner, summary_results_tsv, alignment_bam, fasta, output_prefix,
 ):
     # make json for igvjs
     json_filename = output_prefix + ".json"
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "create_insertion_site_inspector_js.py"),
-                "--VIF_summary_tsv",
-                summary_results_tsv,
-                "--json_outfile",
-                json_filename,
+            os.path.join(UTILDIR, "create_insertion_site_inspector_js.py"),
+            "--VIF_summary_tsv",
+            summary_results_tsv,
+            "--json_outfile",
+            json_filename,
         ]
     )
     chckpt_prefix = os.path.basename(json_filename) + "-chckpt"
@@ -473,8 +508,9 @@ def add_igv_viral_vis_cmds(
     bed_filename = output_prefix + ".bed"
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "create_virus_bed.py"),
-                summary_results_tsv, bed_filename
+            os.path.join(UTILDIR, "create_virus_bed.py"),
+            summary_results_tsv,
+            bed_filename,
         ]
     )
     pipeliner.add_commands([Command(cmd, os.path.basename(bed_filename) + "-chckpt")])
@@ -485,20 +521,20 @@ def add_igv_viral_vis_cmds(
 
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "bamsifter", "bamsifter"),
-                "-c {}".format(MAX_IGVJS_COVERAGE_DEPTH),
-                "-o {}".format(igv_reads_filename),
-                alignment_bam,
+            os.path.join(UTILDIR, "bamsifter", "bamsifter"),
+            "-c {}".format(MAX_IGVJS_COVERAGE_DEPTH),
+            "-o {}".format(igv_reads_filename),
+            alignment_bam,
         ]
     )
 
     pipeliner.add_commands(
         [
-                Command(
-                    cmd,
-                    os.path.basename(igv_reads_filename)
-                    + "-sift{}-chckpt".format(MAX_IGVJS_COVERAGE_DEPTH),
-                )
+            Command(
+                cmd,
+                os.path.basename(igv_reads_filename)
+                + "-sift{}-chckpt".format(MAX_IGVJS_COVERAGE_DEPTH),
+            )
         ]
     )
 
@@ -510,16 +546,16 @@ def add_igv_viral_vis_cmds(
     html_filename = output_prefix + ".igvjs.html"
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "make_VIF_igvjs_html.py"),
-                "--html_template {}".format(
-                    os.path.join(UTILDIR, "resources", "igvjs_VIF.html")
-                ),
-                "--fusions_json",
-                json_filename,
-                "--input_file_prefix",
-                output_prefix,
-                "--html_output",
-                html_filename,
+            os.path.join(UTILDIR, "make_VIF_igvjs_html.py"),
+            "--html_template {}".format(
+                os.path.join(UTILDIR, "resources", "igvjs_VIF.html")
+            ),
+            "--fusions_json",
+            json_filename,
+            "--input_file_prefix",
+            output_prefix,
+            "--html_output",
+            html_filename,
         ]
     )
     pipeliner.add_commands([Command(cmd, os.path.basename(html_filename) + "-chckpt")])
@@ -528,23 +564,23 @@ def add_igv_viral_vis_cmds(
 
 
 def add_igv_vis_cmds(
-        pipeliner,
-        summary_results_tsv,
-        alignment_bam,
-        chim_targets_gtf,
-        chim_targets_fasta,
-        output_prefix,
-        images
+    pipeliner,
+    summary_results_tsv,
+    alignment_bam,
+    chim_targets_gtf,
+    chim_targets_fasta,
+    output_prefix,
+    images,
 ):
     # make json for igvjs
     json_filename = output_prefix + ".json"
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "create_insertion_site_inspector_js.py"),
-                "--VIF_summary_tsv",
-                summary_results_tsv,
-                "--json_outfile",
-                json_filename,
+            os.path.join(UTILDIR, "create_insertion_site_inspector_js.py"),
+            "--VIF_summary_tsv",
+            summary_results_tsv,
+            "--json_outfile",
+            json_filename,
         ]
     )
     chckpt_prefix = os.path.basename(json_filename) + "-chckpt"
@@ -554,10 +590,10 @@ def add_igv_vis_cmds(
     bed_filename = output_prefix + ".bed"
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "region_gtf_to_bed.py"),
-                chim_targets_gtf,
-                ">",
-                bed_filename,
+            os.path.join(UTILDIR, "region_gtf_to_bed.py"),
+            chim_targets_gtf,
+            ">",
+            bed_filename,
         ]
     )
     pipeliner.add_commands([Command(cmd, os.path.basename(bed_filename) + "-chckpt")])
@@ -568,20 +604,20 @@ def add_igv_vis_cmds(
 
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "bamsifter", "bamsifter"),
-                "-c {}".format(MAX_IGVJS_COVERAGE_DEPTH),
-                "-o {}".format(igv_reads_filename),
-                alignment_bam,
+            os.path.join(UTILDIR, "bamsifter", "bamsifter"),
+            "-c {}".format(MAX_IGVJS_COVERAGE_DEPTH),
+            "-o {}".format(igv_reads_filename),
+            alignment_bam,
         ]
     )
 
     pipeliner.add_commands(
         [
-                Command(
-                    cmd,
-                    os.path.basename(igv_reads_filename)
-                    + "-sift{}-chckpt".format(MAX_IGVJS_COVERAGE_DEPTH),
-                )
+            Command(
+                cmd,
+                os.path.basename(igv_reads_filename)
+                + "-sift{}-chckpt".format(MAX_IGVJS_COVERAGE_DEPTH),
+            )
         ]
     )
 
@@ -593,16 +629,16 @@ def add_igv_vis_cmds(
     html_filename = output_prefix + ".igvjs.html"
     cmd = " ".join(
         [
-                os.path.join(UTILDIR, "make_VIF_igvjs_html.py"),
-                "--html_template {}".format(
-                    os.path.join(UTILDIR, "resources", "igvjs_VIF.html")
-                ),
-                "--fusions_json",
-                json_filename,
-                "--input_file_prefix",
-                output_prefix,
-                "--html_output",
-                html_filename,
+            os.path.join(UTILDIR, "make_VIF_igvjs_html.py"),
+            "--html_template {}".format(
+                os.path.join(UTILDIR, "resources", "igvjs_VIF.html")
+            ),
+            "--fusions_json",
+            json_filename,
+            "--input_file_prefix",
+            output_prefix,
+            "--html_output",
+            html_filename,
         ]
     )
     pipeliner.add_commands([Command(cmd, os.path.basename(html_filename) + "-chckpt")])
@@ -610,21 +646,23 @@ def add_igv_vis_cmds(
     # generate the final report
     report_filename = output_prefix + ".html"
     cmd = [
-            os.path.join(UTILDIR, "add_to_html.py"),
-            "--html",
-            html_filename,
-            "--out",
-            report_filename,
+        os.path.join(UTILDIR, "add_to_html.py"),
+        "--html",
+        html_filename,
+        "--out",
+        report_filename,
     ]
     for i in range(len(images)):
         image, title = images[i]
-        cmd.append('--title')
+        cmd.append("--title")
         cmd.append('"{}"'.format(title))
-        cmd.append('--image')
+        cmd.append("--image")
         cmd.append('"{}"'.format(image))
 
     cmd = " ".join(cmd)
-    pipeliner.add_commands([Command(cmd, os.path.basename(report_filename) + "-chckpt")])
+    pipeliner.add_commands(
+        [Command(cmd, os.path.basename(report_filename) + "-chckpt")]
+    )
     return pipeliner
 
 

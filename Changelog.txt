@@ -1,0 +1,9 @@
+# v0.1.0 - Mar 10, 2021
+- initial public release
+
+# v0.0.4 - Jan 14, 2021
+- added LRsplice functionality
+
+# v0.0.3 - Oct 26 2020
+-included --star_init_only parameter for quick sample processing
+
