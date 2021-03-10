@@ -27,7 +27,8 @@ ch = logging.StreamHandler(sys.stdout)
 ch.setLevel(logging.INFO)
 logger.addHandler(ch)
 
-VERSION = "__BLEEDING_EDGE__"
+# VERSION = "__BLEEDING_EDGE__"
+VERSION = "0.1.0"
 
 BASEDIR = os.path.dirname(os.path.abspath(__file__))
 UTILDIR = os.sep.join([BASEDIR, "util"])
@@ -255,7 +256,7 @@ def main():
             os.path.join(UTILDIR, "make_VIF_genome_abundance_plot.Rscript"),
             "--vif_report {}".format(prelim_chim_events_file),
             "--output_png {}".format(prelim_genome_wide_abundance_plot),
-            " || : ", # dont crash on error here
+            " || : ",  # dont crash on error here
         ]
     )
     pipeliner.add_commands(
@@ -275,7 +276,7 @@ def main():
             "--vif_report {}".format(prelim_chim_events_file),
             "--bam {}".format(virus_aligned_bam_file),
             "--output_prefix {}".format(output_prefix),
-            " || : ", # dont crash on error here
+            " || : ",  # dont crash on error here
         ]
     )
     pipeliner.add_commands(
@@ -451,7 +452,7 @@ def main():
             os.path.join(UTILDIR, "make_VIF_genome_abundance_plot.Rscript"),
             "--vif_report {}".format(summary_output_tsv),
             "--output_png {}".format(genome_wide_abundance_plot),
-            " || : ", # dont crash on error here
+            " || : ",  # dont crash on error here
         ]
     )
     pipeliner.add_commands(
