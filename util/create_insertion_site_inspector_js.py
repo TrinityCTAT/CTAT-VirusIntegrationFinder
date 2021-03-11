@@ -5,8 +5,7 @@
 import argparse
 import csv
 import json
-import gzip
-import os
+
 import sys
 
 
@@ -39,18 +38,19 @@ json_outfile = args.json_outfile
 dict_json = {}
 dict_json["fusions"] = []
 
-
 vif_info_tokens = [
-    "contig",
-    "chrA",
-    "coordA",
-    "orientA",
-    "chrB",
-    "coordB",
-    "orientB",
-    "split",
-    "span",
-    "total",
+        "contig",
+        "chrA",
+        "coordA",
+        "orientA",
+        "chrB",
+        "coordB",
+        "orientB",
+        "split",
+        "span",
+        "total",
+        "upstream",
+        "downstream"
 ]
 
 # Make fusion detail

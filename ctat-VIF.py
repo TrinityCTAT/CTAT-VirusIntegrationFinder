@@ -81,6 +81,8 @@ def main():
         help="viral db gtf file",
     )
 
+
+
     optional.add_argument(
         "-O",
         "--output_dir",
@@ -128,6 +130,7 @@ def main():
     viral_db_gtf = (
         os.path.abspath(args_parsed.viral_db_gtf) if args_parsed.viral_db_gtf else ""
     )
+    gtf = os.path.join(genome_lib_dir, 'ref_annot.gtf')
     remove_duplicates_flag = args_parsed.remove_duplicates
 
     STAR_INIT_ONLY = args_parsed.star_init_only
@@ -480,6 +483,7 @@ def main():
         "{}.fasta".format(chim_targets_file_prefix),
         output_prefix,
         images,
+        gtf=gtf
     )
 
     ## Run pipeline
@@ -572,14 +576,31 @@ def add_igv_vis_cmds(
     chim_targets_fasta,
     output_prefix,
     images,
+    gtf
 ):
+    summary_results_tsv_with_genes =  os.path.abspath('summary.results.genes.tsv')
+
+    cmd = " ".join(
+        [
+                os.path.join(UTILDIR, "find_closest.py"),
+                "-i",
+                summary_results_tsv,
+                "-o",
+                summary_results_tsv_with_genes,
+                '--gtf',
+                gtf
+        ]
+    )
+    chckpt_prefix = "closest-genes-chckpt"
+    pipeliner.add_commands([Command(cmd, chckpt_prefix)])
+
     # make json for igvjs
     json_filename = output_prefix + ".json"
     cmd = " ".join(
         [
             os.path.join(UTILDIR, "create_insertion_site_inspector_js.py"),
             "--VIF_summary_tsv",
-            summary_results_tsv,
+            summary_results_tsv_with_genes,
             "--json_outfile",
             json_filename,
         ]
