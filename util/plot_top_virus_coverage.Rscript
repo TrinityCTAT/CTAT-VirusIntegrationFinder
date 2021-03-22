@@ -65,7 +65,7 @@ if (! file_test('-f', idxstats_filename) ) {
     run_command(cmd)
 }
 
-idxstats = read.table(idxstats_filename, header=F, sep="\t", stringsAsFactors=F)
+idxstats = read.table(idxstats_filename, header=F, sep="\t", stringsAsFactors=F, comment.char = '', quote = '')
 colnames(idxstats) = c('virus', 'seqlen', 'mapped', 'unmapped')
 
 counts_per_virus = virus_mappings %>% rename(virus=chr) %>% group_by(virus) %>% summarize_at(vars(counts), list(chim_reads=sum))
