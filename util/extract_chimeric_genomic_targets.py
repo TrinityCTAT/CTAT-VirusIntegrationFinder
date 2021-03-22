@@ -215,7 +215,7 @@ def write_genome_target_regions(
 
 def extract_seq_region(fasta_filename, chr, lend, rend, orient):
 
-    cmd = "samtools faidx {} {}:{}-{}".format(fasta_filename, chr, lend, rend, orient)
+    cmd = 'samtools faidx {} "{}":{}-{}'.format(fasta_filename, chr, lend, rend, orient)
 
     if orient == "-":
         cmd += " --reverse-complement"
