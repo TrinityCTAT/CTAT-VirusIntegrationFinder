@@ -36,8 +36,9 @@ gtf = args.gtf
 output_file = args.o
 sorted_gtf = os.path.abspath('out.sorted.gtf')
 input_tsv = args.i
+
 with open(sorted_gtf, 'wt') as f:
-    check_call(['gff3sort.pl', gtf], stdout=f)
+    check_call(['bedtools', 'sort', '-i', gtf], stdout=f)
 
 unique_chromosomes = set()
 with open('out.sorted.gtf', 'rt') as f:
