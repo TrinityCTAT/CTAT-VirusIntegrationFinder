@@ -103,10 +103,6 @@ RUN STAR_URL="https://github.com/alexdobin/STAR/archive/${STAR_VERSION}.tar.gz" 
         tar -xvf $SRC/${STAR_VERSION}.tar.gz -C $SRC && \
             mv $SRC/STAR-${STAR_VERSION}/bin/Linux_x86_64_static/STAR /usr/local/bin
 
-# gff3sort
-RUN wget https://github.com/billzt/gff3sort/archive/v1.0.0.zip && \
-    unzip v1.0.0.zip && rm v1.0.0.zip && mv gff3sort-1.0.0/gff3sort.pl $BIN && mv gff3sort-1.0.0/Sort $BIN
-
 ## Bedtools
 RUN wget -q https://github.com/arq5x/bedtools2/releases/download/v2.30.0/bedtools-2.30.0.tar.gz && \
    tar -zxvf bedtools-2.30.0.tar.gz && \
