@@ -33,10 +33,10 @@ def main():
     )
 
     arg_parser.add_argument(
-        "--genome_lib_dir",
+        "--fasta",
         type=str,
-        default=os.environ.get("CTAT_GENOME_LIB"),
-        help="genome lib directory - see http://FusionFilter.github.io for details.  Uses env var CTAT_GENOME_LIB as default",
+        required=True,
+        help="Reference genome fasta",
     )
 
     arg_parser.add_argument(
@@ -66,17 +66,17 @@ def main():
 
     args_parsed = arg_parser.parse_args()
 
-    genome_lib_dir = args_parsed.genome_lib_dir
+    ref_genome_fasta = args_parsed.fasta
     patch_db_fasta = args_parsed.patch_db_fasta
     output_prefix = args_parsed.output_prefix
     pad_region_length = args_parsed.pad_region_length
     chim_events_filename = args_parsed.chim_events
 
-    if not genome_lib_dir:
-        logger.error("Error, --genome_lib_dir must be specified")
+    if not os.path.exists(ref_genome_fasta):
+        logger.error("Error {} not found".format(ref_genome_fasta))
         sys.exit(1)
 
-    ref_genome_fasta = os.path.join(genome_lib_dir, "ref_genome.fa")
+
 
     event_info_dict = parse_chim_events(chim_events_filename)
 

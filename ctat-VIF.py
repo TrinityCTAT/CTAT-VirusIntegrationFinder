@@ -127,6 +127,8 @@ def main():
     output_dir = os.path.abspath(args_parsed.output_dir)
     genome_lib_dir = os.path.abspath(args_parsed.genome_lib_dir)
     viral_db_fasta = os.path.abspath(args_parsed.viral_db_fasta)
+    ref_genome_fasta = os.path.join(genome_lib_dir, "ref_genome.fa")
+    star_genome = os.path.join(genome_lib_dir, "ref_genome.fa.star.idx")
     viral_db_gtf = (
         os.path.abspath(args_parsed.viral_db_gtf) if args_parsed.viral_db_gtf else ""
     )
@@ -146,6 +148,12 @@ def main():
         )
         sys.exit(1)
 
+    if not os.path.exists(genome_lib_dir):
+        sys.stderr.write(
+            "Error, {} not found".format(genome_lib_dir)
+        )
+        sys.exit(1)
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -162,7 +170,7 @@ def main():
             os.path.join(UTILDIR, "STAR_chimeric_patch_runner.py"),
             "--left_fq {}".format(left_fq),
             "--patch_db_fasta {}".format(viral_db_fasta),
-            "--genome_lib_dir {}".format(genome_lib_dir),
+            "--genome {}".format(star_genome),
             "-O VIF_starChim_init",
         ]
     )
@@ -325,7 +333,7 @@ def main():
     cmd = " ".join(
         [
             os.path.join(UTILDIR, "extract_chimeric_genomic_targets.py"),
-            "--genome_lib_dir {}".format(genome_lib_dir),
+            "--fasta {}".format(ref_genome_fasta),
             "--patch_db_fasta {}".format(viral_db_fasta),
             "--output_prefix {}".format(chim_targets_file_prefix),
             "--chim_events {}".format(prelim_chim_events_file),
@@ -356,7 +364,7 @@ def main():
             "--left_fq {}".format(left_fq),
             "--patch_db_fasta {}".format("{}.fasta".format(chim_targets_file_prefix)),
             "--disable_chimeras",
-            "--genome_lib_dir {}".format(genome_lib_dir),
+            "--genome {}".format(star_genome),
             "-O " + VIF_starChimContigs_outdir,
         ]
     )
