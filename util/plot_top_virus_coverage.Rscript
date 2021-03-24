@@ -55,7 +55,7 @@ get_virus_mappings = function(data) {
 }
 
 
-data = read.table(vif_report, header=T, stringsAsFactors=FALSE, sep="\t")
+data = read.table(vif_report, header=T, stringsAsFactors=FALSE, sep="\t", comment.char = '', quote = '')
 virus_mappings = get_virus_mappings(data)
 
 
