@@ -29,7 +29,7 @@ main = function () {
     prelim_counts = prelim_counts %>% select(contig, chrA, coordA, orientA, chrB, coordB, orientB,
                                              prelim.primary_brkpt_type, prelim.num_primary_reads, prelim.num_supp_reads, prelim.total)
 
-    vif_counts = read.table(vif_counts_filename, header=T, sep="\t", stringsAsFactors = F)
+    vif_counts = read.table(vif_counts_filename, header=T, sep="\t", stringsAsFactors = F, comment.char = '', quote = '')
 
     data = full_join(prelim_counts, vif_counts, by='contig')
 
