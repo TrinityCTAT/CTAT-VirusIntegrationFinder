@@ -3,16 +3,16 @@
 options(bitmapType='cairo') # needed to avoid X11 issue
 
 condense_data = function(data) {
-    
+
     data_condensed = bind_rows(
         data %>% select (chr=chrA, coord=coordA, orient=orientA, counts=total),
         data %>% select(chr=chrB, coord=coordB, orient=orientB, counts=total)
     )
-    
+
     data_condensed$chr = str_replace(data_condensed$chr, "chr", "")
-    
+
     return(data_condensed)
-    
+
 }
 
 
@@ -48,11 +48,11 @@ chr_lengths = data.frame(chr=factor(chroms, levels=chroms),
                              16569) )
 
 get_chr_panel_base_plot = function(dataToPlot, chr_lens=chr_lengths) {
-    
+
     dataToPlot = dataToPlot %>% filter(chr %in% chroms)
-    
+
     dataToPlot$chr = factor(dataToPlot$chr, levels=chroms)
-    
+
     p = ggplot(data=dataToPlot) + facet_grid (~chr, scales = 'free_x', space = 'fixed') +
         theme_bw() +
         theme(axis.ticks.x = element_blank(),
@@ -63,46 +63,46 @@ get_chr_panel_base_plot = function(dataToPlot, chr_lens=chr_lengths) {
               panel.grid.major.y = element_blank(),
               panel.grid.minor.y = element_blank()
               ) +
-        
+
         geom_vline(data=chr_lens, aes(xintercept=chr_begin), color=NA) +
         geom_vline(data=chr_lens, aes(xintercept=chr_length), color=NA)
-    
+
     return(p)
 }
 
 
 
 make_chr_plot = function(dataToPlot) {
-    
+
     p = get_chr_panel_base_plot(dataToPlot)
-    
+
     p = p + geom_point(aes(x=coord, y=counts))
-    
+
     return (p)
 }
 
 
 
 main = function () {
-    
+
     suppressPackageStartupMessages(library("argparse"))
     suppressPackageStartupMessages(library("tidyverse"))
-        
+
     parser = ArgumentParser()
     parser$add_argument("--vif_report", help="final counts file", required=TRUE, nargs=1)
     parser$add_argument("--output_png", help="output png filename", required=TRUE)
-    
+
     args = parser$parse_args()
     vif_report = args$vif_report
     output_png = args$output_png
-    
-    data = read.table(vif_report, header=T, sep="\t", stringsAsFactors = F)
+
+    data = read.table(vif_report, header=T, sep="\t", stringsAsFactors = F, comment.char = '', quote = '')
     data = condense_data(data)
     p = make_chr_plot(data)
     png(output_png, width=800, height=400)
     plot(p)
     dev.off()
-    
+
     quit(save = "no", status = 0, runLast = FALSE)
 
 }
