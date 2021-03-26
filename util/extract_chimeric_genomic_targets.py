@@ -118,7 +118,7 @@ def write_genome_target_regions(
 
     ofh_fasta = open(out_fasta_filename, "wt")
     ofh_gtf = open(out_gtf_filename, "wt")
-
+    filtered_count = 0
     for event in event_info_dict.values():
 
         event_acc = event["entry"]
@@ -135,6 +135,7 @@ def write_genome_target_regions(
 
         brkpt_type = event["primary_brkpt_type"]
         if int(event['total']) < min_reads:
+            filtered_count += 1
             continue
         chrA_fasta_file, chrB_fasta_file = (
             (ref_genome_fasta, patch_db_fasta)
@@ -220,7 +221,7 @@ def write_genome_target_regions(
 
     ofh_fasta.close()
     ofh_gtf.close()
-
+    print('Filtered {}'.format(filtered_count))
     return
 
 
