@@ -121,7 +121,8 @@ def main():
     optional.add_argument(
         "--min_reads",
         default=0,
-        help="Filter insertion sites that do not have at least 'min_reads'",
+        type=int,
+        help="Filter insertion sites candidates that do not have at least 'min_reads'",
     )
 
     args_parsed = arg_parser.parse_args()
