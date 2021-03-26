@@ -64,6 +64,14 @@ def main():
         help="length around breakpoint to extract genome sequence",
     )
 
+    arg_parser.add_argument(
+        "--min_reads",
+        type=int,
+        default=0,
+        help="Minimum number of reads for filtering",
+    )
+
+
     args_parsed = arg_parser.parse_args()
 
     ref_genome_fasta = args_parsed.fasta
@@ -71,6 +79,7 @@ def main():
     output_prefix = args_parsed.output_prefix
     pad_region_length = args_parsed.pad_region_length
     chim_events_filename = args_parsed.chim_events
+    min_reads = args_parsed.min_reads
 
     if not os.path.exists(ref_genome_fasta):
         logger.error("Error {} not found".format(ref_genome_fasta))
@@ -86,13 +95,14 @@ def main():
         patch_db_fasta,
         output_prefix,
         pad_region_length,
+        min_reads
     )
 
     sys.exit(0)
 
 
 def write_genome_target_regions(
-    event_info_dict, ref_genome_fasta, patch_db_fasta, output_prefix, pad_region_length
+    event_info_dict, ref_genome_fasta, patch_db_fasta, output_prefix, pad_region_length, min_reads
 ):
 
     patch_db_entries = set()
@@ -124,7 +134,8 @@ def write_genome_target_regions(
         coordB = coordB + 1 if orientB == "+" else coordB - 1
 
         brkpt_type = event["primary_brkpt_type"]
-
+        if event['total'] <= min_reads:
+            continue
         chrA_fasta_file, chrB_fasta_file = (
             (ref_genome_fasta, patch_db_fasta)
             if chrB in patch_db_entries
