@@ -134,7 +134,7 @@ def write_genome_target_regions(
         coordB = coordB + 1 if orientB == "+" else coordB - 1
 
         brkpt_type = event["primary_brkpt_type"]
-        if int(event['total']) <= min_reads:
+        if int(event['total']) < min_reads:
             continue
         chrA_fasta_file, chrB_fasta_file = (
             (ref_genome_fasta, patch_db_fasta)
