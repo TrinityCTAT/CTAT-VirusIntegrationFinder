@@ -459,55 +459,7 @@ task TopVirusCoverage {
     }
 }
 
-task IGVVirusReport {
-    input {
-        File bam
-        File bai
-        File viral_fasta
-        File read_counts_summary
-        String util_dir
-        Int preemptible
-        String docker
-    }
-    Int max_coverage = 100
 
-    command <<<
-
-        ~{util_dir}/create_insertion_site_inspector_js.py \
-        --VIF_summary_tsv ~{read_counts_summary} \
-        --json_outfile vif.virus.json
-
-        # make bed for igvjs
-        ~{util_dir}/create_virus_bed.py ~{read_counts_summary} vif.virus.bed
-
-        # prep for making the report
-        ~{util_dir}/bamsifter bamsifter \
-        -c ~{max_coverage} \
-        -o vif.virus.reads.bam \
-        ~{bam}
-
-        ln -sf ~{viral_fasta} vif.virus.fa
-
-        # generate the html
-        ~{util_dir}/make_VIF_igvjs_html.py \
-        --html_template ~{util_dir}/resources/igvjs_VIF.html \
-        --fusions_json vif.virus.json \
-        --input_file_prefix vif.virus \
-        --html_output vif.virus.html
-    >>>
-
-    output {
-        File html = "vif.virus.html"
-    }
-
-    runtime {
-        preemptible: preemptible
-        disks: "local-disk " + ceil(size(bam, "GB")*2 + 1) + " HDD"
-        docker: docker
-        cpu: 1
-        memory: "1GB"
-    }
-}
 
 task ExtractChimericGenomicTargets {
     input {
@@ -643,6 +595,57 @@ task GenomeAbundancePlot {
     }
 }
 
+task IGVVirusReport {
+    input {
+        File bam
+        File bai
+        File viral_fasta
+        File read_counts_summary
+        String util_dir
+        Int preemptible
+        String docker
+    }
+    Int max_coverage = 100
+
+    command <<<
+
+        ~{util_dir}/create_insertion_site_inspector_js.py \
+        --VIF_summary_tsv ~{read_counts_summary} \
+        --json_outfile vif.virus.json
+
+        # make bed for igvjs
+        ~{util_dir}/create_virus_bed.py ~{read_counts_summary} vif.virus.bed
+
+        # prep for making the report
+        ~{util_dir}/bamsifter/bamsifter \
+        -c ~{max_coverage} \
+        -o vif.virus.reads.bam \
+        ~{bam}
+
+        # IGV reports expects to find, __PREFIX__.fa, __PREFIX__.bed, __PREFIX__.reads.bam
+        ln -sf ~{viral_fasta} vif.virus.fa
+
+        # generate the html
+        ~{util_dir}/make_VIF_igvjs_html.py \
+        --html_template ~{util_dir}/resources/igvjs_VIF.html \
+        --fusions_json vif.virus.json \
+        --input_file_prefix vif.virus \
+        --html_output vif.virus.html
+    >>>
+
+    output {
+        File html = "vif.virus.html"
+    }
+
+    runtime {
+        preemptible: preemptible
+        disks: "local-disk " + ceil(size(bam, "GB")*2 + 1) + " HDD"
+        docker: docker
+        cpu: 1
+        memory: "1GB"
+    }
+}
+
 task IGVReport {
     input {
         File summary_results_tsv
@@ -671,15 +674,15 @@ task IGVReport {
         --json_outfile igv.json
 
         # make bed for igvjs
-        ~{util_dir}/region_gtf_to_bed.py \
-        ~{chim_targets_gtf} > igv.bed
+        ~{util_dir}/region_gtf_to_bed.py ~{chim_targets_gtf} > vif.bed
 
         # prep for making the report
         ~{util_dir}/bamsifter/bamsifter \
         -c ~{max_coverage} \
-        -o igv.reads.bam \
+        -o vif.reads.bam \
         ~{alignment_bam}
 
+        # IGV reports expects to find, __PREFIX__.fa, __PREFIX__.bed, __PREFIX__.reads.bam
         ln -sf ~{chim_targets_fasta} vif.fa
 
         ~{util_dir}/make_VIF_igvjs_html.py \
