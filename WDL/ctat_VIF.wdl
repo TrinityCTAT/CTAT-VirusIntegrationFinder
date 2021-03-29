@@ -52,7 +52,7 @@ workflow ctat_vif {
         File star_bam_index = STAR.bai
         File star_output_log_final = STAR.output_log_final
         File star_output_SJ = STAR.output_SJ
-        File star_chimeric_junction = STAR.chimeric_junction
+        File? star_chimeric_junction = STAR.chimeric_junction
 
         File? remove_duplicates_bam = RemoveDuplicates.bam
         File? remove_duplicates_bam_index = RemoveDuplicates.bai
@@ -78,7 +78,6 @@ workflow ctat_vif {
         File? star2_bam_index = STAR2.bai
         File? star2_output_log_final = STAR2.output_log_final
         File? star2_output_SJ = STAR2.output_SJ
-        File? star2_chimeric_junction = STAR2.chimeric_junction
 
         File? remove_duplicates2_bam = RemoveDuplicates2.bam
         File? remove_duplicates2_bam_index = RemoveDuplicates2.bai
@@ -129,7 +128,7 @@ workflow ctat_vif {
     }
     call InsertionSiteCandidates {
         input:
-            chimeric_junction=STAR.chimeric_junction,
+            chimeric_junction=select_first([STAR.chimeric_junction]),
             viral_fasta=viral_fasta,
             remove_duplicates=remove_duplicates,
             util_dir=util_dir,
@@ -325,7 +324,7 @@ task STAR {
         File bai = "~{base_name}.Aligned.sortedByCoord.out.bam.bai"
         File output_log_final = "~{base_name}.Log.final.out"
         File output_SJ = "~{base_name}.SJ.out.tab"
-        File chimeric_junction = "~{base_name}.Chimeric.out.junction"
+        File? chimeric_junction = "~{base_name}.Chimeric.out.junction"
     }
 
     runtime {
