@@ -17,7 +17,7 @@ workflow ctat_vif {
         File? star_reference
         String? star_reference_dir
 
-        String util_dir = "/usr/local/bin/CTAT-VirusIntegrationFinder/util"
+        String util_dir = "/usr/local/src/CTAT-VirusIntegrationFinder/util"
         Float star_extra_disk_space = 30
         Float star_fastq_disk_space_multiplier = 10
         Boolean star_use_ssd = false

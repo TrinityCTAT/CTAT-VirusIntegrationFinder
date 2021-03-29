@@ -27,12 +27,14 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     libxt-dev \
     make \
+    pbzip2 \
     perl \
     pkg-config \
     python3 \
     python3-dev \
     python3-distutils \
     python3-setuptools \
+    r-base \
     rsync \
     tzdata \
     unzip \
@@ -55,20 +57,12 @@ RUN curl -L http://cpanmin.us | perl - App::cpanminus
 RUN cpanm install URI::Escape
 
 ENV SRC /usr/local/src
-ENV BIN  /usr/local/bin
+ENV BIN /usr/local/bin
 
-# Install R
-WORKDIR $SRC
-ENV R_VERSION=R-3.6.3
-RUN curl https://cran.r-project.org/src/base/R-3/$R_VERSION.tar.gz -o $R_VERSION.tar.gz && \
-        tar xvf $R_VERSION.tar.gz && \
-        cd $R_VERSION && \
-        ./configure && make && make install
 
 RUN R -e 'install.packages("BiocManager", repos="http://cran.us.r-project.org")'
 RUN R -e 'BiocManager::install("tidyverse")'
 RUN R -e 'BiocManager::install("argparse")'
-
 
 ## update igv-reports to current bleeding edge
 RUN apt-get update && apt-get install -y git && apt-get clean
@@ -111,8 +105,8 @@ RUN wget -q https://github.com/arq5x/bedtools2/releases/download/v2.30.0/bedtool
    cp bin/* $BIN/ && \
    rm $SRC/bedtools-2.30.0.tar.gz
 
-## directly incorporate ctat-VIF
-## install CTAT-VirusIntegrationFinder
+
+## CTAT-VirusIntegrationFinder
 WORKDIR $SRC
 ENV VIF_CO="3e48b729c099827983c63b772823e5e4fc45f9cd"
 RUN git clone --recursive https://github.com/broadinstitute/CTAT-VirusIntegrationFinder.git && \
@@ -122,9 +116,7 @@ RUN git clone --recursive https://github.com/broadinstitute/CTAT-VirusIntegratio
         mv * $BIN && \
 	    cd ${BIN}/util/bamsifter && make
 
-RUN apt-get -qq -y remove build-essential curl gcc g++ git make unzip wget && \
+RUN apt-get -qq -y remove automake build-essential cmake curl git gcc g++ wget && \
     apt-get -qq -y autoremove && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
-
-
