@@ -191,7 +191,6 @@ workflow ctat_vif {
                 star_reference=star_reference,
                 star_reference_dir=star_reference_dir,
                 viral_fasta=viral_fasta,
-                viral_gtf=ExtractChimericGenomicTargets.gtf_extract,
                 disable_chimeras=true,
                 extra_disk_space = star_extra_disk_space,
                 disk_space_multiplier = star_fastq_disk_space_multiplier,
