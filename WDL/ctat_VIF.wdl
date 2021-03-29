@@ -251,12 +251,14 @@ workflow ctat_vif {
                 chim_targets_gtf=ExtractChimericGenomicTargets.gtf_extract,
                 chim_targets_fasta=ExtractChimericGenomicTargets.fasta_extract,
                 gtf=gtf,
+                images=[GenomeAbundancePlot.plot, GenomeAbundancePlot2.plot, TopVirusCoverage.read_count_image, TopVirusCoverage.read_counts_log_image],
                 util_dir=util_dir,
                 preemptible=preemptible,
                 docker=docker
         }
     }
 }
+
 
 task STAR {
     input {
@@ -641,6 +643,7 @@ task IGVReport {
         File chim_targets_gtf
         File chim_targets_fasta
         File gtf
+        Array[File] images
         String util_dir
         Int preemptible
         String docker
@@ -678,7 +681,8 @@ task IGVReport {
         # generate the final report
         ~{util_dir}/add_to_html.py \
         --html igv.tmp.html \
-        --out igv.html
+        --out igv.html \
+        --image ~{sep=' --image ' images}
     >>>
 
     output {
