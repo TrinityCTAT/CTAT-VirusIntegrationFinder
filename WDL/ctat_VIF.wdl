@@ -77,7 +77,7 @@ workflow ctat_vif {
         File? star2_bam = STAR2.bam
         File? star2_bam_index = STAR2.bai
         File? star2_output_log_final = STAR2.output_log_final
-        File? star2_output_SJ =STAR2.output_SJ
+        File? star2_output_SJ = STAR2.output_SJ
         File? star2_chimeric_junction = STAR2.chimeric_junction
 
         File? remove_duplicates2_bam = RemoveDuplicates2.bam
@@ -98,6 +98,7 @@ workflow ctat_vif {
             util_dir=util_dir,
             fastq1=left,
             fastq2=right,
+            base_name="out.",
             star_reference=star_reference,
             star_reference_dir=star_reference_dir,
             viral_fasta=viral_fasta,
@@ -116,6 +117,7 @@ workflow ctat_vif {
             input:
                 input_bam=STAR.bam,
                 input_bai=STAR.bai,
+                output_bam = "Aligned.sortedByCoord.out.rm.dups.bam",
                 util_dir=util_dir,
                 cpu=1,
                 preemptible=preemptible,
@@ -185,6 +187,7 @@ workflow ctat_vif {
                 util_dir=util_dir,
                 fastq1=left,
                 fastq2=right,
+                base_name="out2.",
                 star_reference=star_reference,
                 star_reference_dir=star_reference_dir,
                 viral_fasta=viral_fasta,
@@ -203,6 +206,7 @@ workflow ctat_vif {
                 input:
                     input_bam=STAR2.bam,
                     input_bai=STAR2.bai,
+                    output_bam = "Aligned2.sortedByCoord.out.rm.dups.bam",
                     util_dir=util_dir,
                     cpu=1,
                     preemptible=preemptible,
@@ -275,6 +279,8 @@ task STAR {
         Int preemptible
         String memory
         String docker
+        String base_name
+
     }
 
     Boolean is_gzip = sub(select_first([fastq1]), "^.+\\.(gz)$", "GZ") == "GZ"
@@ -282,13 +288,13 @@ task STAR {
 
         genomeDir="~{star_reference}"
         if [ "$genomeDir" == "" ]; then
-        genomeDir="~{star_reference_dir}"
+            genomeDir="~{star_reference_dir}"
         fi
 
         if [ -f "${genomeDir}" ] ; then
-        mkdir genome_dir
-        tar xf ~{star_reference} -C genome_dir --strip-components 1
-        genomeDir="genome_dir"
+            mkdir genome_dir
+            tar xf ~{star_reference} -C genome_dir --strip-components 1
+            genomeDir="genome_dir"
         fi
 
         STAR \
@@ -297,6 +303,7 @@ task STAR {
         --readFilesIn ~{fastq1} ~{fastq2} \
         ~{true='--readFilesCommand "gunzip -c"' false='' is_gzip} \
         --outSAMtype BAM SortedByCoordinate \
+        --outFileNamePrefix ~{base_name} \
         --twopassMode Basic \
         --alignSJDBoverhangMin 10 \
         --genomeSuffixLengthMax 10000 \
@@ -311,15 +318,15 @@ task STAR {
         ~{true='' false='--chimJunctionOverhangMin 12 --chimSegmentMin 12 --chimSegmentReadGapMax 3' disable_chimeras} \
         ~{"--sjdbOverhang 150 --sjdbGTFfile " + viral_gtf}
 
-        samtools index Aligned.sortedByCoord.out.bam
+        samtools index "~{base_name}.Aligned.sortedByCoord.out.bam"
     >>>
 
     output {
-        File bam = "Aligned.sortedByCoord.out.bam"
-        File bai = "Aligned.sortedByCoord.out.bam.bai"
-        File output_log_final = "Log.final.out"
-        File output_SJ = "SJ.out.tab"
-        File chimeric_junction = "Chimeric.out.junction"
+        File bam = "~{base_name}.Aligned.sortedByCoord.out.bam"
+        File bai = "~{base_name}.Aligned.sortedByCoord.out.bam.bai"
+        File output_log_final = "~{base_name}.Log.final.out"
+        File output_log = "~{base_name}.Log.out"
+        File output_SJ = "~{base_name}.SJ.out.tab"
     }
 
     runtime {
@@ -342,19 +349,20 @@ task RemoveDuplicates {
         String docker
         Float extra_disk_space
         Float disk_space_multiplier
+        String output_bam
     }
     command <<<
         ~{util_dir}/bam_mark_duplicates.py \
         -i ~{input_bam} \
-        -o Aligned.sortedByCoord.out.rm.dups.bam \
+        -o ~{output_bam} \
         -r
 
-        samtools index Aligned.sortedByCoord.out.rm.dups.bam
+        samtools index ~{output_bam}
     >>>
 
     output {
-        File bam = "Aligned.sortedByCoord.out.rm.dups.bam"
-        File bai = "Aligned.sortedByCoord.out.rm.dups.bam.bai"
+        File bam = "~{output_bam}"
+        File bai = "~{output_bam}.bai"
     }
 
     runtime {
