@@ -460,6 +460,7 @@ task IGVVirusReport {
     input {
         File bam
         File bai
+        File viral_fasta
         File read_counts_summary
         String util_dir
         Int preemptible
@@ -482,16 +483,18 @@ task IGVVirusReport {
         -o vif.virus.reads.bam \
         ~{bam}
 
+        ln -sf ~{viral_fasta} vif.virus.fa
+
         # generate the html
         ~{util_dir}/make_VIF_igvjs_html.py \
         --html_template ~{util_dir}/resources/igvjs_VIF.html \
         --fusions_json vif.virus.json \
-        --input_file_prefix vif \
-        --html_output vif.virus.igvjs.html
+        --input_file_prefix vif.virus \
+        --html_output vif.virus.html
     >>>
 
     output {
-        File html = "vif.virus.igvjs.html"
+        File html = "vif.virus.html"
     }
 
     runtime {
@@ -669,8 +672,10 @@ task IGVReport {
         # prep for making the report
         ~{util_dir}/bamsifter/bamsifter \
         -c ~{max_coverage} \
-        -o igv.virus.reads.bam \
+        -o igv.reads.bam \
         ~{alignment_bam}
+
+        ln -sf ~{chim_targets_fasta} vif.fa
 
         ~{util_dir}/make_VIF_igvjs_html.py \
         --html_template ~{util_dir}/resources/igvjs_VIF.html \
