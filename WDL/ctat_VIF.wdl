@@ -251,7 +251,7 @@ workflow ctat_vif {
                 chim_targets_gtf=ExtractChimericGenomicTargets.gtf_extract,
                 chim_targets_fasta=ExtractChimericGenomicTargets.fasta_extract,
                 gtf=gtf,
-                images=[GenomeAbundancePlot.plot, GenomeAbundancePlot2.plot, TopVirusCoverage.read_count_image, TopVirusCoverage.read_counts_log_image],
+                images=[GenomeAbundancePlot.plot, GenomeAbundancePlot2.plot, TopVirusCoverage.read_counts_image, TopVirusCoverage.read_counts_log_image],
                 util_dir=util_dir,
                 preemptible=preemptible,
                 docker=docker
