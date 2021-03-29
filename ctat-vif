@@ -154,7 +154,7 @@ def main():
             json_file,
             '-m',
             meta_file,
-            os.path.join(wdl_dir, "ctat_vif.wdl"),
+            os.path.join(wdl_dir, "ctat_VIF.wdl"),
     ]
 
     subprocess.run(cromwell_args, cwd=output_directory)
