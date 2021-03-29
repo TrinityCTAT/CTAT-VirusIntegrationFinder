@@ -101,7 +101,7 @@ workflow ctat_vif {
 
         File? genome_abundance_refined_plot = GenomeAbundancePlot2.plot
 
-        File? igv_report = IGVReport.html
+        File? igv_report_html = IGVReport.html
     }
     call STAR {
         input:
@@ -147,11 +147,11 @@ workflow ctat_vif {
             memory="2G",
             docker=docker,
     }
-    File insertion_site_candidates_abridged = select_first([InsertionSiteCandidates.abridged_filtered, InsertionSiteCandidates.abridged])
+    File insertion_site_candidates_output = select_first([InsertionSiteCandidates.abridged_filtered, InsertionSiteCandidates.abridged])
 
     call GenomeAbundancePlot {
         input:
-            counts=insertion_site_candidates_abridged,
+            counts=insertion_site_candidates_output,
             output_name="vif.prelim.genome_plot",
             util_dir=util_dir,
             preemptible=preemptible,
@@ -161,7 +161,7 @@ workflow ctat_vif {
     File aligned_bai = select_first([RemoveDuplicates.bai, STAR.bai])
     call TopVirusCoverage {
         input:
-            chimeric_events=insertion_site_candidates_abridged,
+            chimeric_events=insertion_site_candidates_output,
             bam=aligned_bam,
             bai=aligned_bai,
             util_dir=util_dir,
@@ -185,7 +185,7 @@ workflow ctat_vif {
                 bai=aligned_bai,
                 fasta=fasta,
                 virus_fasta=virus_fasta,
-                insertion_site_candidates_abridged=insertion_site_candidates_abridged,
+                insertion_site_candidates_abridged=insertion_site_candidates_output,
                 util_dir=util_dir,
                 preemptible=preemptible,
                 docker=docker
@@ -237,7 +237,7 @@ workflow ctat_vif {
         }
         call RefineVIFOutput {
             input:
-                prelim_counts=insertion_site_candidates_abridged,
+                prelim_counts=insertion_site_candidates_output,
                 vif_counts=ChimericContigEvidenceAnalyzer.evidence_counts,
                 util_dir=util_dir,
                 preemptible=preemptible,
