@@ -295,7 +295,11 @@ task STAR {
 
         if [ -f "${genomeDir}" ] ; then
             mkdir genome_dir
-            tar xf ~{star_reference} -C genome_dir --strip-components 1
+            if [[ $genomeDir = *.bz2 ]] ; then
+                pbzip2 -dc ~{star_reference} | tar x -C genome_dir --strip-components 1
+            else
+                tar xf ~{star_reference} -C genome_dir --strip-components 1
+            fi
             genomeDir="genome_dir"
         fi
 
