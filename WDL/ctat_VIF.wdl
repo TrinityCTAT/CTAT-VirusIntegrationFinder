@@ -163,6 +163,7 @@ workflow ctat_vif {
         input:
             bam=aligned_bam,
             bai=aligned_bai,
+            viral_fasta=viral_fasta,
             read_counts_summary=TopVirusCoverage.read_counts_summary,
             util_dir=util_dir,
             preemptible=preemptible,
