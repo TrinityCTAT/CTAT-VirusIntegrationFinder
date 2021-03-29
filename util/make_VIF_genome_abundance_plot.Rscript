@@ -91,16 +91,18 @@ main = function () {
     parser = ArgumentParser()
     parser$add_argument("--vif_report", help="final counts file", required=TRUE, nargs=1)
     parser$add_argument("--output_png", help="output png filename", required=TRUE)
+    parser$add_argument("--title", help="output png title", required=TRUE)
 
     args = parser$parse_args()
     vif_report = args$vif_report
+    title = args$title
     output_png = args$output_png
 
     data = read.table(vif_report, header=T, sep="\t", stringsAsFactors = F, comment.char = '', quote = '')
     data = condense_data(data)
     p = make_chr_plot(data)
     png(output_png, width=800, height=400)
-    plot(p)
+    plot(p, title=title)
     dev.off()
 
     quit(save = "no", status = 0, runLast = FALSE)

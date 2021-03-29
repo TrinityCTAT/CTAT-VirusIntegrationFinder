@@ -144,6 +144,7 @@ workflow ctat_vif {
         input:
             counts=insertion_site_candidates_output,
             output_name="vif.prelim.genome_plot",
+            title="Preliminary Genome Wide Abundance",
             util_dir=util_dir,
             preemptible=preemptible,
             docker=docker
@@ -240,6 +241,7 @@ workflow ctat_vif {
             input:
                 counts=RefineVIFOutput.refined_counts,
                 output_name="vif.genome_plot",
+                title="Genome Wide Abundance",
                 util_dir=util_dir,
                 preemptible=preemptible,
                 docker=docker
@@ -615,6 +617,7 @@ task GenomeAbundancePlot {
     input {
         File counts
         String output_name
+        String title
         String util_dir
         Int preemptible
         String docker
@@ -623,6 +626,7 @@ task GenomeAbundancePlot {
     command <<<
         ~{util_dir}/make_VIF_genome_abundance_plot.Rscript \
         --vif_report ~{counts} \
+        --title "~{title}" \
         --output_png ~{output_name}.png
     >>>
 
