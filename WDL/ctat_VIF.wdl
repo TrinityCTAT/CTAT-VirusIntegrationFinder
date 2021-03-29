@@ -24,7 +24,7 @@ workflow ctat_vif {
         Int star_cpu = 12
         Float star_memory = 75
         Int preemptible = 2
-        String docker = "trinityctat/ctat_mutations:3.0.0"
+        String docker = "trinityctat/ctat_vif:0.1.0"
     }
 
     parameter_meta {
