@@ -98,7 +98,7 @@ workflow ctat_vif {
             util_dir=util_dir,
             fastq1=left,
             fastq2=right,
-            base_name="out.",
+            base_name="out",
             star_reference=star_reference,
             star_reference_dir=star_reference_dir,
             viral_fasta=viral_fasta,
@@ -187,7 +187,7 @@ workflow ctat_vif {
                 util_dir=util_dir,
                 fastq1=left,
                 fastq2=right,
-                base_name="out2.",
+                base_name="out2",
                 star_reference=star_reference,
                 star_reference_dir=star_reference_dir,
                 viral_fasta=viral_fasta,
@@ -303,7 +303,7 @@ task STAR {
         --readFilesIn ~{fastq1} ~{fastq2} \
         ~{true='--readFilesCommand "gunzip -c"' false='' is_gzip} \
         --outSAMtype BAM SortedByCoordinate \
-        --outFileNamePrefix ~{base_name} \
+        --outFileNamePrefix ~{base_name}. \
         --twopassMode Basic \
         --alignSJDBoverhangMin 10 \
         --genomeSuffixLengthMax 10000 \
@@ -327,6 +327,7 @@ task STAR {
         File output_log_final = "~{base_name}.Log.final.out"
         File output_log = "~{base_name}.Log.out"
         File output_SJ = "~{base_name}.SJ.out.tab"
+        File chimeric_junction = "{base_name}.Chimeric.out.junction"
     }
 
     runtime {
