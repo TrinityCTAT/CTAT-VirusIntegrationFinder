@@ -555,6 +555,8 @@ task ChimericContigEvidenceAnalyzer {
         --patch_db_bam ~{bam} \
         --patch_db_gtf ~{gtf} \
         --output_prefix vif
+
+        samtools index vif.evidence.bam
     >>>
 
     output {
