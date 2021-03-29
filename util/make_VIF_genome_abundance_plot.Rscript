@@ -72,11 +72,11 @@ get_chr_panel_base_plot = function(dataToPlot, chr_lens=chr_lengths) {
 
 
 
-make_chr_plot = function(dataToPlot) {
+make_chr_plot = function(dataToPlot, title) {
 
     p = get_chr_panel_base_plot(dataToPlot)
 
-    p = p + geom_point(aes(x=coord, y=counts))
+    p = p + geom_point(aes(x=coord, y=counts)) + ggtitle(title)
 
     return (p)
 }
@@ -91,14 +91,16 @@ main = function () {
     parser = ArgumentParser()
     parser$add_argument("--vif_report", help="final counts file", required=TRUE, nargs=1)
     parser$add_argument("--output_png", help="output png filename", required=TRUE)
+    parser$add_argument("--title", help="output png title", required=TRUE)
 
     args = parser$parse_args()
     vif_report = args$vif_report
+    title = args$title
     output_png = args$output_png
 
     data = read.table(vif_report, header=T, sep="\t", stringsAsFactors = F, comment.char = '', quote = '')
     data = condense_data(data)
-    p = make_chr_plot(data)
+    p = make_chr_plot(data, title)
     png(output_png, width=800, height=400)
     plot(p)
     dev.off()

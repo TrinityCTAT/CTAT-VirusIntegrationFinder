@@ -13,13 +13,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", help="Path to image to append to html", action='append')
-    parser.add_argument("--title", help="Image title", action='append')
     parser.add_argument("--html", help="Path to HTML file")
     parser.add_argument("--out", help="Path to output HTML file")
 
     args = parser.parse_args()
     images = args.image
-    titles = args.title
     html = args.html
     out = args.out
     with open(html, 'rt') as f:
@@ -28,9 +26,9 @@ if __name__ == "__main__":
     text_to_add = '<div class="container-fluid">'
     for i in range(len(images)):
         image = images[i]
-        title = titles[i]
-        if title != 'na':
-            text_to_add += '<h4>{}</h4>'.format(title)
+        # title = titles[i]
+        # if title != 'na':
+        #     text_to_add += '<h4>{}</h4>'.format(title)
         b64 = get_base64_encoded_image(image)
         text_to_add += '<img src="{}">'.format(b64)
         text_to_add += '<br />'

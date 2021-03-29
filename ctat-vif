@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+
+import os
+import subprocess
+import sys
+import tempfile
+
+if sys.version_info[0] < 3:
+    print("This script requires Python 3")
+    exit(1)
+
+import argparse
+import json
+
+
+def is_in_path(path):
+    try:
+        if (
+                subprocess.run(
+                    ["which", path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+                ).returncode
+                != 0
+        ):
+            return False
+    except:
+        return False
+    return True
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Virus insertion finder"
+    )
+
+    parser.add_argument("--left", help="Path to one of the two paired samples", required=True)
+
+    parser.add_argument("--right", help="Path to one of the two paired samples")
+
+    parser.add_argument("--viral_fasta", help="Viral fasta", required=True)
+
+    parser.add_argument(
+        "--genome_lib_dir",
+        default=os.environ.get("CTAT_GENOME_LIB"),
+        help="Genome lib directory - see http://FusionFilter.github.io for details. Uses env variable CTAT_GENOME_LIB as default",
+    )
+
+    parser.add_argument("--cpu", type=int, help="Number of CPUs for multi-threaded steps")
+
+    parser.add_argument(
+        "--min_reads", type=int, help="Filter insertion sites candidates that do not have at least 'min_reads'",
+        default=0
+    )
+
+    parser.add_argument(
+        "--remove_duplicates", action="store_true", help="Remove duplicates"
+    )
+
+    parser.add_argument(
+        "--star_init_only", action="store_true", help="Only perform initial STAR chimeric junction analysis"
+    )
+
+    parser.add_argument(
+        "--cromwell", help="Optional path to cromwell jar file",
+    )
+
+    parser.add_argument(
+        "-O",
+        "--outputdir",
+        dest="outputdir",
+        help="Output directory",
+    )
+
+    args = parser.parse_args()
+    left = args.left
+    right = args.right
+    ctat_genome_lib_path = args.genome_lib_dir
+    cromwell = args.cromwell
+    remove_duplicates = args.remove_duplicates
+    star_init_only = args.star_init_only
+    min_reads = args.min_reads
+    viral_fasta = args.viral_fasta
+    cpu = args.cpu
+    output_directory = args.outputdir
+
+    if ctat_genome_lib_path is None or not os.path.exists(ctat_genome_lib_path):
+        exit("Missing path to CTAT_GENOME_LIB in $CTAT_GENOME_LIB.")
+
+    if left is not None:
+        left = os.path.abspath(left)
+    if right is not None:
+        right = os.path.abspath(right)
+    base_dir = os.path.dirname(os.path.realpath(__file__))
+    ctat_genome_lib_path = os.path.abspath(ctat_genome_lib_path)
+    if not os.path.exists(ctat_genome_lib_path):
+        exit("CTAT_GENOME_LIB at {} not found".format(ctat_genome_lib_path))
+    gtf = os.path.join(ctat_genome_lib_path, "ref_annot.gtf")
+    ref_fasta = os.path.join(ctat_genome_lib_path, "ref_genome.fa")
+    star_reference = os.path.join(ctat_genome_lib_path, "ref_genome.fa.star.idx")
+
+    input_json = {}
+    input_json["gtf"] = gtf
+    input_json["fasta"] = ref_fasta
+    # input_json["ref_fasta_index"] = ref_fasta_index
+    input_json["star_reference_dir"] = star_reference
+    input_json['viral_fasta'] = viral_fasta
+
+    if left is not None:
+        input_json["left"] = left
+    if right is not None:
+        input_json["right"] = right
+
+    input_json['min_reads'] = min_reads
+    input_json['star_init_only'] = star_init_only
+    input_json["remove_duplicates"] = remove_duplicates
+    if cpu is None:
+        cpu = min(16, os.cpu_count())
+    input_json["star_cpu"] = cpu
+    util_dir = os.path.join(base_dir, "util")
+    input_json["util_dir"] = util_dir
+    input_json["docker"] = "a/b"  # hack to make cromwell happy
+
+    _, json_file = tempfile.mkstemp(suffix=".json")
+    _, meta_file = tempfile.mkstemp(suffix=".json")
+
+    wdl_dir = os.path.join(base_dir, "WDL")
+    cromwell_jar = None
+    if cromwell is None:
+        for f in os.listdir(wdl_dir):
+            if f.startswith('cromwell-') and f.endswith('.jar'):
+                cromwell_jar = os.path.join(wdl_dir, f)
+                break
+    else:
+        cromwell_jar = os.path.abspath(cromwell)
+    if cromwell_jar is None or not os.path.exists(cromwell_jar):
+        exit(
+            "Cromwell jar file not found. Please run download_cromwell.sh to download."
+        )
+    cromwell_conf = os.path.join(wdl_dir, "cromwell.conf")
+    if not os.path.exists(cromwell_conf):
+        exit("Cromwell configuration not found")
+
+    if output_directory is not None and not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+
+    input_json_with_prefix = {}
+    for key in input_json:
+        input_json_with_prefix["ctat_vif.{}".format(key)] = input_json[key]
+    with open(json_file, "wt") as out:
+        out.write(json.dumps(input_json_with_prefix))
+    cromwell_args = [
+            "java",
+            "-Dconfig.file={}".format(cromwell_conf),
+            "-jar",
+            cromwell_jar,
+            "run",
+            "-i",
+            json_file,
+            '-m',
+            meta_file,
+            os.path.join(wdl_dir, "ctat_VIF.wdl"),
+    ]
+
+    subprocess.run(cromwell_args, cwd=output_directory)
+    os.remove(json_file)
+    with open(meta_file, 'rt', encoding='UTF-8') as f:
+        metadata = json.load(f)
+    os.remove(meta_file)
+    if 'outputs' in metadata:
+        outputs = metadata['outputs']
+        for key in outputs:
+            path = outputs[key]
+            if path is not None and isinstance(path, str) and os.path.exists(path):
+                name = os.path.basename(path)
+                dst = name if output_directory is None else os.path.join(output_directory, name)
+                if os.path.exists(dst):
+                    os.remove(dst)
+                os.symlink(path, dst)
+
+
+if __name__ == "__main__":
+    main()
