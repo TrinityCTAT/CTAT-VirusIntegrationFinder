@@ -7,8 +7,8 @@ workflow ctat_vif {
 
         File fasta
         File gtf
-        File virus_fasta
-        File? virus_gtf
+        File viral_fasta
+        File? viral_gtf
 
         Boolean star_init_only = false
         Boolean remove_duplicates = false
@@ -28,33 +28,23 @@ workflow ctat_vif {
     }
 
     parameter_meta {
-        left:{
-                 help:"One of the two paired RNAseq samples"
-             }
-        right:{
-                  help:"One of the two paired RNAseq samples"
-              }
+        left:{help:"One of the two paired RNAseq samples"}
+        right:{help:"One of the two paired RNAseq samples"}
 
-        star_reference:{
-                           help:"STAR index archive"
-                       }
-        star_reference_dir:{
-                               help:"STAR directory (for non-Terra use)"
-                           }
-        star_cpu:{
-                     help:"STAR aligner number of CPUs"
-                 }
-        star_memory:{
-                        help:"STAR aligner memory"
-                    }
+        min_reads:{help:"Filter insertion sites candidates that do not have at least 'min_reads'"}
+        remove_duplicates:{help:"Remove duplicate alignments"}
 
-        plugins_path:{
-                         help:"Path to util folder"
-                     }
+        viral_fasta:{help:"Viral fasta"}
 
-        docker:{
-                   help:"Docker image"
-               }
+        star_reference:{help:"STAR index archive"}
+        star_reference_dir:{help:"STAR directory (for non-Terra use)"}
+        star_cpu:{help:"STAR aligner number of CPUs"}
+        star_memory:{help:"STAR aligner memory"}
+        util_dir:{help:"Path to util directory"}
+
+
+        star_init_only:{help:"Only perform initial STAR chimeric junction analysis"}
+        docker:{help:"Docker image"}
     }
 
     output {
@@ -110,8 +100,8 @@ workflow ctat_vif {
             fastq2=right,
             star_reference=star_reference,
             star_reference_dir=star_reference_dir,
-            virus_fasta=virus_fasta,
-            virus_gtf=virus_gtf,
+            viral_fasta=viral_fasta,
+            viral_gtf=viral_gtf,
             disable_chimeras=false,
             extra_disk_space = star_extra_disk_space,
             disk_space_multiplier = star_fastq_disk_space_multiplier,
@@ -138,7 +128,7 @@ workflow ctat_vif {
     call InsertionSiteCandidates {
         input:
             chimeric_junction=STAR.chimeric_junction,
-            virus_fasta=virus_fasta,
+            viral_fasta=viral_fasta,
             remove_duplicates=remove_duplicates,
             util_dir=util_dir,
             min_reads=min_reads,
@@ -184,7 +174,7 @@ workflow ctat_vif {
                 bam=aligned_bam,
                 bai=aligned_bai,
                 fasta=fasta,
-                virus_fasta=virus_fasta,
+                viral_fasta=viral_fasta,
                 insertion_site_candidates_abridged=insertion_site_candidates_output,
                 util_dir=util_dir,
                 preemptible=preemptible,
@@ -197,8 +187,8 @@ workflow ctat_vif {
                 fastq2=right,
                 star_reference=star_reference,
                 star_reference_dir=star_reference_dir,
-                virus_fasta=virus_fasta,
-                virus_gtf=ExtractChimericGenomicTargets.fasta_extract,
+                viral_fasta=viral_fasta,
+                viral_gtf=ExtractChimericGenomicTargets.gtf_extract,
                 disable_chimeras=true,
                 extra_disk_space = star_extra_disk_space,
                 disk_space_multiplier = star_fastq_disk_space_multiplier,
@@ -273,8 +263,8 @@ task STAR {
         File? fastq2
         File? star_reference
         String? star_reference_dir
-        File virus_fasta
-        File? virus_gtf
+        File viral_fasta
+        File? viral_gtf
         Boolean disable_chimeras
         Int max_mate_dist = 100000
 
@@ -314,12 +304,12 @@ task STAR {
         --alignInsertionFlush Right \
         --alignMatesGapMax ~{max_mate_dist} \
         --alignIntronMax  ~{max_mate_dist} \
-        --genomeFastaFiles ~{virus_fasta} \
+        --genomeFastaFiles ~{viral_fasta} \
         --outSAMfilter KeepAllAddedReferences \
         --alignSJstitchMismatchNmax 5 -1 5 5 \
         --scoreGapNoncan -6 \
         ~{true='' false='--chimJunctionOverhangMin 12 --chimSegmentMin 12 --chimSegmentReadGapMax 3' disable_chimeras} \
-        ~{"--sjdbOverhang 150 --sjdbGTFfile " + virus_gtf}
+        ~{"--sjdbOverhang 150 --sjdbGTFfile " + viral_gtf}
 
         samtools index Aligned.sortedByCoord.out.bam
     >>>
@@ -379,7 +369,7 @@ task RemoveDuplicates {
 task InsertionSiteCandidates {
     input {
         File chimeric_junction
-        File virus_fasta
+        File viral_fasta
         Boolean remove_duplicates
         String util_dir
         Int cpu
@@ -394,7 +384,7 @@ task InsertionSiteCandidates {
     command <<<
         ~{util_dir}/chimJ_to_virus_insertion_candidate_sites.py \
         --chimJ ~{chimeric_junction} \
-        --patch_db_fasta ~{virus_fasta} \
+        --patch_db_fasta ~{viral_fasta} \
         --output_prefix ~{prefix} \
         ~{true='--remove_duplicates' false='' remove_duplicates}
 
@@ -417,7 +407,7 @@ task InsertionSiteCandidates {
 
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil(size(virus_fasta, "GB") + size(chimeric_junction, "GB")*3) + " HDD"
+        disks: "local-disk " + ceil(size(viral_fasta, "GB") + size(chimeric_junction, "GB")*3) + " HDD"
         docker: docker
         cpu: cpu
         memory: memory + "GB"
@@ -510,7 +500,7 @@ task ExtractChimericGenomicTargets {
         File bam
         File bai
         File fasta
-        File virus_fasta
+        File viral_fasta
         File insertion_site_candidates_abridged
         String util_dir
         Int preemptible
@@ -521,7 +511,7 @@ task ExtractChimericGenomicTargets {
 
         ~{util_dir}/extract_chimeric_genomic_targets.py \
         --fasta ~{fasta} \
-        --patch_db_fasta ~{virus_fasta} \
+        --patch_db_fasta ~{viral_fasta} \
         --output_prefix vif.extract \
         --chim_events ~{insertion_site_candidates_abridged} \
         --pad_region_length 1000
@@ -534,7 +524,7 @@ task ExtractChimericGenomicTargets {
 
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil(size(virus_fasta, "GB")*2 + size(fasta, "GB")*2 + size(bam, "GB")*2 + 1) + " HDD"
+        disks: "local-disk " + ceil(size(viral_fasta, "GB")*2 + size(fasta, "GB")*2 + size(bam, "GB")*2 + 1) + " HDD"
         docker: docker
         cpu: 1
         memory: "1GB"
