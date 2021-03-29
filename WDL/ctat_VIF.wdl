@@ -273,7 +273,6 @@ task STAR {
         File viral_fasta
         File? viral_gtf
         Boolean disable_chimeras
-        Int max_mate_dist = 100000
 
         Float extra_disk_space
         Float disk_space_multiplier
@@ -283,9 +282,9 @@ task STAR {
         String memory
         String docker
         String base_name
-
     }
 
+    Int max_mate_dist = 100000
     Boolean is_gzip = sub(select_first([fastq1]), "^.+\\.(gz)$", "GZ") == "GZ"
     command <<<
 
@@ -400,9 +399,9 @@ task InsertionSiteCandidates {
         ~{true='--remove_duplicates' false='' remove_duplicates}
 
         python <<CODE
-        import pandas as pd
         min_reads = ~{min_reads}
         if min_reads > 0:
+            import pandas as pd
             df = pd.read_csv("~{prefix}.abridged.tsv", sep='\t')
             df = df[df['total'] >= min_reads]
             df.to_csv("~{prefix}.abridged.filtered.tsv", sep='\t', index=False)
