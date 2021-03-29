@@ -51,7 +51,7 @@ workflow ctat_vif {
         File star_bam = STAR.bam
         File star_bam_index = STAR.bai
         File star_output_log_final = STAR.output_log_final
-        File star_output_SJ =STAR.output_SJ
+        File star_output_SJ = STAR.output_SJ
         File star_chimeric_junction = STAR.chimeric_junction
 
         File? remove_duplicates_bam = RemoveDuplicates.bam
@@ -325,9 +325,8 @@ task STAR {
         File bam = "~{base_name}.Aligned.sortedByCoord.out.bam"
         File bai = "~{base_name}.Aligned.sortedByCoord.out.bam.bai"
         File output_log_final = "~{base_name}.Log.final.out"
-        File output_log = "~{base_name}.Log.out"
         File output_SJ = "~{base_name}.SJ.out.tab"
-        File chimeric_junction = "{base_name}.Chimeric.out.junction"
+        File chimeric_junction = "~{base_name}.Chimeric.out.junction"
     }
 
     runtime {
