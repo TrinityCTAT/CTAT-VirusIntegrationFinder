@@ -287,6 +287,9 @@ task STAR {
     Int max_mate_dist = 100000
     Boolean is_gzip = sub(select_first([fastq1]), "^.+\\.(gz)$", "GZ") == "GZ"
     command <<<
+        set -e
+
+        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
 
         genomeDir="~{star_reference}"
         if [ "$genomeDir" == "" ]; then
@@ -358,6 +361,10 @@ task RemoveDuplicates {
         String output_bam
     }
     command <<<
+        set -e
+
+        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
+
         ~{util_dir}/bam_mark_duplicates.py \
         -i ~{input_bam} \
         -o ~{output_bam} \
@@ -376,7 +383,7 @@ task RemoveDuplicates {
         disks: "local-disk " + ceil(size(input_bam, "GB")*disk_space_multiplier + extra_disk_space) + " HDD"
         docker: docker
         cpu: cpu
-        memory: memory + "GB"
+        memory: memory
     }
 }
 
@@ -396,6 +403,10 @@ task InsertionSiteCandidates {
     String prefix = "vif.prelim"
 
     command <<<
+        set -e
+
+        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
+
         ~{util_dir}/chimJ_to_virus_insertion_candidate_sites.py \
         --chimJ ~{chimeric_junction} \
         --patch_db_fasta ~{viral_fasta} \
@@ -424,7 +435,7 @@ task InsertionSiteCandidates {
         disks: "local-disk " + ceil(size(viral_fasta, "GB") + size(chimeric_junction, "GB")*3) + " HDD"
         docker: docker
         cpu: cpu
-        memory: memory + "GB"
+        memory: memory
     }
 }
 
@@ -440,6 +451,10 @@ task TopVirusCoverage {
     String prefix = "vif"
 
     command <<<
+        set -e
+
+        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
+
         ~{util_dir}/plot_top_virus_coverage.Rscript \
         --vif_report ~{chimeric_events} \
         --bam ~{bam} \
@@ -477,6 +492,9 @@ task ExtractChimericGenomicTargets {
     }
 
     command <<<
+        set -e
+
+        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
 
         ~{util_dir}/extract_chimeric_genomic_targets.py \
         --fasta ~{fasta} \
@@ -513,6 +531,9 @@ task ChimericContigEvidenceAnalyzer {
     }
 
     command <<<
+        set -e
+
+        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
 
         ~{util_dir}/chimeric_contig_evidence_analyzer.py \
         --patch_db_bam ~{bam} \
@@ -548,6 +569,9 @@ task RefineVIFOutput {
     }
 
     command <<<
+        set -e
+
+        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
 
         ~{util_dir}/refine_VIF_output.Rscript \
         --prelim_counts ~{prelim_counts} \
@@ -579,6 +603,10 @@ task GenomeAbundancePlot {
     }
 
     command <<<
+        set -e
+
+        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
+
         ~{util_dir}/make_VIF_genome_abundance_plot.Rscript \
         --vif_report ~{counts} \
         --title "~{title}" \
@@ -611,6 +639,9 @@ task IGVVirusReport {
     Int max_coverage = 100
 
     command <<<
+        set -e
+
+        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
 
         ~{util_dir}/create_insertion_site_inspector_js.py \
         --VIF_summary_tsv ~{read_counts_summary} \
@@ -665,7 +696,9 @@ task IGVReport {
     Int max_coverage = 100
 
     command <<<
-        set -ex
+        set -e
+
+        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
 
         ~{util_dir}/find_closest.py \
         -i ~{summary_results_tsv} \
