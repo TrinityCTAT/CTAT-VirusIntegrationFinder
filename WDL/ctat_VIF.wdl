@@ -133,12 +133,10 @@ workflow ctat_vif {
             remove_duplicates=remove_duplicates,
             util_dir=util_dir,
             min_reads=min_reads,
-            cpu=1,
             preemptible=preemptible,
-            memory="2G",
             docker=docker,
     }
-    File insertion_site_candidates_output = select_first([InsertionSiteCandidates.abridged_filtered, InsertionSiteCandidates.abridged])
+    File insertion_site_candidates_output =  (if min_reads>0 then select_first([InsertionSiteCandidates.abridged_filtered]) else InsertionSiteCandidates.abridged)
 
     call GenomeAbundancePlot {
         input:
@@ -289,8 +287,6 @@ task STAR {
     command <<<
         set -e
 
-        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
-
         genomeDir="~{star_reference}"
         if [ "$genomeDir" == "" ]; then
             genomeDir="~{star_reference_dir}"
@@ -363,8 +359,6 @@ task RemoveDuplicates {
     command <<<
         set -e
 
-        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
-
         ~{util_dir}/bam_mark_duplicates.py \
         -i ~{input_bam} \
         -o ~{output_bam} \
@@ -393,9 +387,7 @@ task InsertionSiteCandidates {
         File viral_fasta
         Boolean remove_duplicates
         String util_dir
-        Int cpu
         Int preemptible
-        String memory
         String docker
         Int min_reads
 
@@ -404,8 +396,6 @@ task InsertionSiteCandidates {
 
     command <<<
         set -e
-
-        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
 
         ~{util_dir}/chimJ_to_virus_insertion_candidate_sites.py \
         --chimJ ~{chimeric_junction} \
@@ -434,8 +424,8 @@ task InsertionSiteCandidates {
         preemptible: preemptible
         disks: "local-disk " + ceil(size(viral_fasta, "GB") + size(chimeric_junction, "GB")*3) + " HDD"
         docker: docker
-        cpu: cpu
-        memory: memory
+        cpu: 1
+        memory: "1GB"
     }
 }
 
@@ -452,8 +442,6 @@ task TopVirusCoverage {
 
     command <<<
         set -e
-
-        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
 
         ~{util_dir}/plot_top_virus_coverage.Rscript \
         --vif_report ~{chimeric_events} \
@@ -494,8 +482,6 @@ task ExtractChimericGenomicTargets {
     command <<<
         set -e
 
-        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
-
         ~{util_dir}/extract_chimeric_genomic_targets.py \
         --fasta ~{fasta} \
         --patch_db_fasta ~{viral_fasta} \
@@ -533,8 +519,6 @@ task ChimericContigEvidenceAnalyzer {
     command <<<
         set -e
 
-        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
-
         ~{util_dir}/chimeric_contig_evidence_analyzer.py \
         --patch_db_bam ~{bam} \
         --patch_db_gtf ~{gtf} \
@@ -571,8 +555,6 @@ task RefineVIFOutput {
     command <<<
         set -e
 
-        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
-
         ~{util_dir}/refine_VIF_output.Rscript \
         --prelim_counts ~{prelim_counts} \
         --vif_counts ~{vif_counts} \
@@ -604,8 +586,6 @@ task GenomeAbundancePlot {
 
     command <<<
         set -e
-
-        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
 
         ~{util_dir}/make_VIF_genome_abundance_plot.Rscript \
         --vif_report ~{counts} \
@@ -641,8 +621,6 @@ task IGVVirusReport {
     command <<<
         set -e
 
-        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
-
         ~{util_dir}/create_insertion_site_inspector_js.py \
         --VIF_summary_tsv ~{read_counts_summary} \
         --json_outfile vif.virus.json
@@ -673,10 +651,10 @@ task IGVVirusReport {
 
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil(size(bam, "GB")*2 + 1) + " HDD"
+        disks: "local-disk " + ceil(size(bam, "GB")*2 + size(viral_fasta, "GB")*2 + 1) + " HDD"
         docker: docker
         cpu: 1
-        memory: "1GB"
+        memory: "4GB"
     }
 }
 
@@ -697,8 +675,6 @@ task IGVReport {
 
     command <<<
         set -e
-
-        /usr/local/src/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh &
 
         ~{util_dir}/find_closest.py \
         -i ~{summary_results_tsv} \
@@ -725,23 +701,23 @@ task IGVReport {
         --html_template ~{util_dir}/resources/igvjs_VIF.html \
         --fusions_json igv.json \
         --input_file_prefix vif \
-        --html_output igv.tmp.html
+        --html_output vif.html
 
         # generate the final report
         ~{util_dir}/add_to_html.py \
-        --html igv.tmp.html \
-        --out igv.html \
+        --html vif.html \
+        --out vif.html \
         --image ~{sep=' --image ' images}
     >>>
 
     output {
-        File html = "igv.html"
+        File html = "vif.html"
     }
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil( size(alignment_bam, "GB")*2 + 1) + " HDD"
+        disks: "local-disk " + ceil( size(alignment_bam, "GB")*2 + + size(chim_targets_fasta,"GB")*2 + 2) + " HDD"
         docker: docker
         cpu: 1
-        memory: "1GB"
+        memory: "4GB"
     }
 }
