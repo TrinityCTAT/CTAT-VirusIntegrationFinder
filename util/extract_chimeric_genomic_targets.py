@@ -4,17 +4,10 @@
 import os, re, sys
 import argparse
 import subprocess
-import pysam
 import csv
 
 if sys.version_info[0] < 3:
     raise Exception("This script requires Python 3")
-
-sys.path.insert(
-    0, os.path.sep.join([os.path.dirname(os.path.realpath(__file__)), "../PyLib"])
-)
-from Pipeliner import Pipeliner, Command
-
 import logging
 
 logger = logging.getLogger(__name__)
