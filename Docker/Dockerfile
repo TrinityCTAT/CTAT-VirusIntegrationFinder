@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y \
     libxt-dev \
     make \
     pbzip2 \
+    pigz \
     python3 \
     python3-pip \
     r-base \
