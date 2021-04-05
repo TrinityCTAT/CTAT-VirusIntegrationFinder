@@ -7,6 +7,7 @@ workflow ctat_vif {
 
         File fasta
         File gtf
+
         File viral_fasta
         File? viral_gtf
 
@@ -14,12 +15,19 @@ workflow ctat_vif {
         Boolean remove_duplicates = false
         Int min_reads = 0
 
+        String star_two_pass_mode = "Basic"
         File? star_reference
         String? star_reference_dir
+
+        String igv_virus_reports_memory = "12GB"
+        String igv_reports_memory = "1GB"
 
         String util_dir = "/usr/local/src/CTAT-VirusIntegrationFinder/util"
         Float star_extra_disk_space = 30
         Float star_fastq_disk_space_multiplier = 10
+        String star_index_memory = "50G"
+        Int sjdb_overhang = 150
+
         Boolean star_use_ssd = false
         Int star_cpu = 12
         Float star_memory = 75
@@ -34,15 +42,15 @@ workflow ctat_vif {
         min_reads:{help:"Filter insertion sites candidates that do not have at least 'min_reads'"}
         remove_duplicates:{help:"Remove duplicate alignments"}
 
+        fasta:{help:"Host fasta"}
+        gtf:{help:"Host annotations GTF"}
         viral_fasta:{help:"Viral fasta"}
 
-        star_reference:{help:"STAR index archive"}
-        star_reference_dir:{help:"STAR directory (for non-Terra use)"}
+        star_reference:{help:"STAR index archive containing both host and viral genomes"}
+        star_reference_dir:{help:"STAR directory containing both host and viral genomes (for non-Terra use)"}
         star_cpu:{help:"STAR aligner number of CPUs"}
         star_memory:{help:"STAR aligner memory"}
-        util_dir:{help:"Path to util directory"}
-
-
+        util_dir:{help:"Path to util directory (for non-Docker use)"}
         star_init_only:{help:"Only perform initial STAR chimeric junction analysis"}
         docker:{help:"Docker image"}
     }
@@ -92,16 +100,32 @@ workflow ctat_vif {
 
         File? igv_report_html = IGVReport.html
     }
+    Boolean create_star_index = !defined(star_reference) && !defined(star_reference_dir)
+    if(create_star_index) {
+        call STARIndex {
+            input:
+                fasta=fasta,
+                gtf=gtf,
+                sjdb_overhang=sjdb_overhang,
+                viral_fasta=viral_fasta,
+                memory = star_index_memory,
+                use_ssd = star_use_ssd,
+                cpu = star_cpu,
+                docker = docker,
+                preemptible = preemptible
+        }
+    }
+
+    File? star_reference_use = (if(create_star_index) then STARIndex.genome else star_reference)
     call STAR {
         input:
             util_dir=util_dir,
             fastq1=left,
             fastq2=right,
+            two_pass_mode = star_two_pass_mode,
             base_name="out",
-            star_reference=star_reference,
+            star_reference=star_reference_use,
             star_reference_dir=star_reference_dir,
-            viral_fasta=viral_fasta,
-            viral_gtf=viral_gtf,
             disable_chimeras=false,
             extra_disk_space = star_extra_disk_space,
             disk_space_multiplier = star_fastq_disk_space_multiplier,
@@ -165,6 +189,7 @@ workflow ctat_vif {
             viral_fasta=viral_fasta,
             read_counts_summary=TopVirusCoverage.read_counts_summary,
             util_dir=util_dir,
+            memory=igv_virus_reports_memory,
             preemptible=preemptible,
             docker=docker
     }
@@ -186,10 +211,11 @@ workflow ctat_vif {
                 util_dir=util_dir,
                 fastq1=left,
                 fastq2=right,
+                two_pass_mode = star_two_pass_mode,
                 base_name="out2",
-                star_reference=star_reference,
+                star_reference=star_reference_use,
                 star_reference_dir=star_reference_dir,
-                viral_fasta=ExtractChimericGenomicTargets.fasta_extract,
+                genome_fasta_file=ExtractChimericGenomicTargets.fasta_extract,
                 disable_chimeras=true,
                 extra_disk_space = star_extra_disk_space,
                 disk_space_multiplier = star_fastq_disk_space_multiplier,
@@ -254,12 +280,57 @@ workflow ctat_vif {
                 gtf=gtf,
                 images=[GenomeAbundancePlot.plot, GenomeAbundancePlot2.plot, TopVirusCoverage.read_counts_image, TopVirusCoverage.read_counts_log_image],
                 util_dir=util_dir,
+                memory=igv_reports_memory,
                 preemptible=preemptible,
                 docker=docker
         }
     }
 }
 
+task STARIndex {
+
+    input {
+        File fasta
+        File gtf
+        File viral_fasta
+        Int cpu
+        Int preemptible
+        String memory
+        String docker
+        Boolean use_ssd
+        Int sjdb_overhang
+    }
+
+    Float extra_disk_space = 100
+    Float disk_space_multiplier = 10
+
+    command <<<
+        set -e
+
+        mkdir genome_dir
+
+        STAR \
+        --runThreadN ~{cpu} \
+        --runMode genomeGenerate \
+        --genomeDir genome_dir \
+        --genomeFastaFiles ~{fasta} ~{viral_fasta} \
+        ~{"--sjdbOverhang " + sjdb_overhang + " --sjdbGTFfile " + gtf}
+
+        tar -I pigz -cf STAR.tar.gz genome_dir
+    >>>
+
+    output {
+        File genome = "STAR.tar.gz"
+    }
+
+    runtime {
+        preemptible: preemptible
+        disks: "local-disk " + ceil(size(fasta, "GB")*disk_space_multiplier + size(viral_fasta, "GB") * disk_space_multiplier + extra_disk_space) + " " + (if use_ssd then "SSD" else "HDD")
+        docker: docker
+        cpu: cpu
+        memory: memory
+    }
+}
 
 task STAR {
     input {
@@ -268,22 +339,24 @@ task STAR {
         File? fastq2
         File? star_reference
         String? star_reference_dir
-        File viral_fasta
-        File? viral_gtf
         Boolean disable_chimeras
-
         Float extra_disk_space
         Float disk_space_multiplier
         Boolean use_ssd
         Int cpu
         Int preemptible
-        String memory
+        Float memory
         String docker
         String base_name
+        String two_pass_mode
+
+
+        File? genome_fasta_file
     }
 
     Int max_mate_dist = 100000
     Boolean is_gzip = sub(select_first([fastq1]), "^.+\\.(gz)$", "GZ") == "GZ"
+    Boolean has_genome_fasta_file = defined(genome_fasta_file)
     command <<<
         set -e
 
@@ -294,11 +367,11 @@ task STAR {
 
         if [ -f "${genomeDir}" ] ; then
             mkdir genome_dir
+            compress="pigz"
             if [[ $genomeDir = *.bz2 ]] ; then
-                pbzip2 -dc ~{star_reference} | tar x -C genome_dir --strip-components 1
-            else
-                tar xf ~{star_reference} -C genome_dir --strip-components 1
+                compress="pbzip2"
             fi
+            tar -I $compress -xf ~{star_reference} -C genome_dir --strip-components 1
             genomeDir="genome_dir"
         fi
 
@@ -309,19 +382,18 @@ task STAR {
         ~{true='--readFilesCommand "gunzip -c"' false='' is_gzip} \
         --outSAMtype BAM SortedByCoordinate \
         --outFileNamePrefix ~{base_name}. \
-        --twopassMode Basic \
+        ~{"--twopassMode " + two_pass_mode} \
         --alignSJDBoverhangMin 10 \
         --genomeSuffixLengthMax 10000 \
         --limitBAMsortRAM 47271261705 \
         --alignInsertionFlush Right \
+        ~{"--genomeFastaFiles " + genome_fasta_file} \
+        ~{true='--outSAMfilter KeepAllAddedReferences' false='' has_genome_fasta_file} \
         --alignMatesGapMax ~{max_mate_dist} \
         --alignIntronMax  ~{max_mate_dist} \
-        --genomeFastaFiles ~{viral_fasta} \
-        --outSAMfilter KeepAllAddedReferences \
         --alignSJstitchMismatchNmax 5 -1 5 5 \
         --scoreGapNoncan -6 \
-        ~{true='' false='--chimJunctionOverhangMin 12 --chimSegmentMin 12 --chimSegmentReadGapMax 3' disable_chimeras} \
-        ~{"--sjdbOverhang 150 --sjdbGTFfile " + viral_gtf}
+        ~{true='' false='--chimJunctionOverhangMin 12 --chimSegmentMin 12 --chimSegmentReadGapMax 3' disable_chimeras}
 
         samtools index "~{base_name}.Aligned.sortedByCoord.out.bam"
     >>>
@@ -458,10 +530,10 @@ task TopVirusCoverage {
 
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil(size(chimeric_events, "GB") + 1) + " HDD"
+        disks: "local-disk " + ceil(size(bam, "GB") + size(bai, "GB") + size(chimeric_events, "GB") + 2) + " HDD"
         docker: docker
         cpu: 1
-        memory: "1GB"
+        memory: "2GB"
     }
 }
 
@@ -615,6 +687,7 @@ task IGVVirusReport {
         String util_dir
         Int preemptible
         String docker
+        String memory
     }
     Int max_coverage = 100
 
@@ -651,10 +724,10 @@ task IGVVirusReport {
 
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil(size(bam, "GB")*2 + size(viral_fasta, "GB")*2 + 1) + " HDD"
+        disks: "local-disk " + ceil(size(bam, "GB")*2 + size(viral_fasta, "GB")*2 + 2) + " HDD"
         docker: docker
         cpu: 1
-        memory: "4GB"
+        memory: memory
     }
 }
 
@@ -670,6 +743,7 @@ task IGVReport {
         String util_dir
         Int preemptible
         String docker
+        String memory
     }
     Int max_coverage = 100
 
@@ -715,9 +789,9 @@ task IGVReport {
     }
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil( size(alignment_bam, "GB")*2 + + size(chim_targets_fasta,"GB")*2 + 2) + " HDD"
+        disks: "local-disk " + ceil( size(images, "GB") + size(alignment_bam, "GB")*2 + size(summary_results_tsv, "GB") + size(chim_targets_fasta,"GB")*2 + 2) + " HDD"
         docker: docker
         cpu: 1
-        memory: "4GB"
+        memory: "16GB"
     }
 }
