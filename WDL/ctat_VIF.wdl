@@ -19,7 +19,7 @@ workflow ctat_vif {
         File? star_reference
         String? star_reference_dir
 
-        String igv_virus_reports_memory = "12GB"
+        String igv_virus_reports_memory = "14GB"
         String igv_reports_memory = "1GB"
 
         String util_dir = "/usr/local/src/CTAT-VirusIntegrationFinder/util"
