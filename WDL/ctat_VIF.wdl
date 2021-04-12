@@ -175,12 +175,10 @@ workflow ctat_vif {
         File insertion_site_candidates_output =  (if min_reads>0 then select_first([InsertionSiteCandidates.abridged_filtered]) else InsertionSiteCandidates.abridged)
 
         if(generate_reports) {
-            File star_aligned_bam = select_first([RemoveDuplicates.bam, STAR.bam])
-            File star_aligned_bai= select_first([RemoveDuplicates.bai, STAR.bai])
             call VirusReport {
                 input:
-                    bam=star_aligned_bam,
-                    bai=star_aligned_bai,
+                    bam=select_first([RemoveDuplicates.bam, STAR.bam]),
+                    bai=select_first([RemoveDuplicates.bai, STAR.bai]),
                     viral_fasta=viral_fasta,
                     insertion_site_candidates=insertion_site_candidates_output,
                     util_dir=util_dir,
@@ -191,8 +189,8 @@ workflow ctat_vif {
         }
     }
     if(!star_init_only) {
-        File aligned_bam_use = select_first([bam, star_aligned_bam])
-        File aligned_bai_use= select_first([bam_index, star_aligned_bai])
+        File aligned_bam_use = select_first([bam, RemoveDuplicates.bam, STAR.bam])
+        File aligned_bai_use= select_first([bam_index, RemoveDuplicates.bai, STAR.bai])
         File insertion_site_candidates_use = select_first([insertion_site_candidates, insertion_site_candidates_output])
         call ExtractChimericGenomicTargets {
             input:
