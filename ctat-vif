@@ -35,7 +35,7 @@ def main():
         description="Virus insertion finder"
     )
 
-    parser.add_argument("--left", help="Path to one of the two paired samples", required=True)
+    parser.add_argument("--left", help="Path to one of the two paired samples")
 
     parser.add_argument("--right", help="Path to one of the two paired samples")
 
@@ -55,6 +55,9 @@ def main():
         "--min_reads", type=int, help="Filter insertion sites candidates that do not have at least 'min_reads'",
         default=0
     )
+
+    parser.add_argument("--star_two_pass_mode", help="STAR 2-pass mapping mode", choices=['Basic', 'None'],
+        default='Basic')
 
     parser.add_argument(
         "--remove_duplicates", action="store_true", help="Remove duplicates"
@@ -87,6 +90,7 @@ def main():
     viral_fasta = args.viral_fasta
     cpu = args.cpu
     output_directory = args.outputdir
+    star_two_pass_mode = args.star_two_pass_mode
 
     if ctat_genome_lib_path is None or not os.path.exists(ctat_genome_lib_path):
         exit("Missing path to CTAT_GENOME_LIB in $CTAT_GENOME_LIB.")
@@ -102,9 +106,15 @@ def main():
         exit("CTAT_GENOME_LIB at {} not found".format(ctat_genome_lib_path))
     gtf = os.path.join(ctat_genome_lib_path, "ref_annot.gtf")
     ref_fasta = os.path.join(ctat_genome_lib_path, "ref_genome.fa")
+    if not os.path.exists(gtf):
+        exit('{} not found'.format(gtf))
+    if not os.path.exists(ref_fasta):
+        exit('{} not found'.format(ref_fasta))
     input_json = {}
     input_json["gtf"] = gtf
     input_json["fasta"] = ref_fasta
+    input_json['autodetect_cpu'] = False
+    input_json['star_two_pass_mode'] = star_two_pass_mode
     if star_reference is not None:
         star_reference = os.path.abspath(star_reference)
         input_json["star_reference_dir"] = star_reference
