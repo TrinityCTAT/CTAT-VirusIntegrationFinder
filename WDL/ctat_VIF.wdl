@@ -2,7 +2,7 @@ version 1.0
 
 workflow ctat_vif {
     input {
-        File left
+        File? left
         File? right
 
         File fasta
@@ -16,7 +16,7 @@ workflow ctat_vif {
         Boolean generate_reports = true
         Int min_reads = 0
 
-        String star_two_pass_mode = "Basic" # or None
+
         File? star_reference
         String? star_reference_dir
 
@@ -28,11 +28,13 @@ workflow ctat_vif {
         Float star_fastq_disk_space_multiplier = 10
         String star_index_memory = "50G"
         Int sjdb_overhang = 150
+        String star_two_pass_mode = "Basic" # or None
 
         Boolean autodetect_cpu = true # auto-detect number of cpus for STAR as # of requested CPUs might not equal actual CPUs, depending on memory
         Boolean star_use_ssd = false
         Int star_cpu = 12
-        Float star_memory = 75
+        Float star_init_memory = 75
+        Float star_memory = 80
         Int preemptible = 2
         String docker = "trinityctat/ctat_vif:0.1.0"
 
@@ -125,11 +127,11 @@ workflow ctat_vif {
     }
 
     File? star_reference_use = (if(create_star_index) then STARIndex.genome else star_reference)
-    if(!defined(bam)){
+    if(!defined(bam) && defined(left)){
         call STAR {
             input:
                 util_dir=util_dir,
-                fastq1=left,
+                fastq1=select_first([left]),
                 fastq2=right,
                 two_pass_mode = star_two_pass_mode,
                 base_name="out",
@@ -138,7 +140,7 @@ workflow ctat_vif {
                 disable_chimeras=false,
                 extra_disk_space = star_extra_disk_space,
                 disk_space_multiplier = star_fastq_disk_space_multiplier,
-                memory = star_memory,
+                memory = star_init_memory,
                 use_ssd = star_use_ssd,
                 cpu = star_cpu,
                 autodetect_cpu = autodetect_cpu,
@@ -206,7 +208,7 @@ workflow ctat_vif {
         call STAR as STAR2 {
             input:
                 util_dir=util_dir,
-                fastq1=left,
+                fastq1=select_first([left]),
                 fastq2=right,
                 two_pass_mode = star_two_pass_mode,
                 base_name="out2",
@@ -346,17 +348,21 @@ task STAR {
     }
 
     Int max_mate_dist = 100000
-    Boolean is_gzip = sub(fastq1, "^.+\\.(gz)$", "GZ") == "GZ"
+
     Boolean has_genome_fasta_file = defined(genome_fasta_file)
     command <<<
         set -e
-
         cpu=~{cpu}
+        genomeDir="~{star_reference}"
+        fastqs="~{fastq1} ~{fastq2}"
+        readFilesCommand=""
+        if [[ "~{fastq1}" = *.gz ]] ; then
+            readFilesCommand="--readFilesCommand \"gunzip -c\""
+        fi
         if [ "~{autodetect_cpu}" == "true" ]; then
             cpu=$(nproc)
         fi
 
-        genomeDir="~{star_reference}"
         if [ "$genomeDir" == "" ]; then
             genomeDir="~{star_reference_dir}"
         fi
@@ -364,18 +370,30 @@ task STAR {
         if [ -f "${genomeDir}" ] ; then
             mkdir genome_dir
             compress="pigz"
-            if [[ $genomeDir = *.bz2 ]] ; then
+
+            if [[ $genomeDir == *.bz2 ]] ; then
                 compress="pbzip2"
             fi
             tar -I $compress -xf ~{star_reference} -C genome_dir --strip-components 1
             genomeDir="genome_dir"
         fi
 
+        # special case for tar of fastq files
+        if [[ "~{fastq1}" == *.tar.gz ]] ; then
+            mkdir fastq
+            tar -I pigz -xvf ~{fastq1} -C fastq
+            fastqs=$(find fastq -type f)
+            readFilesCommand=""
+            if [[ "$fastqs" = *.gz ]] ; then
+                readFilesCommand="--readFilesCommand \"gunzip -c\""
+            fi
+        fi
+
         STAR \
         --genomeDir $genomeDir \
-        --runThreadN ~{cpu} \
-        --readFilesIn ~{fastq1} ~{fastq2} \
-        ~{true='--readFilesCommand "gunzip -c"' false='' is_gzip} \
+        --runThreadN $cpu \
+        --readFilesIn $fastqs \
+        $readFilesCommand \
         --outSAMtype BAM SortedByCoordinate \
         --outFileNamePrefix ~{base_name}. \
         ~{"--twopassMode " + two_pass_mode} \
