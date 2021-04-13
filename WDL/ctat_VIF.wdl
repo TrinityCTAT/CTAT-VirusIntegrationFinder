@@ -33,8 +33,8 @@ workflow ctat_vif {
         Boolean autodetect_cpu = true # auto-detect number of cpus for STAR as # of requested CPUs might not equal actual CPUs, depending on memory
         Boolean star_use_ssd = false
         Int star_cpu = 12
-        Float star_init_memory = 75
-        Float star_memory = 80
+        Float star_init_memory = 45
+        Float star_memory = 45
         Int preemptible = 2
         String docker = "trinityctat/ctat_vif:0.1.0"
 
@@ -344,12 +344,12 @@ task STAR {
         Boolean autodetect_cpu
         File? genome_fasta_file
     }
-
     Int max_mate_dist = 100000
-
     Boolean has_genome_fasta_file = defined(genome_fasta_file)
+
     command <<<
         set -e
+
         cpu=~{cpu}
         genomeDir="~{star_reference}"
         fastqs="~{fastq1} ~{fastq2}"
