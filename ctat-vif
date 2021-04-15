@@ -59,6 +59,9 @@ def main():
     parser.add_argument("--star_two_pass_mode", help="STAR 2-pass mapping mode", choices=['Basic', 'None'],
         default='Basic')
 
+    parser.add_argument("--star_init_two_pass_mode", help="STAR init 2-pass mapping mode", choices=['Basic', 'None'],
+        default='Basic')
+
     parser.add_argument(
         "--remove_duplicates", action="store_true", help="Remove duplicates"
     )
@@ -90,6 +93,7 @@ def main():
     viral_fasta = args.viral_fasta
     cpu = args.cpu
     output_directory = args.outputdir
+    star_init_two_pass_mode = args.star_init_two_pass_mode
     star_two_pass_mode = args.star_two_pass_mode
 
     if ctat_genome_lib_path is None or not os.path.exists(ctat_genome_lib_path):
@@ -115,6 +119,8 @@ def main():
     input_json["fasta"] = ref_fasta
     input_json['autodetect_cpu'] = False
     input_json['star_two_pass_mode'] = star_two_pass_mode
+    input_json['star_init_two_pass_mode'] = star_init_two_pass_mode
+
     if star_reference is not None:
         star_reference = os.path.abspath(star_reference)
         input_json["star_reference_dir"] = star_reference
