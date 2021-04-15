@@ -28,13 +28,16 @@ workflow ctat_vif {
         Float star_fastq_disk_space_multiplier = 10
         String star_index_memory = "50G"
         Int sjdb_overhang = 150
-        String star_two_pass_mode = "Basic" # or None
+
 
         Boolean autodetect_cpu = true # auto-detect number of cpus for STAR as # of requested CPUs might not equal actual CPUs, depending on memory
         Boolean star_use_ssd = false
         Int star_cpu = 12
         Float star_init_memory = 45
+        String star_init_two_pass_mode = "Basic"
+
         Float star_memory = 45
+        String star_two_pass_mode = "Basic" # or None
         Int preemptible = 2
         String docker = "trinityctat/ctat_vif:0.1.0"
 
@@ -133,7 +136,7 @@ workflow ctat_vif {
                 util_dir=util_dir,
                 fastq1=select_first([left]),
                 fastq2=right,
-                two_pass_mode = star_two_pass_mode,
+                two_pass_mode = star_init_two_pass_mode,
                 base_name="out",
                 star_reference=star_reference_use,
                 star_reference_dir=star_reference_dir,
