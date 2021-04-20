@@ -2,12 +2,13 @@ FROM ubuntu:18.04
 MAINTAINER bhaas@broadinstitute.org
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get -qq update && apt-get -qq -y install --no-install-recommends \
     automake \
     build-essential \
     bzip2 \
     cmake \
     curl \
+    default-jre \
     g++ \
     gcc \
     git \
@@ -40,7 +41,7 @@ RUN apt-get update && apt-get install -y \
 # make python3 be the default python
 RUN ln -sf /usr/bin/python3 /usr/bin/python
 
-RUN pip3 install igv-reports==1.0.2 pandas==1.1.5
+RUN pip3 install --upgrade pip && pip3 install igv-reports==1.0.2 pandas==1.1.5
 
 ENV SRC /usr/local/src
 ENV BIN /usr/local/bin
@@ -51,7 +52,7 @@ RUN R -e 'BiocManager::install("argparse")'
 
 ## Samtools
 WORKDIR $SRC
-ENV SAMTOOLS_VERSION=1.9
+ENV SAMTOOLS_VERSION=1.12
 RUN SAMTOOLS_URL="https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2" && \
     cd $SRC && \
     wget $SAMTOOLS_URL && \
@@ -62,7 +63,7 @@ RUN SAMTOOLS_URL="https://github.com/samtools/samtools/releases/download/${SAMTO
 
 ## Picard tools
 WORKDIR $SRC
-RUN wget https://github.com/broadinstitute/picard/releases/download/2.25.1/picard.jar
+RUN wget https://github.com/broadinstitute/picard/releases/download/2.25.2/picard.jar
 ENV PICARD_HOME $SRC/picard.jar
 
 ## STAR Aligner
