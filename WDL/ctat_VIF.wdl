@@ -1,5 +1,7 @@
 version 1.0
 
+import "https://api.firecloud.org/ga4gh/v1/tools/CTAT:ctat_mutations/versions/4/plain-WDL/descriptor" as ctat_mutations
+
 workflow ctat_vif {
     input {
         File? left
@@ -16,7 +18,6 @@ workflow ctat_vif {
         Boolean generate_reports = true
         Int min_reads = 0
 
-
         File? star_reference
         String? star_reference_dir
 
@@ -24,11 +25,14 @@ workflow ctat_vif {
         String igv_reports_memory = "1GB"
 
         String util_dir = "/usr/local/src/CTAT-VirusIntegrationFinder/util"
+        String picard = "/usr/local/src/picard.jar"
         Float star_extra_disk_space = 30
         Float star_fastq_disk_space_multiplier = 10
         String star_index_memory = "50G"
         Int sjdb_overhang = 150
 
+        Boolean call_viral_snps = false
+        String? sample_id
 
         Boolean autodetect_cpu = true # auto-detect number of cpus for STAR as # of requested CPUs might not equal actual CPUs, depending on memory
         Boolean star_use_ssd = false
@@ -50,18 +54,14 @@ workflow ctat_vif {
     parameter_meta {
         left:{help:"One of the two paired RNAseq samples"}
         right:{help:"One of the two paired RNAseq samples"}
-
         min_reads:{help:"Filter insertion sites candidates that do not have at least 'min_reads'"}
         remove_duplicates:{help:"Remove duplicate alignments"}
-
         fasta:{help:"Host fasta"}
         gtf:{help:"Host annotations GTF"}
         viral_fasta:{help:"Viral fasta"}
-
         bam:{help:"Previously aligned bam file"}
         bam_index:{help:"BAM index corresponding to bam file"}
         insertion_site_candidates:{help:"Previously generated candidates"}
-
         star_reference:{help:"STAR index archive containing both host and viral genomes"}
         star_reference_dir:{help:"STAR directory containing both host and viral genomes (for non-Terra use)"}
         star_cpu:{help:"STAR aligner number of CPUs"}
@@ -104,6 +104,12 @@ workflow ctat_vif {
         File? remove_duplicates2_bam = RemoveDuplicates2.bam
         File? remove_duplicates2_bam_index = RemoveDuplicates2.bai
 
+        File? viral_bam = ExtractViralReads.viral_bam
+        File? viral_bai = ExtractViralReads.viral_bai
+
+        File? haplotype_caller_vcf = ctat_mutations.haplotype_caller_vcf
+#        File? filtered_vcf = ctat_mutations.filtered_vcf
+
         File? evidence_counts =  ChimericContigEvidenceAnalyzer.evidence_counts
         File? evidence_bam = ChimericContigEvidenceAnalyzer.evidence_bam
         File? evidence_bai = ChimericContigEvidenceAnalyzer.evidence_bai
@@ -111,7 +117,9 @@ workflow ctat_vif {
         File? refined_counts = SummaryReport.refined_counts
         File? genome_abundance_refined_plot = SummaryReport.genome_abundance_plot
         File? igv_report_html = SummaryReport.html
+
     }
+
     Boolean create_star_index = !defined(star_reference) && !defined(star_reference_dir)
     if(create_star_index) {
         call STARIndex {
@@ -130,7 +138,7 @@ workflow ctat_vif {
     }
 
     File? star_reference_use = (if(create_star_index) then STARIndex.genome else star_reference)
-    if(!defined(bam) && defined(left)){
+    if(!defined(bam) && defined(left)) {
         call STAR {
             input:
                 util_dir=util_dir,
@@ -190,7 +198,43 @@ workflow ctat_vif {
                     docker=docker
             }
         }
+
+        if(call_viral_snps) {
+            call ExtractViralReads {
+                input:
+                    bam=select_first([RemoveDuplicates.bam, STAR.bam]),
+                    bai=select_first([RemoveDuplicates.bai, STAR.bai]),
+                    picard=picard,
+                    fasta=viral_fasta,
+                    preemptible=preemptible,
+                    docker=docker
+            }
+
+            call CreateViralFasta {
+                input:
+                    picard=picard,
+                    fasta=viral_fasta,
+                    preemptible=preemptible,
+                    docker=docker
+            }
+
+            call ctat_mutations.ctat_mutations as ctat_mutations {
+                input:
+                    bam=ExtractViralReads.viral_bam,
+                    bai=ExtractViralReads.viral_bai,
+                    sample_id=sub(basename(select_first([sample_id, left, bam])), "\\.bam|\\.gz|\\.fastq", ""),
+                    variant_scatter_count=0,
+                    filter_cancer_variants=false,
+                    ref_dict=CreateViralFasta.viral_dict,
+                    ref_fasta=CreateViralFasta.viral_fasta,
+                    ref_fasta_index=CreateViralFasta.viral_fasta_index,
+                    boosting_method="none",
+                    haplotype_caller_args="-dont-use-soft-clipped-bases --stand-call-conf 20 --recover-dangling-heads true --sample-ploidy 1"
+            }
+
+        }
     }
+
     if(!star_init_only) {
         File aligned_bam_use = select_first([bam, RemoveDuplicates.bam, STAR.bam])
         File aligned_bai_use= select_first([bam_index, RemoveDuplicates.bai, STAR.bai])
@@ -292,7 +336,6 @@ task STARIndex {
 
     Float extra_disk_space = 100
     Float disk_space_multiplier = 10
-
 
     command <<<
         set -e
@@ -553,7 +596,6 @@ task InsertionSiteCandidates {
 #}
 #
 
-
 task ExtractChimericGenomicTargets {
     input {
         File bam
@@ -588,6 +630,93 @@ task ExtractChimericGenomicTargets {
         docker: docker
         cpu: 1
         memory: "1GB"
+    }
+}
+
+task CreateViralFasta {
+    input {
+        File fasta
+        String picard
+        Int preemptible
+        String docker
+    }
+
+    command <<<
+        mv ~{fasta} virus.fasta
+        # we need fasta, index, and dict in same directory
+        samtools faidx virus.fasta
+        java -jar ~{picard} CreateSequenceDictionary -R virus.fasta
+    >>>
+
+    runtime {
+        docker: docker
+        bootDiskSizeGb: 12
+        memory: "1G"
+        disks: "local-disk " + ceil(size(fasta, "GB")*2) + " HDD"
+        preemptible: preemptible
+        cpu: 1
+    }
+
+    output {
+        File viral_fasta = "virus.fasta"
+        File viral_fasta_index = "virus.fasta.fai"
+        File viral_dict = "virus.dict"
+    }
+}
+
+task ExtractViralReads {
+    input {
+        File bam
+        File bai
+        File fasta
+        String picard
+        Int preemptible
+        String docker
+    }
+
+    command <<<
+        samtools faidx ~{fasta}
+
+        python <<CODE
+
+        def parse_fai(path):
+            values = set()
+            with open(path, 'rt') as f:
+                for line in f:
+                    line = line.strip()
+                    if line != '':
+                        values.add(line.split('\t')[0])
+            return values
+
+        def to_txt(values, path):
+            is_first = True
+            with open(path, 'wt') as f:
+                for val in values:
+                    if not is_first:
+                        f.write(' ')
+                    f.write(val)
+                    is_first = False
+
+        to_txt(parse_fai('~{fasta}.fai'), 'extract.txt')
+        CODE
+
+        samtools view -b ~{bam} $(cat extract.txt) > tmp.bam
+        samtools sort tmp.bam > virus.bam
+        samtools index virus.bam
+    >>>
+
+    runtime {
+        docker: docker
+        bootDiskSizeGb: 12
+        memory: "1G"
+        disks: "local-disk " + ceil(size(bam, "GB")*2 + size(fasta, "GB")*2) + " HDD"
+        preemptible: preemptible
+        cpu: 1
+    }
+
+    output {
+        File viral_bam = "virus.bam"
+        File viral_bai = "virus.bam.bai"
     }
 }
 
