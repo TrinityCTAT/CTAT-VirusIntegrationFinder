@@ -34,17 +34,19 @@ workflow ctat_vif {
         Boolean call_viral_snps = false
         String? sample_id
 
-        Boolean autodetect_cpu = true # auto-detect number of cpus for STAR as # of requested CPUs might not equal actual CPUs, depending on memory
+        Boolean autodetect_cpu = true # auto-detect number of cpus for STAR as # of requested CPUs might not equal actual CPUs, depending on memory requested
         Boolean star_use_ssd = false
         Int star_cpu = 12
-        Float star_init_memory = 45
-        String star_init_two_pass_mode = "Basic"
+        Float star_init_memory = 48
+        String star_init_two_pass_mode = "None"
 
-        Float star_memory = 45
+        Float star_memory = 48
         String star_two_pass_mode = "Basic" # or None
         Int preemptible = 2
         String docker = "trinityctat/ctat_vif:0.1.0"
 
+        String haplotype_caller_args="-dont-use-soft-clipped-bases --stand-call-conf 20 --recover-dangling-heads true --sample-ploidy 1"
+        Float haplotype_caller_memory = 2
         # run stage 2 only
         File? bam
         File? bam_index
@@ -108,9 +110,11 @@ workflow ctat_vif {
         File? viral_bai = ExtractViralReads.viral_bai
 
         File? haplotype_caller_vcf = ctat_mutations.haplotype_caller_vcf
+        File? recalibrated_bam = ctat_mutations.recalibrated_bam
+        File? recalibrated_bam_index = ctat_mutations.recalibrated_bam_index
 #        File? filtered_vcf = ctat_mutations.filtered_vcf
 
-        File? evidence_counts =  ChimericContigEvidenceAnalyzer.evidence_counts
+        File? evidence_counts = ChimericContigEvidenceAnalyzer.evidence_counts
         File? evidence_bam = ChimericContigEvidenceAnalyzer.evidence_bam
         File? evidence_bai = ChimericContigEvidenceAnalyzer.evidence_bai
 
@@ -225,13 +229,14 @@ workflow ctat_vif {
                     sample_id=sub(basename(select_first([sample_id, left, bam])), "\\.bam|\\.gz|\\.fastq", ""),
                     variant_scatter_count=0,
                     filter_cancer_variants=false,
+                    filter_variants=false,
                     ref_dict=CreateViralFasta.viral_dict,
                     ref_fasta=CreateViralFasta.viral_fasta,
                     ref_fasta_index=CreateViralFasta.viral_fasta_index,
                     boosting_method="none",
-                    haplotype_caller_args="-dont-use-soft-clipped-bases --stand-call-conf 20 --recover-dangling-heads true --sample-ploidy 1"
+                    haplotype_caller_memory=haplotype_caller_memory,
+                    haplotype_caller_args=haplotype_caller_args
             }
-
         }
     }
 
@@ -664,6 +669,9 @@ task CreateViralFasta {
     }
 }
 
+
+
+
 task ExtractViralReads {
     input {
         File bam
@@ -700,8 +708,7 @@ task ExtractViralReads {
         to_txt(parse_fai('~{fasta}.fai'), 'extract.txt')
         CODE
 
-        samtools view -b ~{bam} $(cat extract.txt) > tmp.bam
-        samtools sort tmp.bam > virus.bam
+        samtools view -b ~{bam} $(cat extract.txt) | samtools sort > virus.bam
         samtools index virus.bam
     >>>
 
