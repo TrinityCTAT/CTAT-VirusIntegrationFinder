@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://api.firecloud.org/ga4gh/v1/tools/CTAT:ctat_mutations/versions/4/plain-WDL/descriptor" as ctat_mutations
+import "https://api.firecloud.org/ga4gh/v1/tools/CTAT:ctat_mutations/versions/5/plain-WDL/descriptor" as ctat_mutations
 
 workflow ctat_vif {
     input {
@@ -229,7 +229,7 @@ workflow ctat_vif {
                     sample_id=sub(basename(select_first([sample_id, left, bam])), "\\.bam|\\.gz|\\.fastq", ""),
                     variant_scatter_count=0,
                     filter_cancer_variants=false,
-                    filter_variants=false,
+                    annotate_and_filter_variants=false,
                     ref_dict=CreateViralFasta.viral_dict,
                     ref_fasta=CreateViralFasta.viral_fasta,
                     ref_fasta_index=CreateViralFasta.viral_fasta_index,
