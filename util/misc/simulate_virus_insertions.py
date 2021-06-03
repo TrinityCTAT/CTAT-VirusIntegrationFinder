@@ -116,8 +116,17 @@ def main():
 
             found = False
 
+            num_tries = 0
+
             while not found:
 
+                num_tries += 1
+
+                if num_tries > 100:
+                    # give up on this one.
+                    logger.info("-too many tries for {}, skipping it".format(virus_acc))
+                    break
+                
                 # get random genome seq
                 rand_chrom, rand_chrom_lend, rand_chrom_rend, rand_chrom_orient, rand_genome_seq = get_random_seq(ref_genome_fa, ref_chromosomes, ref_genome_seq_lengths, seq_extraction_len)
 
@@ -173,7 +182,7 @@ def get_seq_lengths(fasta_filename):
 
 def extract_sequence(fasta_filename, accession, lend, rend, orient):
 
-    cmd = "samtools faidx {} {}:{}-{}".format(fasta_filename, accession, lend, rend)
+    cmd = "samtools faidx {} \'{}\':{}-{}".format(fasta_filename, accession, lend, rend)
 
     if orient == "-":
         cmd += " --reverse-complement"
@@ -191,8 +200,8 @@ def get_random_seq(fasta_filename, accession_list, fasta_seq_lengths, seq_extrac
     random_chrom = random.choice(accession_list)
     chrom_len = fasta_seq_lengths[random_chrom]
     
-    selected_chrom_lend = random.randint(1, chrom_len - seq_extraction_len)
-    selected_chrom_rend = selected_chrom_lend + seq_extraction_len - 1
+    selected_chrom_lend = random.randint(1, max(1,chrom_len - seq_extraction_len))
+    selected_chrom_rend = min(chrom_len, selected_chrom_lend + seq_extraction_len - 1)
     
     random_seq_orient = random.choice(['+', '-'])
 
