@@ -61,17 +61,26 @@ def main():
     min_per_id = args.min_per_id
 
     output_tsv = output_prefix + ".evidence_counts.tsv"
+    removed_output_tsv = output_prefix + ".removed.txt"
     output_bam_filename = output_prefix + ".evidence.bam"
     
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # initiate the output file
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Open file to write the output to 
     ofh_tsv = open(output_tsv, 'wt')
-
+    # Create the header 
     print("\t".join(["contig", "split", "span", "total"]), file=ofh_tsv)  # report header
 
-    
 
-    contig_readnames_want_set = analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min_seq_entropy, min_per_id)
+    removed_tsv = open(removed_output_tsv, 'wt')
 
+    #####################
+    # nalyze_bam_n_gtf
+    #####################
+    contig_readnames_want_set = analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min_seq_entropy, min_per_id, removed_tsv)
     ofh_tsv.close()
+    removed_tsv.close()
 
     # write the bam file
     logger.info("writing read alignment evidence bam")
@@ -79,9 +88,10 @@ def main():
     outbam = pysam.AlignmentFile(output_bam_filename, 'wb', template=samfile)
     
     for aligned_read in samfile:
+        # true if not primary alignment
         if aligned_read.is_secondary:
             continue
-        
+        # Get insertion contig name
         contig = samfile.get_reference_name(aligned_read.reference_id)
         read_name = aligned_read.query_name
         if read_name in contig_readnames_want_set[contig]:
@@ -94,11 +104,16 @@ def main():
     sys.exit(0)
 
         
-def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min_seq_entropy, min_per_id):
+def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min_seq_entropy, min_per_id, removed_tsv):
 
+    #~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Read in the bam file 
+    #~~~~~~~~~~~~~~~~~~~~~~~~~
     samfile = pysam.AlignmentFile(bam_file, "rb")
 
-    
+    #~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Regions defined by the ExtractChimericGenomicTargets
+    #~~~~~~~~~~~~~~~~~~~~~~~~~
     contig_to_region_pair_dict = parse_region_pairs_from_gtf(gtf_file)
     
     read_to_contig_and_type = defaultdict(dict)
@@ -108,17 +123,27 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
 
     contig_readnames_to_excessive_soft_clip = defaultdict(set)
     
+    # Loop over every read in the bam file 
     for aligned_read in samfile:
         contig = samfile.get_reference_name(aligned_read.reference_id)
         read_name = aligned_read.query_name
 
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # FILTER step 1-3
+        # 1: MapQuality score > value
+        # 2: Entropy > Value 
+        # 3: Missmatches 
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         if not aligned_read.mapping_quality > 0:
+            removed_tsv.write("\t".join([aligned_read.to_string(),  "mapping_quality\n"]))
             continue
 
         if seq_entropy(aligned_read.query_sequence) < min_seq_entropy:
+            removed_tsv.write("\t".join([aligned_read.to_string(),  "Min_Sequence_Entropy\n"]))
             continue
 
         if per_id(aligned_read) < min_per_id:
+            removed_tsv.write("\t".join([aligned_read.to_string(),  "Mismatch_count\n"]))
             continue
 
         
@@ -132,24 +157,41 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
 
         max_rend = max(mate_start, align_rend)
 
-        
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # FILTER step 4 + 
+        # 4: check if soft or hard clipped, if so, check how many, 
+        #       if greate than specified amount, will filter out 
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+        # check if read name was already added
+        #############################################################################
+        # Is it possoble that a read name apears twice here?
+        #############################################################################
+        # If so, and passes clipping filter, update the 
         if read_name in read_to_contig_and_type[contig] and read_to_contig_and_type[contig][read_name] == 'split':
             # already handled the upstream mate
+
+            # Check the soft or hard clipping status
+            ## max_end_clip == maximum amount of read end clipping
             if excessive_clipping(aligned_read, max_end_clip):
+                # Add to dictionary if this if filtered 
+                removed_tsv.write("\t".join([aligned_read.to_string(),  "Excessive_Soft_Hard_clipping\n"]))
                 contig_readnames_to_excessive_soft_clip[contig].add(read_name)
             else:
                 update_anchor_lengths(contig_readnames_to_anchor_lengths[contig][read_name], brkpt, align_blocks)
             continue
         
-        # check fragment span
+        # check fragment is over the breakpoint breakpoint 
         if read_name in contig_readnames_to_anchor_lengths[contig] or (align_start < brkpt and max_rend > brkpt):
             # fragment overlaps breakpoint.
             
+            # Check the soft or hard clipping status
             if excessive_clipping(aligned_read, max_end_clip):
+                removed_tsv.write("\t".join([aligned_read.to_string(),  "Excessive_Soft_Hard_clipping\n"]))
                 contig_readnames_to_excessive_soft_clip[contig].add(read_name)
                 continue
             
+            # if new read name 
             if read_name not in contig_readnames_to_anchor_lengths[contig]:
                 # init it
                 contig_readnames_to_anchor_lengths[contig][read_name] = [0,0]
@@ -162,7 +204,9 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
             if align_start < brkpt and align_rend > brkpt:
                 # upgrade to split read
                 read_to_contig_and_type[contig][read_name] = 'split'
-                
+        
+        # Doesnt span the breakpoint 
+        removed_tsv.write("\t".join([aligned_read.to_string(),  "Doesnt_Span_Breakpoint\n"]))
     
     logger.info("counting up passing reads")
     # count up the passing reads.
@@ -173,6 +217,7 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
         excessively_softclipped_reads = contig_readnames_to_excessive_soft_clip[contig]
         
         for readname in contig_readnames_to_anchor_lengths[contig]:
+            # Check if filterd due to soft/hard clipping
             if readname in excessively_softclipped_reads:
                 continue
             
@@ -235,6 +280,11 @@ def update_anchor_lengths(anchor_len_list, brkpt, aligned_blocks):
 
 
 def excessive_clipping(aligned_read, max_end_clip):
+    '''
+    Check the cigar codes, see if the read is Soft Clipped (4) or Hard Clipped (5)
+        max_end_clip == maximum amount of read end clipping allowed
+                default=10
+    '''
 
     cigartuples = aligned_read.cigartuples
 
@@ -243,10 +293,15 @@ def excessive_clipping(aligned_read, max_end_clip):
     
     # see https://pysam.readthedocs.io/en/latest/api.html#pysam.AlignedSegment.cigartuples
     # cigar codes: S=4, H=5
-    
+    #    ___________________________
+    #    | s |  BAM_CSOFT_CLIP | 4 |
+    #    | H |  BAM_CHARD_CLIP | 5 |
+    #
+    # tupple = (code, number_bases)
+    # If soft or hard clipped, check how mnay, see if greater than the maximum amount of read end clipping allowed
     if cigartuples[0][0] in (4, 5) and cigartuples[0][1] > max_end_clip:
         return True
-
+    # Check for a second tuple 
     if len(cigartuples) > 1 and cigartuples[-1][0] in (4, 5) and cigartuples[-1][1] > max_end_clip:
         return True
 

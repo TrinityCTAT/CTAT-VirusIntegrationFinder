@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
         #The rst 9 columns give information about the chimeric junction:
 
         #The format of this le is as follows. Every line contains one chimerically aligned read, e.g.:
-        #chr22 23632601 + chr9 133729450 + 1 0 0 SINATRA-0006:3:3:6387:56650 23632554 47M29S 133729451 47S29M40p76M
+        #   chr22 23632601 + chr9 133729450 + 1 0 0 SINATRA-0006:3:3:6387:56650 23632554 47M29S 133729451 47S29M40p76M
+        
         #The first 9 columns give information about the chimeric junction:
 
         #column 1: chromosome of the donor
@@ -87,56 +88,81 @@ def main():
         help="exclude duplicate alignments",
     )
 
-    args_parsed = parser.parse_args()
 
+    ###########################
+    # Parse input arguments 
+    ###########################
+    args_parsed = parser.parse_args()
+    # Create constants 
     chimJ_filename = args_parsed.chimJ
     patch_db_fasta_filename = args_parsed.patch_db_fasta
     aggregation_dist = args_parsed.aggregation_dist
     output_prefix = args_parsed.output_prefix
 
     remove_duplicates_flag = args_parsed.remove_duplicates_flag
-
-    ## get list of patch_db entries.
+    
+    ###########################
+    ## get list of patch_db entries. (Viruses)
+    ###########################
     patch_db_entries = set()
+    # cache the regular expression search, faster because more memory conservative 
+    match_regex = re.compile("^>(\S+)")
     with open(patch_db_fasta_filename, "rt") as fh:
         for line in fh:
-            m = re.search("^>(\S+)", line)
+            m = match_regex.search(line)
             if m:
                 acc = m.group(1)
                 patch_db_entries.add(acc)
 
+    ################################
+    # Get all Chrom-Virus pairings and store in 'genome_pair_to_evidence'
+    # each line is a Chimeric_read object 
+    ################################
+    # Junction type translations
     junction_type_encoding = {
         "-1": "Span",
         "0": "Split",
         "1": "Split",  # GT/AG",
         "2": "Split",
     }  # CT/AC" }
-
+    # orientation conversions
     opposite_orientation = {"+": "-", "-": "+"}
 
+    # dictionary to hold the pairings
     genome_pair_to_evidence = defaultdict(set)
 
     duplicate_read_catcher = set()
 
+    # Run through each line in the chimeric junctions file 
     with open(chimJ_filename, "rt") as fh:
         for line in fh:
+            # Parse line
             line = line.rstrip()
             vals = line.split("\t")
+            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            # Gather line information into variables 
+            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            # get junction type 
             junction_type = junction_type_encoding[vals[6]]
             readname = vals[9]
             (chrA, coordA, orientA) = (vals[0], vals[1], vals[2])
             (chrB, coordB, orientB) = (vals[3], vals[4], vals[5])
-
+            # convert coordinates to integers 
             coordA = int(coordA)
             coordB = int(coordB)
-
+            
+            #~~~~~~~~~~~~~~~~~~~~~~~~~
+            # Check to see if chrA or chrB are in viral data base 
+            #~~~~~~~~~~~~~~~~~~~~~~~~~
             if not (chrA in patch_db_entries) ^ (chrB in patch_db_entries):
                 # must involve just the host genome and a patch db entry
                 continue
 
+            #~~~~~~~~~~~~~~~~~~~~~~~~~
+            # Duplicate Reads 
+            #~~~~~~~~~~~~~~~~~~~~~~~~~
             token = "^".join(vals[0:6] + vals[10:])
             hashed_token = hash(token)
-
             # print("{} -> {}".format(hashed_token, token))
             if remove_duplicates_flag:
                 if hashed_token in duplicate_read_catcher:
@@ -145,7 +171,9 @@ def main():
                 else:
                     duplicate_read_catcher.add(hashed_token)
 
-            ## reorient so host genome is always in the + reference orientation.
+            #~~~~~~~~~~~~~~~~~~~~~~~~~
+            ## reorient so host (human) genome is always in the + reference orientation.
+            #~~~~~~~~~~~~~~~~~~~~~~~~~
             if (chrA in patch_db_entries and orientB == "-") or (
                 chrB in patch_db_entries and orientA == "-"
             ):
@@ -159,19 +187,34 @@ def main():
                     coordA,
                     opposite_orientation[orientA],
                 )
-
+            
+            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            # Create Dictionary holding read objects for each genome-virus pairing
+            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            # Output the chimeric read line as an object 
             chim_read = Chimeric_read(
                 chrA, coordA, orientA, chrB, coordB, orientB, junction_type, readname
             )
-
+            # Creating Genome-Virus pairings
+            # dictionary KEY
             genome_pair = "^".join([chrA, chrB])
 
+            # Add the chimeric read lines to a dictionary with key as the Chrom-Virus grouping 
+            ## dictionary holds all chromosome virus groupings 
             genome_pair_to_evidence[genome_pair].add(chim_read)
 
+
+
+    #########################################
+    # Gather all Chimeric events 
+    #########################################
+    # empty list to hold all events at the end 
     all_chim_events = list()
 
+    # Loop over the different chimeric pairs (genome_pair_to_evidence dict keys)
     for genome_pair in genome_pair_to_evidence:
 
+        # Get the Chimeric_read object for the given Chrom-Virus pairing
         chim_reads = genome_pair_to_evidence[genome_pair]
 
         logger.info("Genome pair: " + genome_pair)
@@ -291,17 +334,36 @@ def main():
 
 
 def group_chim_reads_into_events(chim_reads_list, aggregation_dist):
+    '''
+    Function to groups all chimeric events. 
+        if chimeric events occur in the same orientation and within a specific distance
+        they will be combined 
+    
+    Inputs;
+    : chim_reads_list  : list of read objects  
+    : aggregation_dist : distance value
+
+    Returns;
+    : chim_events : a list of the chimertic events 
+
+    what are top event reads?
+    '''
 
     chim_events = list()
 
     remaining_reads = chim_reads_list
 
+    # while reads still remain, run 
     while remaining_reads:
-
+        # Get the insertion event with the most insertions (counts)
         top_event_reads, remaining_reads = gather_top_event_reads(remaining_reads)
         chim_event = Chimeric_event(top_event_reads)
 
+        # IF this chimeric event is the same orientation and within a specified distance from another event 
+        #   combine the event with the existing event in the chim_events list
+        # IF NOT, add the new event to the chim_events list
         if not supplements_existing_event(chim_event, chim_events, aggregation_dist):
+            # add new event to chim_events list
             chim_events.append(chim_event)
             logger.info("-logging chimeric event: " + str(chim_event))
 
@@ -309,9 +371,16 @@ def group_chim_reads_into_events(chim_reads_list, aggregation_dist):
 
 
 def supplements_existing_event(chim_event, chim_events_list, aggregation_dist):
+    '''
+    Function to check if the current chimeric read/event can be combined with an existing event 
 
+    '''
+    # Loop over stored Chimeric events 
     for prev_chim_event in chim_events_list:
 
+        # if the orientation is the same 
+        # if the read falls within the given distance from each other 
+        # then combine them 
         if (
             chim_event.orientA == prev_chim_event.orientA
             and abs(chim_event.coordA - prev_chim_event.coordA) <= aggregation_dist
@@ -324,7 +393,7 @@ def supplements_existing_event(chim_event, chim_events_list, aggregation_dist):
                     str(chim_event), str(prev_chim_event)
                 )
             )
-
+            # append this chimeric event to the previous 
             prev_chim_event.absorb_nearby_chim_event(chim_event)
 
             return True
@@ -339,6 +408,9 @@ def gather_top_event_reads(reads_list):
     brkpt_counter = defaultdict(int)
     brkpt_type = dict()
 
+    # Get break point types (split or span) into dictonary form 
+    #   example {'218269983^39325': 'Span'}
+    # count the number of times this breakpoint is seen 
     for read in reads_list:
         brkpt = "{}^{}".format(read.coordA, read.coordB)
         brkpt_counter[brkpt] += 1
@@ -347,17 +419,23 @@ def gather_top_event_reads(reads_list):
     # prioritize split reads over spanning reads.
     priority = {"Split": 1, "Span": 0}
 
+    # sort the breakpoint values 
+    # example output ['215417625^39519', '75063812^39394]
+    # Sort forst by read type (split,span) then by read count
+    #   Puts split first 
     sorted_brkpts = sorted(
         brkpt_counter.keys(),
         key=lambda x: (priority[brkpt_type[x]], brkpt_counter[x]),
         reverse=True,
     )
 
+    # Take the first value 
     top_brkpt = sorted_brkpts[0]
 
     top_event_reads = list()
     remaining_reads = list()
 
+    # Loop over reads to get the top breakpoint
     for read in reads_list:
         brkpt = "{}^{}".format(read.coordA, read.coordB)
         if brkpt == top_brkpt:
@@ -369,6 +447,9 @@ def gather_top_event_reads(reads_list):
 
 
 class Chimeric_read:
+    '''
+    Object that parses the read 
+    '''
     def __init__(
         self, chrA, coordA, orientA, chrB, coordB, orientB, splitType, readname=None
     ):
@@ -396,6 +477,9 @@ class Chimeric_read:
 
 
 class Chimeric_event(Chimeric_read):
+    '''
+    Object 
+    '''
     def __init__(self, chimeric_reads_list):
         self.chimeric_reads_list = chimeric_reads_list
 
