@@ -513,7 +513,7 @@ task STAR_validate {
       STAR \
         --runMode alignReads \
         --genomeDir $genomeDir \
-        --genomeFastaFiles ~{insertions_fasta_file} \ 
+        --genomeFastaFiles ~{insertions_fasta_file} \
         --runThreadN $cpu \
         --readFilesIn $fastqs \
         $readFilesCommand \
