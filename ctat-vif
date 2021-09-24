@@ -41,6 +41,8 @@ def main():
 
     parser.add_argument("--viral_fasta", help="Viral fasta", required=True)
 
+    parser.add_argument("--ref_genome_incl_viral", action='store_true', default=False, help="the viral_fasta is included in the star-indexed reference genome already")
+    
     parser.add_argument(
         "--genome_lib_dir",
         default=os.environ.get("CTAT_GENOME_LIB"),
@@ -103,11 +105,13 @@ def main():
         left = os.path.abspath(left)
     if right is not None:
         right = os.path.abspath(right)
+
     base_dir = os.path.dirname(os.path.realpath(__file__))
     util_dir = os.path.join(base_dir, "util")
     ctat_genome_lib_path = os.path.abspath(ctat_genome_lib_path)
     if not os.path.exists(ctat_genome_lib_path):
         exit("CTAT_GENOME_LIB at {} not found".format(ctat_genome_lib_path))
+
     gtf = os.path.join(ctat_genome_lib_path, "ref_annot.gtf")
     ref_fasta = os.path.join(ctat_genome_lib_path, "ref_genome.fa")
     if not os.path.exists(gtf):
@@ -115,8 +119,8 @@ def main():
     if not os.path.exists(ref_fasta):
         exit('{} not found'.format(ref_fasta))
     input_json = {}
-    input_json["gtf"] = gtf
-    input_json["fasta"] = ref_fasta
+    input_json["ref_genome_gtf"] = gtf
+    input_json["ref_genome_fasta"] = ref_fasta
     input_json['autodetect_cpu'] = False
     input_json['star_two_pass_mode'] = star_two_pass_mode
     input_json['star_init_two_pass_mode'] = star_init_two_pass_mode
@@ -124,8 +128,16 @@ def main():
     if star_reference is not None:
         star_reference = os.path.abspath(star_reference)
         input_json["star_reference_dir"] = star_reference
+    else:
+        # use ctat genome lib
+        input_json["star_reference_dir"] = ref_fasta + ".star.idx"
+
     input_json['viral_fasta'] = viral_fasta
 
+    if args.ref_genome_incl_viral:
+        input_json['ref_genome_incl_viral'] = True
+
+    
     if left is not None:
         input_json["left"] = left
     if right is not None:

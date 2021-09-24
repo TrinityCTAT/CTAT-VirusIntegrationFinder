@@ -3,15 +3,17 @@ version 1.0
 
 workflow ctat_vif {
     input {
-        File? left
+        File left
         File? right
 
-        File fasta
-        File gtf
+        File ref_genome_fasta
+        File ref_genome_gtf
 
         File viral_fasta
         File? viral_gtf
 
+        Boolean ref_genome_incl_viral = false
+        
         Boolean star_init_only = false
         Boolean remove_duplicates = false
         Boolean generate_reports = true
@@ -54,9 +56,10 @@ workflow ctat_vif {
         right:{help:"One of the two paired RNAseq samples"}
         min_reads:{help:"Filter insertion sites candidates that do not have at least 'min_reads'"}
         remove_duplicates:{help:"Remove duplicate alignments"}
-        fasta:{help:"Host fasta"}
-        gtf:{help:"Host annotations GTF"}
+        ref_genome_fasta:{help:"Host fasta"}
+        ref_genome_gtf:{help:"Host annotations GTF"}
         viral_fasta:{help:"Viral fasta"}
+        ref_genome_incl_viral:{help:"The star index already includes the viral genomes"}
         bam:{help:"Previously aligned bam file"}
         bam_index:{help:"BAM index corresponding to bam file"}
         insertion_site_candidates:{help:"Previously generated candidates"}
@@ -70,14 +73,11 @@ workflow ctat_vif {
     }
 
     output {
-        File? star_bam = STAR.bam
-        File? star_bam_index = STAR.bai
-        File? star_output_log_final = STAR.output_log_final
-        File? star_output_SJ = STAR.output_SJ
-        File? star_chimeric_junction = STAR.chimeric_junction
-
-        File? remove_duplicates_bam = RemoveDuplicates.bam
-        File? remove_duplicates_bam_index = RemoveDuplicates.bai
+        File? star_bam = select_first([RemoveDuplicates.bam, STAR_prelim.bam])
+        File? star_bam_index = select_first([RemoveDuplicates.bai, STAR_prelim.bai])
+        File? star_output_log_final = STAR_prelim.output_log_final
+        File? star_output_SJ = STAR_prelim.output_SJ
+        File? star_chimeric_junction = STAR_prelim.chimeric_junction
 
         File? insertion_site_candidates_full = InsertionSiteCandidates.full
         File? insertion_site_candidates_abridged = InsertionSiteCandidates.abridged
@@ -94,13 +94,8 @@ workflow ctat_vif {
         File? fasta_extract = ExtractChimericGenomicTargets.fasta_extract
         File? gtf_extract = ExtractChimericGenomicTargets.gtf_extract
 
-        File? star2_bam = STAR2.bam
-        File? star2_bam_index = STAR2.bai
-        File? star2_output_log_final = STAR2.output_log_final
-        File? star2_output_SJ = STAR2.output_SJ
-
-        File? remove_duplicates2_bam = RemoveDuplicates2.bam
-        File? remove_duplicates2_bam_index = RemoveDuplicates2.bai
+        File? star_validate_inserts_bam = select_first([RemoveDuplicates2.bam, STAR_validate.bam])
+        File? star_validate_inserts_bam_index = select_first([RemoveDuplicates2.bai, STAR_validate.bai])
 
 
         File? evidence_counts =  ChimericContigEvidenceAnalyzer.evidence_counts
@@ -113,12 +108,13 @@ workflow ctat_vif {
 
     }
 
+    
     Boolean create_star_index = !defined(star_reference) && !defined(star_reference_dir)
     if(create_star_index) {
         call STARIndex {
             input:
-                fasta=fasta,
-                gtf=gtf,
+                fasta=ref_genome_fasta,
+                gtf=ref_genome_gtf,
                 sjdb_overhang=sjdb_overhang,
                 viral_fasta=viral_fasta,
                 memory = star_index_memory,
@@ -132,16 +128,16 @@ workflow ctat_vif {
 
     File? star_reference_use = (if(create_star_index) then STARIndex.genome else star_reference)
     if(!defined(bam) && defined(left)) {
-        call STAR {
+        call STAR_prelim {
             input:
                 util_dir=util_dir,
-                fastq1=select_first([left]),
+                fastq1=left,
                 fastq2=right,
                 two_pass_mode = star_init_two_pass_mode,
                 base_name="out",
                 star_reference=star_reference_use,
                 star_reference_dir=star_reference_dir,
-                disable_chimeras=false,
+                ref_genome_incl_viral = ref_genome_incl_viral,
                 extra_disk_space = star_extra_disk_space,
                 disk_space_multiplier = star_fastq_disk_space_multiplier,
                 memory = star_init_memory,
@@ -154,8 +150,8 @@ workflow ctat_vif {
         if(remove_duplicates) {
             call RemoveDuplicates {
                 input:
-                    input_bam=STAR.bam,
-                    input_bai=STAR.bai,
+                    input_bam=STAR_prelim.bam,
+                    input_bai=STAR_prelim.bai,
                     output_bam = "Aligned.sortedByCoord.out.rm.dups.bam",
                     util_dir=util_dir,
                     cpu=1,
@@ -168,7 +164,7 @@ workflow ctat_vif {
         }
         call InsertionSiteCandidates {
             input:
-                chimeric_junction=select_first([STAR.chimeric_junction]),
+                chimeric_junction=select_first([STAR_prelim.chimeric_junction]),
                 viral_fasta=viral_fasta,
                 remove_duplicates=remove_duplicates,
                 util_dir=util_dir,
@@ -181,8 +177,8 @@ workflow ctat_vif {
         if(generate_reports) {
             call VirusReport {
                 input:
-                    bam=select_first([RemoveDuplicates.bam, STAR.bam]),
-                    bai=select_first([RemoveDuplicates.bai, STAR.bai]),
+                    bam=select_first([RemoveDuplicates.bam, STAR_prelim.bam]),
+                    bai=select_first([RemoveDuplicates.bai, STAR_prelim.bai]),
                     viral_fasta=viral_fasta,
                     insertion_site_candidates=insertion_site_candidates_output,
                     util_dir=util_dir,
@@ -195,31 +191,30 @@ workflow ctat_vif {
     }
 
     if(!star_init_only) {
-        File aligned_bam_use = select_first([bam, RemoveDuplicates.bam, STAR.bam])
-        File aligned_bai_use= select_first([bam_index, RemoveDuplicates.bai, STAR.bai])
+        File aligned_bam_use = select_first([bam, RemoveDuplicates.bam, STAR_prelim.bam])
+        File aligned_bai_use= select_first([bam_index, RemoveDuplicates.bai, STAR_prelim.bai])
         File insertion_site_candidates_use = select_first([insertion_site_candidates, insertion_site_candidates_output])
         call ExtractChimericGenomicTargets {
             input:
                 bam=aligned_bam_use,
                 bai=aligned_bai_use,
-                fasta=fasta,
+                fasta=ref_genome_fasta,
                 viral_fasta=viral_fasta,
                 insertion_site_candidates_abridged=insertion_site_candidates_use,
                 util_dir=util_dir,
                 preemptible=preemptible,
                 docker=docker
         }
-        call STAR as STAR2 {
+        call STAR_validate {
             input:
                 util_dir=util_dir,
                 fastq1=select_first([left]),
                 fastq2=right,
                 two_pass_mode = star_two_pass_mode,
-                base_name="out2",
+                base_name="validate_inserts",
                 star_reference=star_reference_use,
                 star_reference_dir=star_reference_dir,
-                genome_fasta_file=ExtractChimericGenomicTargets.fasta_extract,
-                disable_chimeras=true,
+                insertions_fasta_file=ExtractChimericGenomicTargets.fasta_extract,
                 extra_disk_space = star_extra_disk_space,
                 disk_space_multiplier = star_fastq_disk_space_multiplier,
                 memory = star_memory,
@@ -232,9 +227,9 @@ workflow ctat_vif {
         if(remove_duplicates) {
             call RemoveDuplicates as RemoveDuplicates2 {
                 input:
-                    input_bam=STAR2.bam,
-                    input_bai=STAR2.bai,
-                    output_bam = "Aligned2.sortedByCoord.out.rm.dups.bam",
+                    input_bam=STAR_validate.bam,
+                    input_bai=STAR_validate.bai,
+                    output_bam = "validate_inserts.sortedByCoord.out.rm.dups.bam",
                     util_dir=util_dir,
                     cpu=1,
                     preemptible=preemptible,
@@ -244,8 +239,8 @@ workflow ctat_vif {
                     disk_space_multiplier=2
             }
         }
-        File aligned_bam2 = select_first([RemoveDuplicates2.bam, STAR2.bam])
-        File aligned_bai2 = select_first([RemoveDuplicates2.bai, STAR2.bai])
+        File aligned_bam2 = select_first([RemoveDuplicates2.bam, STAR_validate.bam])
+        File aligned_bai2 = select_first([RemoveDuplicates2.bai, STAR_validate.bai])
 
         call ChimericContigEvidenceAnalyzer {
             input:
@@ -267,7 +262,7 @@ workflow ctat_vif {
                     alignment_bai=ChimericContigEvidenceAnalyzer.evidence_bai,
                     chim_targets_gtf=ExtractChimericGenomicTargets.gtf_extract,
                     chim_targets_fasta=ExtractChimericGenomicTargets.fasta_extract,
-                    gtf=gtf,
+                    gtf=ref_genome_gtf,
                     images=select_all([VirusReport.genome_abundance_plot, VirusReport.read_counts_image, VirusReport.read_counts_log_image]),
                     util_dir=util_dir,
                     memory=igv_reports_memory,
@@ -329,14 +324,17 @@ task STARIndex {
     }
 }
 
-task STAR {
+
+
+
+task STAR_prelim {
     input {
         String util_dir
         File fastq1
         File? fastq2
         File? star_reference
         String? star_reference_dir
-        Boolean disable_chimeras
+        Boolean ref_genome_incl_viral
         Float extra_disk_space
         Float disk_space_multiplier
         Boolean use_ssd
@@ -347,11 +345,12 @@ task STAR {
         String base_name
         String two_pass_mode
         Boolean autodetect_cpu
-        File? genome_fasta_file
+        File? viral_genomes_fasta_file
     }
     Int max_mate_dist = 100000
-    Boolean has_genome_fasta_file = defined(genome_fasta_file)
-
+    Boolean incl_viral_fasta_file = ( defined(viral_genomes_fasta_file) && ! ref_genome_incl_viral )
+    String genomeFastaFilesParam = if (incl_viral_fasta_file) then "--genomeFastaFiles " + viral_genomes_fasta_file else ""
+    
     command <<<
         set -e
 
@@ -392,29 +391,154 @@ task STAR {
             fi
         fi
 
-        STAR \
+      STAR \
+        --runMode alignReads \
         --genomeDir $genomeDir \
         --runThreadN $cpu \
         --readFilesIn $fastqs \
         $readFilesCommand \
         --outSAMtype BAM SortedByCoordinate \
         --outFileNamePrefix ~{base_name}. \
+        --outSAMstrandField intronMotif \
+        --outSAMunmapped Within \
         ~{"--twopassMode " + two_pass_mode} \
         --alignSJDBoverhangMin 10 \
         --genomeSuffixLengthMax 10000 \
         --limitBAMsortRAM 47271261705 \
         --alignInsertionFlush Right \
-        ~{"--genomeFastaFiles " + genome_fasta_file} \
-        ~{true='--outSAMfilter KeepAllAddedReferences' false='' has_genome_fasta_file} \
+        ~{genomeFastaFilesParam} \
         --alignMatesGapMax ~{max_mate_dist} \
         --alignIntronMax  ~{max_mate_dist} \
+        --peOverlapNbasesMin 12 \
+        --peOverlapMMp 0.1 \
         --alignSJstitchMismatchNmax 5 -1 5 5 \
-        --scoreGapNoncan -6 \
-        ~{true='' false='--chimJunctionOverhangMin 12 --chimSegmentMin 12 --chimSegmentReadGapMax 3' disable_chimeras}
+        --alignSplicedMateMapLminOverLmate 0 \
+        --alignSplicedMateMapLmin 30 \
+        --chimJunctionOverhangMin 12 \
+         --chimOutJunctionFormat 0 \
+         --chimSegmentMin 8 \
+         --chimSegmentReadGapMax 3 \
+         --chimScoreJunctionNonGTAG 0 \
+         --chimNonchimScoreDropMin 10 \
+         --chimMultimapScoreRange 3 \
+         --chimMultimapNmax 20 \
+         --chimOutType Junctions WithinBAM
 
         samtools index "~{base_name}.Aligned.sortedByCoord.out.bam"
     >>>
 
+          
+    
+    output {
+        File bam = "~{base_name}.Aligned.sortedByCoord.out.bam"
+        File bai = "~{base_name}.Aligned.sortedByCoord.out.bam.bai"
+        File output_log_final = "~{base_name}.Log.final.out"
+        File output_SJ = "~{base_name}.SJ.out.tab"
+        File? chimeric_junction = "~{base_name}.Chimeric.out.junction"
+    }
+
+    runtime {
+        preemptible: preemptible
+        disks: "local-disk " + ceil(size(fastq1, "GB")*disk_space_multiplier + size(fastq2, "GB") * disk_space_multiplier + size(star_reference, "GB")*8 + extra_disk_space) + " " + (if use_ssd then "SSD" else "HDD")
+        docker: docker
+        cpu: cpu
+        memory: memory + "GB"
+    }
+}
+
+
+
+task STAR_validate {
+    input {
+        String util_dir
+        File fastq1
+        File? fastq2
+        File? star_reference
+        String? star_reference_dir
+        Float extra_disk_space
+        Float disk_space_multiplier
+        Boolean use_ssd
+        Int cpu
+        Int preemptible
+        Float memory
+        String docker
+        String base_name
+        String two_pass_mode
+        Boolean autodetect_cpu
+        File insertions_fasta_file
+    }
+    Int max_mate_dist = 100000
+    
+    command <<<
+        set -e
+
+        cpu=~{cpu}
+        genomeDir="~{star_reference}"
+        fastqs="~{fastq1} ~{fastq2}"
+        readFilesCommand=""
+        if [[ "~{fastq1}" = *.gz ]] ; then
+            readFilesCommand="--readFilesCommand \"gunzip -c\""
+        fi
+        if [ "~{autodetect_cpu}" == "true" ]; then
+            cpu=$(nproc)
+        fi
+
+        if [ "$genomeDir" == "" ]; then
+            genomeDir="~{star_reference_dir}"
+        fi
+
+        if [ -f "${genomeDir}" ] ; then
+            mkdir genome_dir
+            compress="pigz"
+
+            if [[ $genomeDir == *.bz2 ]] ; then
+                compress="pbzip2"
+            fi
+            tar -I $compress -xf ~{star_reference} -C genome_dir --strip-components 1
+            genomeDir="genome_dir"
+        fi
+
+        # special case for tar of fastq files
+        if [[ "~{fastq1}" == *.tar.gz ]] ; then
+            mkdir fastq
+            tar -I pigz -xvf ~{fastq1} -C fastq
+            fastqs=$(find fastq -type f)
+            readFilesCommand=""
+            if [[ "$fastqs" = *.gz ]] ; then
+                readFilesCommand="--readFilesCommand \"gunzip -c\""
+            fi
+        fi
+
+      STAR \
+        --runMode alignReads \
+        --genomeDir $genomeDir \
+        --genomeFastaFiles ~{insertions_fasta_file} \ 
+        --runThreadN $cpu \
+        --readFilesIn $fastqs \
+        $readFilesCommand \
+        --outSAMtype BAM SortedByCoordinate \
+        --outFileNamePrefix ~{base_name}. \
+        --outSAMstrandField intronMotif \
+        --outSAMunmapped Within \
+        ~{"--twopassMode " + two_pass_mode} \
+        --alignSJDBoverhangMin 10 \
+        --genomeSuffixLengthMax 10000 \
+        --limitBAMsortRAM 47271261705 \
+        --alignInsertionFlush Right \
+        --outSAMfilter KeepOnlyAddedReferences \
+        --alignMatesGapMax ~{max_mate_dist} \
+        --alignIntronMax  ~{max_mate_dist} \
+        --peOverlapNbasesMin 12 \
+        --peOverlapMMp 0.1 \
+        --alignSJstitchMismatchNmax 5 -1 5 5 \
+        --alignSplicedMateMapLminOverLmate 0 \
+        --alignSplicedMateMapLmin 30 \
+
+        samtools index "~{base_name}.Aligned.sortedByCoord.out.bam"
+    >>>
+
+          
+    
     output {
         File bam = "~{base_name}.Aligned.sortedByCoord.out.bam"
         File bai = "~{base_name}.Aligned.sortedByCoord.out.bam.bai"
