@@ -152,9 +152,13 @@ def main():
     input_json["util_dir"] = util_dir
     input_json["docker"] = "a/b"  # hack to make cromwell happy
 
-    _, json_file = tempfile.mkstemp(suffix=".json")
-    _, meta_file = tempfile.mkstemp(suffix=".json")
+    
+    #_, json_file = tempfile.mkstemp(suffix=".json")
+    #_, meta_file = tempfile.mkstemp(suffix=".json")
 
+    json_file = os.path.abspath("ctat-vif.input.json")
+    meta_file = os.path.abspath("ctat-vif.meta.json")
+    
     wdl_dir = os.path.join(base_dir, "WDL")
     cromwell_jar = None
     if cromwell is None:
@@ -179,7 +183,9 @@ def main():
     for key in input_json:
         input_json_with_prefix["ctat_vif.{}".format(key)] = input_json[key]
     with open(json_file, "wt") as out:
-        out.write(json.dumps(input_json_with_prefix))
+        out.write(json.dumps(input_json_with_prefix, indent=4)
+                  )
+        
     cromwell_args = [
             "java",
             "-Dconfig.file={}".format(cromwell_conf),

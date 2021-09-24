@@ -138,6 +138,7 @@ workflow ctat_vif {
                 star_reference=star_reference_use,
                 star_reference_dir=star_reference_dir,
                 ref_genome_incl_viral = ref_genome_incl_viral,
+                viral_genomes_fasta_file = viral_fasta,
                 extra_disk_space = star_extra_disk_space,
                 disk_space_multiplier = star_fastq_disk_space_multiplier,
                 memory = star_init_memory,
