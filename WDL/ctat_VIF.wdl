@@ -1,6 +1,5 @@
 version 1.0
 
-import "https://api.firecloud.org/ga4gh/v1/tools/CTAT:ctat_mutations/versions/4/plain-WDL/descriptor" as ctat_mutations
 
 workflow ctat_vif {
     input {
@@ -31,7 +30,6 @@ workflow ctat_vif {
         String star_index_memory = "50G"
         Int sjdb_overhang = 150
 
-        Boolean call_viral_snps = false
         String? sample_id
 
         Boolean autodetect_cpu = true # auto-detect number of cpus for STAR as # of requested CPUs might not equal actual CPUs, depending on memory
@@ -104,11 +102,6 @@ workflow ctat_vif {
         File? remove_duplicates2_bam = RemoveDuplicates2.bam
         File? remove_duplicates2_bam_index = RemoveDuplicates2.bai
 
-        File? viral_bam = ExtractViralReads.viral_bam
-        File? viral_bai = ExtractViralReads.viral_bai
-
-        File? haplotype_caller_vcf = ctat_mutations.haplotype_caller_vcf
-#        File? filtered_vcf = ctat_mutations.filtered_vcf
 
         File? evidence_counts =  ChimericContigEvidenceAnalyzer.evidence_counts
         File? evidence_bam = ChimericContigEvidenceAnalyzer.evidence_bam
@@ -199,40 +192,6 @@ workflow ctat_vif {
             }
         }
 
-        if(call_viral_snps) {
-            call ExtractViralReads {
-                input:
-                    bam=select_first([RemoveDuplicates.bam, STAR.bam]),
-                    bai=select_first([RemoveDuplicates.bai, STAR.bai]),
-                    picard=picard,
-                    fasta=viral_fasta,
-                    preemptible=preemptible,
-                    docker=docker
-            }
-
-            call CreateViralFasta {
-                input:
-                    picard=picard,
-                    fasta=viral_fasta,
-                    preemptible=preemptible,
-                    docker=docker
-            }
-
-            call ctat_mutations.ctat_mutations as ctat_mutations {
-                input:
-                    bam=ExtractViralReads.viral_bam,
-                    bai=ExtractViralReads.viral_bai,
-                    sample_id=sub(basename(select_first([sample_id, left, bam])), "\\.bam|\\.gz|\\.fastq", ""),
-                    variant_scatter_count=0,
-                    filter_cancer_variants=false,
-                    ref_dict=CreateViralFasta.viral_dict,
-                    ref_fasta=CreateViralFasta.viral_fasta,
-                    ref_fasta_index=CreateViralFasta.viral_fasta_index,
-                    boosting_method="none",
-                    haplotype_caller_args="-dont-use-soft-clipped-bases --stand-call-conf 20 --recover-dangling-heads true --sample-ploidy 1"
-            }
-
-        }
     }
 
     if(!star_init_only) {

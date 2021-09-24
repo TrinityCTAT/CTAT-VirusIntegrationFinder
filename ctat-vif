@@ -90,7 +90,7 @@ def main():
     remove_duplicates = args.remove_duplicates
     star_init_only = args.star_init_only
     min_reads = args.min_reads
-    viral_fasta = args.viral_fasta
+    viral_fasta = os.path.abspath(args.viral_fasta)
     cpu = args.cpu
     output_directory = args.outputdir
     star_init_two_pass_mode = args.star_init_two_pass_mode
