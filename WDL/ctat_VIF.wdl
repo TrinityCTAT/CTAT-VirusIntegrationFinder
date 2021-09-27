@@ -94,9 +94,8 @@ workflow ctat_vif {
         File? fasta_extract = ExtractChimericGenomicTargets.fasta_extract
         File? gtf_extract = ExtractChimericGenomicTargets.gtf_extract
 
-        File? star_validate_inserts_bam = select_first([RemoveDuplicates2.bam, STAR_validate.bam])
-        File? star_validate_inserts_bam_index = select_first([RemoveDuplicates2.bai, STAR_validate.bai])
-
+        File? star_validate_inserts_bam = select_first([RemoveDuplicates2.bam, STAR_validate.bam, "/dev/null"])
+        File? star_validate_inserts_bam_index = select_first([RemoveDuplicates2.bai, STAR_validate.bai, "/dev/null"])
 
         File? evidence_counts =  ChimericContigEvidenceAnalyzer.evidence_counts
         File? evidence_bam = ChimericContigEvidenceAnalyzer.evidence_bam
@@ -206,6 +205,9 @@ workflow ctat_vif {
                 preemptible=preemptible,
                 docker=docker
         }
+
+        if (ExtractChimericGenomicTargets.has_chimeric_targets) {
+
         call STAR_validate {
             input:
                 util_dir=util_dir,
@@ -270,7 +272,8 @@ workflow ctat_vif {
                     preemptible=preemptible,
                     docker=docker
             }
-        }
+          }
+       }
     }
 }
 
@@ -701,13 +704,18 @@ task ExtractChimericGenomicTargets {
         --output_prefix vif.extract \
         --chim_events ~{insertion_site_candidates_abridged} \
         --pad_region_length 1000
+
+
+      if [ -s vif.extract.fasta ]; then echo "true" > has_results; else echo "false" > has_results; fi
+      
     >>>
 
     output {
         File fasta_extract = "vif.extract.fasta"
         File gtf_extract = "vif.extract.gtf"
+        Boolean has_chimeric_targets = read_boolean("has_results")
     }
-
+    
     runtime {
         preemptible: preemptible
         disks: "local-disk " + ceil(size(viral_fasta, "GB")*2 + size(fasta, "GB")*2 + size(bam, "GB")*2 + 1) + " HDD"
