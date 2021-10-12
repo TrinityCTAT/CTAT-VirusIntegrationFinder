@@ -19,9 +19,14 @@ workflow ctat_vif {
         Boolean generate_reports = true
         Int min_reads = 0
 
+        Boolean filter_human_chimeric_reads = true
+      
         File? star_reference
         String? star_reference_dir
 
+        File? star_reference_human_only
+        
+      
         String igv_virus_reports_memory = "14GB"
         String igv_reports_memory = "1GB"
 
@@ -190,10 +195,50 @@ workflow ctat_vif {
 
     }
 
+    if (filter_human_chimeric_reads) {
+
+      call extract_evidence_reads {
+        input:
+          insertion_candidates = insertion_site_candidates_output,
+          fastq1=left,
+          fastq2=right
+      }
+
+      call STAR_prelim as SP2 {
+        input:
+          util_dir=util_dir,
+          fastq1=extract_evidence_reads.left,
+          fastq2=extract_evidence_reads.right,
+          two_pass_mode = star_init_two_pass_mode,
+          base_name="out2",
+          star_reference=star_reference_human_only,
+          star_reference_dir=star_reference_dir,
+          ref_genome_incl_viral = true, #ref_genome_incl_viral, NOPE! TODO - refactor STAR_prelim with more sensible options
+          #viral_genomes_fasta_file = viral_fasta,
+          extra_disk_space = star_extra_disk_space,
+          disk_space_multiplier = star_fastq_disk_space_multiplier,
+          memory = star_init_memory,
+          use_ssd = star_use_ssd,
+          cpu = star_cpu,
+          autodetect_cpu = autodetect_cpu,
+          docker = docker,
+          preemptible = preemptible
+      }
+      
+      call prune_human_chimeric_from_insertion_results {
+        input:
+          orig_insertion_site_candidates=insertion_site_candidates_output,
+          human_chimeric_alignments=SP2.chimeric_junction
+        }
+      
+
+    }
+
+    
     if(!star_init_only) {
         File aligned_bam_use = select_first([bam, RemoveDuplicates.bam, STAR_prelim.bam])
         File aligned_bai_use= select_first([bam_index, RemoveDuplicates.bai, STAR_prelim.bai])
-        File insertion_site_candidates_use = select_first([insertion_site_candidates, insertion_site_candidates_output])
+        File insertion_site_candidates_use = select_first([prune_human_chimeric_from_insertion_results.revised_insertion_candidates, insertion_site_candidates, insertion_site_candidates_output])
         call ExtractChimericGenomicTargets {
             input:
                 bam=aligned_bam_use,
@@ -1059,5 +1104,71 @@ task SummaryReport {
         docker: docker
         cpu: 1
         memory: "16GB"
+    }
+}
+
+
+
+task extract_evidence_reads {
+    input {
+      File insertion_candidates
+      File fastq1
+      File? fastq2
+    }
+
+    command <<<
+
+      ~{util_dir}/extract_insertion_evidence_reads.py \
+        --insertion_candidates ~{insertion_candidates} \
+        --left_fq ~{fastq1} ~{"--right_fq " + fastq2} \
+        --out_prefix ev_reads
+      
+    >>>
+
+    runtime {
+        docker: docker
+        bootDiskSizeGb: 12
+        memory: "1G"
+        disks: "local-disk " + ceil(size(fasta, "GB")*2) + " HDD"
+        preemptible: preemptible
+        cpu: 1
+    }
+
+    output {
+        File fastq1 = "ev_reads_1.fastq"
+        File? fastq2 = "ev_reads_2.fastq"
+      
+    }
+}
+
+
+
+task prune_human_chimeric_from_insertion_results {
+    input {
+      File orig_insertion_site_candidates
+      File human_chimeric_alignments
+    }
+
+    command <<<
+
+      ~{util_dir}/prune_human_chimeric_from_insertion_results.py \
+        --insertion_candidates ~{orig_insertion_candidates} \
+        --human_chimeric_alignments ~{human_chimeric_alignments} \
+        --out_prefix human_chim_pruned
+      
+    >>>
+
+    runtime {
+        docker: docker
+        bootDiskSizeGb: 12
+        memory: "1G"
+        disks: "local-disk " + ceil(size(fasta, "GB")*2) + " HDD"
+        preemptible: preemptible
+        cpu: 1
+    }
+
+    output {
+        File revised_insertion_candidates = "revised.insertion_candidates.tsv"
+              
     }
 }
