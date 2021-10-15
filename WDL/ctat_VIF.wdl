@@ -1057,7 +1057,7 @@ task VirusReport {
         --output_prefix ~{prefix}
 
         ~{util_dir}/create_insertion_site_inspector_js.py \
-        --VIF_summary_tsv vif.virus_read_counts_summary.tsv \
+        --VIF_summary_tsv ~{prefix}.virus_read_counts_summary.tsv \
         --json_outfile ~{prefix}.virus.json
 
         # make bed for igvjs
