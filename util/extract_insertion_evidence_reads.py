@@ -66,8 +66,8 @@ class faFile:
         # Read File 
         #~~~~~~~~~~~
         # check if the file is gzipped 
-        if self.file.endswith(".gz"):
-            self.file = gzip.open(self.file)
+        if input_file.endswith(".gz"):
+            self.file = gzip.open(input_file)
         else:
             self.file = open(input_file, "r")
 
