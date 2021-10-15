@@ -67,29 +67,26 @@ class faFile:
         #~~~~~~~~~~~
         # check if the file is gzipped 
         if input_file.endswith(".gz"):
-            self.file = gzip.open(input_file)
+            self.file = gzip.open(input_file).read().rstrip().decode()
         else:
-            self.file = open(input_file, "r")
+            self.file = open(input_file, "r").read().rstrip()
 
-    def faReader(self):
-        contig_id = None
-        # Read in the file 
-        tmp = self.file.read()
-        # Split the file by the > character
-        ## this seperates the different sequences
-        ## skip the first as it will be blank do to .split() 
-        tmp = tmp.split(">")[1:]
-        # Create the dictionary to hold the ids and sequences 
-        dic = {}
-        # Run through each sequence and remove the \n characters 
-        ## Then add it to the dictionary 
-        for i in tmp:
-            idx = i.find("\n")
-            dic[i[0:idx]] = i[idx:].replace("\n","")
-        # Save the dictionary in the object as .sequences 
-        self.sequences = dic
-        # return the object
-        return self 
+    # def faReader(self):
+    #     # Split the file by the > character
+    #     ## this seperates the different sequences
+    #     ## skip the first as it will be blank do to .split() 
+    #     tmp = self.file.split(">")[1:]
+    #     # Create the dictionary to hold the ids and sequences 
+    #     dic = {}
+    #     # Run through each sequence and remove the \n characters 
+    #     ## Then add it to the dictionary 
+    #     for i in tmp:
+    #         idx = i.find("\n")
+    #         dic[i[0:idx]] = i[idx:].replace("\n","")
+    #     # Save the dictionary in the object as .sequences 
+    #     self.sequences = dic
+    #     # return the object
+    #     return self 
 
     def fqReader(self):
         '''
@@ -103,11 +100,8 @@ class faFile:
             line4: Quality values s
         '''
 
-        contig_id = None
-        # Read in the file 
-        tmp = self.file.read().rstrip()
         # split all the lines by \n 
-        tmp = tmp.split("\n")
+        tmp = self.file.split("\n")
         # Create the dictionary to hold the ids and sequences 
         dic = {}
         # Run through each sequence and remove the \n characters 
