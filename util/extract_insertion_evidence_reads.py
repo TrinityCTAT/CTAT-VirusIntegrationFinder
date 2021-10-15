@@ -10,27 +10,19 @@
 #~~~~~~~~~~~~~~~~~~
 import pandas as pd
 import pysam 
-import os, re
+import os, sys, re
 import logging
 import csv
 import sys, time
 import argparse
 import multiprocessing as mp
+import gzip
 
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s : %(levelname)s : %(message)s',
                     datefmt='%H:%M:%S')
 logger = logging.getLogger(__name__)
 
-#!/usr/bin/env python
-
-import argparse
-import math
-import string
-import os, sys
-import logging 
-logging.basicConfig(format='\n %(levelname)s : %(message)s', level=logging.DEBUG)
-# logging.basicConfig(format='%(asctime)s %(message)s') 
 
 
 def CHECK_reading(true_ids, read_names):
@@ -61,16 +53,23 @@ class faFile:
 
     # Class ExtractEvidenceReads inherits from class faFile
     def __init__(self, input_file): # arguments to class instantiation 
-        # super(faFile, self).__init__()
-        # super().__init__()
+
+        # Apply constants to the object 
         self.input_file = input_file
         self.buffer_size = os.stat(input_file).st_blksize
-        self.file = open(input_file, "r")
         self.sequence_ids = []
         self.sequences = {}
         self.num_seqs = 0
         self.output_name = ""
-        # self.fa_reader()
+
+        #~~~~~~~~~~~
+        # Read File 
+        #~~~~~~~~~~~
+        # check if the file is gzipped 
+        if self.file.endswith(".gz"):
+            self.file = gzip.open(self.file)
+        else:
+            self.file = open(input_file, "r")
 
     def faReader(self):
         contig_id = None
