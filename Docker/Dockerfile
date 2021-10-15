@@ -1,7 +1,6 @@
 FROM ubuntu:18.04
 MAINTAINER bhaas@broadinstitute.org
 ENV DEBIAN_FRONTEND=noninteractive
-
 RUN apt-get -qq update && apt-get -qq -y install --no-install-recommends \
     automake \
     build-essential \
@@ -41,16 +40,28 @@ RUN apt-get -qq update && apt-get -qq -y install --no-install-recommends \
 # make python3 be the default python
 RUN ln -sf /usr/bin/python3 /usr/bin/python
 
-RUN pip3 install --upgrade pip && pip3 install igv-reports==1.0.2 pandas==1.1.5
+#~~~~~~~~~~~
+# Python 
+#~~~~~~~~~~~
+RUN pip3 install --upgrade pip && pip3 install \
+	igv-reports==1.0.2 \
+	pandas==1.1.5 \
+	argparse==1.4.0 
 
 ENV SRC /usr/local/src
 ENV BIN /usr/local/bin
 
+#~~~~~~~~~~~
+# R packages 
+#~~~~~~~~~~~
 RUN R -e 'install.packages("BiocManager", repos="http://cran.us.r-project.org")'
 RUN R -e 'BiocManager::install("tidyverse")'
 RUN R -e 'BiocManager::install("argparse")'
+RUN R -e "install.packages(c('argparse', 'tidyr', 'tidyverse'), repos = 'http://cran.us.r-project.org')"
 
+#~~~~~~~~~~~
 ## Samtools
+#~~~~~~~~~~~
 WORKDIR $SRC
 ENV SAMTOOLS_VERSION=1.12
 RUN SAMTOOLS_URL="https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2" && \
@@ -61,12 +72,16 @@ RUN SAMTOOLS_URL="https://github.com/samtools/samtools/releases/download/${SAMTO
     cd ../ && ./configure --without-curses && make && make install && \
     rm $SRC/samtools-${SAMTOOLS_VERSION}.tar.bz2 && rm -r $SRC/samtools-${SAMTOOLS_VERSION}
 
+#~~~~~~~~~~~
 ## Picard tools
+#~~~~~~~~~~~
 WORKDIR $SRC
 RUN wget https://github.com/broadinstitute/picard/releases/download/2.25.2/picard.jar
 ENV PICARD_HOME $SRC/picard.jar
 
+#~~~~~~~~~~~
 ## STAR Aligner
+#~~~~~~~~~~~
 WORKDIR $SRC
 ENV STAR_VERSION=2.7.8a
 RUN STAR_URL="https://github.com/alexdobin/STAR/archive/${STAR_VERSION}.tar.gz" &&\
@@ -75,7 +90,9 @@ RUN STAR_URL="https://github.com/alexdobin/STAR/archive/${STAR_VERSION}.tar.gz" 
     mv $SRC/STAR-${STAR_VERSION}/bin/Linux_x86_64_static/STAR /usr/local/bin && \
     rm $SRC/${STAR_VERSION}.tar.gz && rm -r $SRC/STAR-${STAR_VERSION}
 
+#~~~~~~~~~~~
 ## Bedtools
+#~~~~~~~~~~~
 RUN wget -q https://github.com/arq5x/bedtools2/releases/download/v2.30.0/bedtools-2.30.0.tar.gz && \
    tar xf bedtools-2.30.0.tar.gz && \
    cd bedtools2 && \
@@ -83,15 +100,25 @@ RUN wget -q https://github.com/arq5x/bedtools2/releases/download/v2.30.0/bedtool
    cp bin/* $BIN/ && \
    rm $SRC/bedtools-2.30.0.tar.gz && rm -r $SRC/bedtools2
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## CTAT-VirusIntegrationFinder
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#ENV VIF_CO="3e48b729c099827983c63b772823e5e4fc45f9cd"
+#RUN git clone --recursive https://github.com/broadinstitute/CTAT-VirusIntegrationFinder.git && \
+#        cd CTAT-VirusIntegrationFinder && \
+#        git checkout ${VIF_CO} && \
+#        git submodule init && git submodule update && \
+#        mv * $BIN && \
+#	    cd ${BIN}/util/bamsifter && ./build_htslib.sh && make
+
 WORKDIR $SRC
-ENV VIF_CO="3e48b729c099827983c63b772823e5e4fc45f9cd"
-RUN git clone --recursive https://github.com/broadinstitute/CTAT-VirusIntegrationFinder.git && \
-        cd CTAT-VirusIntegrationFinder && \
-        git checkout ${VIF_CO} && \
-        git submodule init && git submodule update && \
-        mv * $BIN && \
-	    cd ${BIN}/util/bamsifter && ./build_htslib.sh && make
+RUN mkdir $SRC/CTAT-VirusIntegrationFinder
+ADD PyLib $SRC/CTAT-VirusIntegrationFinder/PyLib
+ADD util $SRC/CTAT-VirusIntegrationFinder/util
+ADD WDL $SRC/CTAT-VirusIntegrationFinder/WDL
+ADD ctat-vif $SRC/CTAT-VirusIntegrationFinder/
+RUN cd $SRC/CTAT-VirusIntegrationFinder/util/bamsifter && ./build_htslib.sh && make
 
 RUN wget -q https://github.com/broadinstitute/cromwell/releases/download/59/cromwell-59.jar -O $SRC/CTAT-VirusIntegrationFinder/WDL/cromwell-59.jar
 RUN wget -q https://raw.githubusercontent.com/klarman-cell-observatory/cumulus/master/docker/monitor_script.sh -O $SRC/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh
