@@ -29,7 +29,7 @@ def CHECK_reading(true_ids, read_names):
     if len(true_ids) == len(read_names):
         print(f"\t\t\t\tAll {len(read_names)} reads found!")
     else:
-        m = f"\t\t\t\t NOT All reads found! {true_ids2} out of {len(read_names)} Found."
+        m = f"\t\t\t\t NOT All reads found! {true_ids} out of {len(read_names)} Found."
         logger.warning(f"\t\t\t\tAll {len(read_names)} reads found!")
         exit()
 
