@@ -474,7 +474,7 @@ task STAR_prelim {
             --genomeSuffixLengthMax 10000 \
             --limitBAMsortRAM 47271261705 \
             --alignInsertionFlush Right \
-            --genomeFastaFiles viral_genomes_fasta_file \
+            --genomeFastaFiles ~{viral_genomes_fasta_file} \
             --alignMatesGapMax ~{max_mate_dist} \
             --alignIntronMax  ~{max_mate_dist} \
             --peOverlapNbasesMin 12 \
