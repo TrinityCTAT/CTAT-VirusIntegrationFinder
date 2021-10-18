@@ -1198,23 +1198,25 @@ task ExtractEvidenceReads {
     }
     String prefix = sample_id + ".vif.prelim"
 
+    # Boolean if right fastq passed 
+    Boolean has_right_fq = defined(right_fq)
+
     command <<<
         set -e
 
         # If the RIGHT FastQ file was provided 
-        if (defined(right_fq)){
+        if [ "~{has_right_fq}" == "true" ]; then 
             ~{util_dir}/extract_insertion_evidence_reads.py \
             --left_fq ~{left_fq} \
             --right_fq ~{right_fq} \
             --insertion_candidates ~{orig_insertion_site_candidates} \
             --out_prefix ~{prefix}
-        }
-        if (!defined(right_fq)){
+        else
             ~{util_dir}/extract_insertion_evidence_reads.py \
             --left_fq ~{left_fq} \
             --insertion_candidates ~{orig_insertion_site_candidates} \
             --out_prefix ~{prefix}
-        }
+        fi
 
     >>>
 
