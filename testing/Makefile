@@ -15,6 +15,10 @@ remove_dups:
 
 
 
+docker:
+	docker run --rm -it -v `pwd`:/data -v ${CTAT_GENOME_LIB}:/ctat_genome_lib trinityctat/ctat_vif:latest /usr/local/src/CTAT-VirusIntegrationFinder/ctat-vif --viral_fasta /data/HPV16.fa --left /data/reads_1.fastq.gz --right /data/reads_2.fastq.gz --genome_lib_dir /ctat_genome_lib  -O /data/VIF.docker.outdir --cpu 10
+
+
 singularity:
 	singularity exec -e -H `pwd` -B ${CTAT_GENOME_LIB} ../Docker/ctat_vif.*.simg ctat-vif --viral_fasta HPV16.fa --left reads_1.fastq.gz --right reads_2.fastq.gz --genome_lib_dir ${CTAT_GENOME_LIB}  -O VIF.singularity.outdir --CPU 10
 
