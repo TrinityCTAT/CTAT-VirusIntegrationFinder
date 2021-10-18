@@ -29,8 +29,10 @@ def CHECK_reading(true_ids, read_names):
     if len(true_ids) == len(read_names):
         print(f"\t\t\t\tAll {len(read_names)} reads found!")
     else:
-        m = f"\t\t\t\t NOT All reads found! {true_ids} out of {len(read_names)} Found."
-        logger.warning(f"\t\t\t\tAll {len(read_names)} reads found!")
+        m = f"\t\t\t\t NOT All reads found! {len(true_ids)} out of {len(read_names)} Found."
+        logger.warning(m)
+
+        print(set(read_names) - set(true_ids))
         exit()
 
 
@@ -120,26 +122,22 @@ class faFile:
         df = df.reset_index()
         df.columns = ["ID","Sequence"]
         a = [i.split(" ")[0] for i in df.ID]
+        # a = [i.split("/")[0] for i in a]
         df["ID2"] = a
+
+        # check if older formatted fastq
+        # /1 read_1 and /2 read_2
+        if ( (a[0].endswith("/1")) or (a[0].endswith("/2")) ):
+            logger.info("\t\tIdentified older formated Fastq, editing read names...")
+            
+            df["ID2"] = df["ID2"].str.replace(r'/1$', '', regex=True)
+            df["ID2"] = df["ID2"].str.replace(r'/2$', '', regex=True)
         
         self.df = df
         
         # return the object
         return self 
 
-
-
-    # def faWriter(self, output = "Output_fa.fa"):
-    #     # Set the constant 
-    #     self.output_name = output
-
-    #     # Create the file to write to
-    #     output_file = open(self.output_name, "w")
-
-    #     for i in self.sequences:
-    #         tmp = ">{}\n{}\n".format(i, self.sequences[i])
-    #         output_file.write(tmp)
-    #     output_file.close()
 
 
 
@@ -207,13 +205,6 @@ class ExtractEvidenceReads:
         '''
         logger.info("\n################################\n Reading in FASTQ \n################################")
         
-        # for entry in fh:
-        #     print(entry.name)
-        #     print(entry.sequence)
-        #     print(entry.comment)
-        #     print(entry.quality)
-
-        
         
         total_count = len(self.read_names)
         
@@ -229,12 +220,14 @@ class ExtractEvidenceReads:
 
         # identify which reads to subset 
         true_ids = list(set(self.read_names) & set(fastx_obj.df["ID2"]))
+        # print(self.read_names)
+        # print(fastx_obj.df["ID2"])
         
         ########
         # CHECK 
         ########
         # Make sure all reads are found 
-        CHECK_reading(true_ids,self.read_names)
+        CHECK_reading(true_ids, self.read_names)
 
         # Subset the DF to the reads of interest 
         subset_df = fastx_obj.df[fastx_obj.df['ID2'].isin(true_ids)]
