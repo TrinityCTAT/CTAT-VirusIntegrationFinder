@@ -474,7 +474,7 @@ task STAR_prelim {
             --genomeSuffixLengthMax 10000 \
             --limitBAMsortRAM 47271261705 \
             --alignInsertionFlush Right \
-            --genomeFastaFiles viral_genomes_fasta_file \
+            --genomeFastaFiles ~{viral_genomes_fasta_file} \
             --alignMatesGapMax ~{max_mate_dist} \
             --alignIntronMax  ~{max_mate_dist} \
             --peOverlapNbasesMin 12 \
@@ -1057,7 +1057,7 @@ task VirusReport {
         --output_prefix ~{prefix}
 
         ~{util_dir}/create_insertion_site_inspector_js.py \
-        --VIF_summary_tsv vif.virus_read_counts_summary.tsv \
+        --VIF_summary_tsv ~{prefix}.virus_read_counts_summary.tsv \
         --json_outfile ~{prefix}.virus.json
 
         # make bed for igvjs
@@ -1198,23 +1198,25 @@ task ExtractEvidenceReads {
     }
     String prefix = sample_id + ".vif.prelim"
 
+    # Boolean if right fastq passed 
+    Boolean has_right_fq = defined(right_fq)
+
     command <<<
         set -e
 
         # If the RIGHT FastQ file was provided 
-        if (defined(right_fq)){
+        if [ "~{has_right_fq}" == "true" ]; then 
             ~{util_dir}/extract_insertion_evidence_reads.py \
             --left_fq ~{left_fq} \
             --right_fq ~{right_fq} \
             --insertion_candidates ~{orig_insertion_site_candidates} \
             --out_prefix ~{prefix}
-        }
-        if (!defined(right_fq)){
+        else
             ~{util_dir}/extract_insertion_evidence_reads.py \
             --left_fq ~{left_fq} \
             --insertion_candidates ~{orig_insertion_site_candidates} \
             --out_prefix ~{prefix}
-        }
+        fi
 
     >>>
 

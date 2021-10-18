@@ -88,7 +88,7 @@ class humanChimericAlignments:
         logger.info("\n################################\n Writing New Insertion File \n################################")
 
         output_file = f"{self.out_prefix}.revised.insertion_candidates.tsv"
-        self.insertion_candidates.to_csv(output_file, index = False)
+        self.insertion_candidates.to_csv(output_file, index = False, sep = "\t")
 
 
 

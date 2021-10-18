@@ -10,35 +10,29 @@
 #~~~~~~~~~~~~~~~~~~
 import pandas as pd
 import pysam 
-import os, re
+import os, sys, re
 import logging
 import csv
 import sys, time
 import argparse
 import multiprocessing as mp
+import gzip
 
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s : %(levelname)s : %(message)s',
                     datefmt='%H:%M:%S')
 logger = logging.getLogger(__name__)
 
-#!/usr/bin/env python
-
-import argparse
-import math
-import string
-import os, sys
-import logging 
-logging.basicConfig(format='\n %(levelname)s : %(message)s', level=logging.DEBUG)
-# logging.basicConfig(format='%(asctime)s %(message)s') 
 
 
 def CHECK_reading(true_ids, read_names):
     if len(true_ids) == len(read_names):
         print(f"\t\t\t\tAll {len(read_names)} reads found!")
     else:
-        m = f"\t\t\t\t NOT All reads found! {true_ids2} out of {len(read_names)} Found."
-        logger.warning(f"\t\t\t\tAll {len(read_names)} reads found!")
+        m = f"\t\t\t\t NOT All reads found! {len(true_ids)} out of {len(read_names)} Found."
+        logger.warning(m)
+
+        print(set(read_names) - set(true_ids))
         exit()
 
 
@@ -61,36 +55,40 @@ class faFile:
 
     # Class ExtractEvidenceReads inherits from class faFile
     def __init__(self, input_file): # arguments to class instantiation 
-        # super(faFile, self).__init__()
-        # super().__init__()
+
+        # Apply constants to the object 
         self.input_file = input_file
         self.buffer_size = os.stat(input_file).st_blksize
-        self.file = open(input_file, "r")
         self.sequence_ids = []
         self.sequences = {}
         self.num_seqs = 0
         self.output_name = ""
-        # self.fa_reader()
 
-    def faReader(self):
-        contig_id = None
-        # Read in the file 
-        tmp = self.file.read()
-        # Split the file by the > character
-        ## this seperates the different sequences
-        ## skip the first as it will be blank do to .split() 
-        tmp = tmp.split(">")[1:]
-        # Create the dictionary to hold the ids and sequences 
-        dic = {}
-        # Run through each sequence and remove the \n characters 
-        ## Then add it to the dictionary 
-        for i in tmp:
-            idx = i.find("\n")
-            dic[i[0:idx]] = i[idx:].replace("\n","")
-        # Save the dictionary in the object as .sequences 
-        self.sequences = dic
-        # return the object
-        return self 
+        #~~~~~~~~~~~
+        # Read File 
+        #~~~~~~~~~~~
+        # check if the file is gzipped 
+        if input_file.endswith(".gz"):
+            self.file = gzip.open(input_file).read().rstrip().decode()
+        else:
+            self.file = open(input_file, "r").read().rstrip()
+
+    # def faReader(self):
+    #     # Split the file by the > character
+    #     ## this seperates the different sequences
+    #     ## skip the first as it will be blank do to .split() 
+    #     tmp = self.file.split(">")[1:]
+    #     # Create the dictionary to hold the ids and sequences 
+    #     dic = {}
+    #     # Run through each sequence and remove the \n characters 
+    #     ## Then add it to the dictionary 
+    #     for i in tmp:
+    #         idx = i.find("\n")
+    #         dic[i[0:idx]] = i[idx:].replace("\n","")
+    #     # Save the dictionary in the object as .sequences 
+    #     self.sequences = dic
+    #     # return the object
+    #     return self 
 
     def fqReader(self):
         '''
@@ -104,11 +102,8 @@ class faFile:
             line4: Quality values s
         '''
 
-        contig_id = None
-        # Read in the file 
-        tmp = self.file.read().rstrip()
         # split all the lines by \n 
-        tmp = tmp.split("\n")
+        tmp = self.file.split("\n")
         # Create the dictionary to hold the ids and sequences 
         dic = {}
         # Run through each sequence and remove the \n characters 
@@ -127,26 +122,22 @@ class faFile:
         df = df.reset_index()
         df.columns = ["ID","Sequence"]
         a = [i.split(" ")[0] for i in df.ID]
+        # a = [i.split("/")[0] for i in a]
         df["ID2"] = a
+
+        # check if older formatted fastq
+        # /1 read_1 and /2 read_2
+        if ( (a[0].endswith("/1")) or (a[0].endswith("/2")) ):
+            logger.info("\t\tIdentified older formated Fastq, editing read names...")
+            
+            df["ID2"] = df["ID2"].str.replace(r'/1$', '', regex=True)
+            df["ID2"] = df["ID2"].str.replace(r'/2$', '', regex=True)
         
         self.df = df
         
         # return the object
         return self 
 
-
-
-    # def faWriter(self, output = "Output_fa.fa"):
-    #     # Set the constant 
-    #     self.output_name = output
-
-    #     # Create the file to write to
-    #     output_file = open(self.output_name, "w")
-
-    #     for i in self.sequences:
-    #         tmp = ">{}\n{}\n".format(i, self.sequences[i])
-    #         output_file.write(tmp)
-    #     output_file.close()
 
 
 
@@ -214,13 +205,6 @@ class ExtractEvidenceReads:
         '''
         logger.info("\n################################\n Reading in FASTQ \n################################")
         
-        # for entry in fh:
-        #     print(entry.name)
-        #     print(entry.sequence)
-        #     print(entry.comment)
-        #     print(entry.quality)
-
-        
         
         total_count = len(self.read_names)
         
@@ -236,12 +220,14 @@ class ExtractEvidenceReads:
 
         # identify which reads to subset 
         true_ids = list(set(self.read_names) & set(fastx_obj.df["ID2"]))
+        # print(self.read_names)
+        # print(fastx_obj.df["ID2"])
         
         ########
         # CHECK 
         ########
         # Make sure all reads are found 
-        CHECK_reading(true_ids,self.read_names)
+        CHECK_reading(true_ids, self.read_names)
 
         # Subset the DF to the reads of interest 
         subset_df = fastx_obj.df[fastx_obj.df['ID2'].isin(true_ids)]
