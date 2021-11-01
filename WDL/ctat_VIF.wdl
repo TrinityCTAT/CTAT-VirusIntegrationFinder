@@ -731,7 +731,7 @@ task InsertionSiteCandidates {
 
             df = pd.read_csv("~{prefix}.full.tsv", sep='\t')
             df = df[df['total'] >= min_reads]
-            df.to_csv("~{prefix}.full.filtered.tsv")
+            df.to_csv("~{prefix}.full.filtered.tsv", sep='\t', index=False)
       
         CODE
     >>>
