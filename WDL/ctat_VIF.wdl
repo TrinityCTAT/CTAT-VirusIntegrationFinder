@@ -3,6 +3,8 @@ version 1.0
 
 workflow ctat_vif {
     input {
+        String sample_id
+      
         File left
         File? right
 
@@ -37,7 +39,6 @@ workflow ctat_vif {
         String star_index_memory = "50G"
         Int sjdb_overhang = 150
 
-        String sample_id = "sample_id"
 
         Boolean autodetect_cpu = true # auto-detect number of cpus for STAR as # of requested CPUs might not equal actual CPUs, depending on memory
         Boolean star_use_ssd = false
@@ -814,7 +815,7 @@ task ExtractChimericGenomicTargets {
         --pad_region_length 1000
 
 
-      if [ -s vif.extract.fasta ]; then echo "true" > has_results; else echo "false" > has_results; fi
+      if [ -s ~{prefix}.fasta ]; then echo "true" > has_results; else echo "false" > has_results; fi
       
     >>>
 
