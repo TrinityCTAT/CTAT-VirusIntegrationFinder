@@ -942,7 +942,6 @@ task ChimericContigEvidenceAnalyzer {
     }
 
     String prefix = sample_id + ".vif"
-    String out_bam = prefix + ".evidence.bam"
 
     command <<<
         set -e
@@ -952,13 +951,14 @@ task ChimericContigEvidenceAnalyzer {
         --patch_db_gtf ~{gtf} \
         --output_prefix ~{prefix}
 
-        samtools index out_bam
+        samtools index ~{prefix}.evidence.bam
+      
     >>>
 
     output {
-        File evidence_counts =  "~{prefix}.evidence_counts.tsv"
-        File evidence_bam ="~{prefix}.evidence.bam"
-        File evidence_bai ="~{prefix}.evidence.bam.bai"
+        File evidence_counts = "~{prefix}.evidence_counts.tsv"
+        File evidence_bam = "~{prefix}.evidence.bam"
+        File evidence_bai = "~{prefix}.evidence.bam.bai"
     }
 
     runtime {
