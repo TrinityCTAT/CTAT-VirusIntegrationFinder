@@ -19,7 +19,7 @@ workflow ctat_vif {
         Boolean star_init_only = false
         Boolean remove_duplicates = false
         Boolean generate_reports = true
-        Int min_reads = 0
+        Int min_reads = 10
 
         Boolean filter_human_chimeric_reads = true
       
@@ -86,6 +86,7 @@ workflow ctat_vif {
         File? star_chimeric_junction = STAR_prelim.chimeric_junction
 
         File? insertion_site_candidates_full = InsertionSiteCandidates.full
+        File? insertion_site_candidates_full_filtered = InsertionSiteCandidates.full_filtered
         File? insertion_site_candidates_abridged = InsertionSiteCandidates.abridged
         File? insertion_site_candidates_abridged_filtered = InsertionSiteCandidates.abridged_filtered
         File? insertion_site_candidates_abridged_detailed = InsertionSiteCandidates.abridged_detailed
@@ -208,7 +209,7 @@ workflow ctat_vif {
             input:
                 left_fq=left,
                 right_fq=right,
-                orig_insertion_site_candidates=select_first([InsertionSiteCandidates.full]),
+                orig_insertion_site_candidates=select_first([InsertionSiteCandidates.full_filtered, InsertionSiteCandidates.full]),
                 sample_id=sample_id,
                 util_dir=util_dir,
                 preemptible=preemptible,
@@ -239,7 +240,7 @@ workflow ctat_vif {
         #call prune_human_chimeric_from_insertion_results {
         call PruneHumanChimericFromInsertionResults {
             input:
-                orig_insertion_site_candidates=select_first([InsertionSiteCandidates.full]),
+                orig_insertion_site_candidates=select_first([InsertionSiteCandidates.full_filtered, InsertionSiteCandidates.full]),
                 human_chimeric_alignments=select_first([SP2.chimeric_junction]),
                 sample_id=sample_id,
                 util_dir=util_dir,
@@ -254,7 +255,7 @@ workflow ctat_vif {
     if(!star_init_only) {
         File aligned_bam_use = select_first([bam, RemoveDuplicates.bam, STAR_prelim.bam])
         File aligned_bai_use= select_first([bam_index, RemoveDuplicates.bai, STAR_prelim.bai])
-        File insertion_site_candidates_use = select_first([PruneHumanChimericFromInsertionResults.revised_insertion_candidates, insertion_site_candidates, insertion_site_candidates_output])
+        File insertion_site_candidates_use = select_first([insertion_site_candidates, PruneHumanChimericFromInsertionResults.revised_insertion_candidates, InsertionSiteCandidates.abridged_filtered, InsertionSiteCandidates.abridged])
         call ExtractChimericGenomicTargets {
             input:
                 bam=aligned_bam_use,
@@ -727,11 +728,17 @@ task InsertionSiteCandidates {
             df = pd.read_csv("~{prefix}.abridged.tsv", sep='\t')
             df = df[df['total'] >= min_reads]
             df.to_csv("~{prefix}.abridged.filtered.tsv", sep='\t', index=False)
+
+            df = pd.read_csv("~{prefix}.full.tsv", sep='\t')
+            df = df[df['total'] >= min_reads]
+            df.to_csv("~{prefix}.full.filtered.tsv")
+      
         CODE
     >>>
 
     output {
         File full = "~{prefix}.full.tsv"
+        File? full_filtered = "~{prefix}.full.filtered.tsv"
         File abridged = "~{prefix}.abridged.tsv"
         File? abridged_filtered = "~{prefix}.abridged.filtered.tsv"
         File abridged_detailed = "~{prefix}.abridged.detailed.tsv"
