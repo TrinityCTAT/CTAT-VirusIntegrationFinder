@@ -1220,7 +1220,7 @@ task ExtractEvidenceReads {
         fi
 
         ~{util_dir}/extract_insertion_evidence_reads.py \
-            --fastqs ~{fastqs} \
+            --fastqs $fastqs \
             --insertion_candidates ~{orig_insertion_site_candidates} \
             --out_prefix ~{prefix}
 
