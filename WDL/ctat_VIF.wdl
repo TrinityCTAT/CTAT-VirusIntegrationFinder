@@ -207,7 +207,8 @@ workflow ctat_vif {
 
         call ExtractEvidenceReads {
             input:
-                left_fq=left,
+                fastq1=left,
+                fastq2=right,
                 orig_insertion_site_candidates=select_first([InsertionSiteCandidates.full_filtered, InsertionSiteCandidates.full]),
                 sample_id=sample_id,
                 util_dir=util_dir,
@@ -1194,7 +1195,8 @@ task SummaryReport {
 
 task ExtractEvidenceReads {
     input {
-        File left_fq
+        File fastq1
+        File? fastq2
         File orig_insertion_site_candidates
         String util_dir
         Int preemptible
