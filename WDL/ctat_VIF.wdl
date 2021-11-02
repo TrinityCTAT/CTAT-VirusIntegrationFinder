@@ -1220,7 +1220,7 @@ task ExtractEvidenceReads {
         fi
 
         ~{util_dir}/extract_insertion_evidence_reads.py \
-            --fastqs ~{left_fq} \
+            --fastqs ~{fastqs} \
             --insertion_candidates ~{orig_insertion_site_candidates} \
             --out_prefix ~{prefix}
 
@@ -1233,7 +1233,7 @@ task ExtractEvidenceReads {
 
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil(size(left_fq, "GB") + size(orig_insertion_site_candidates, "GB")*3) + " HDD"
+        disks: "local-disk " + ceil(size(fastq1, "GB") + size(orig_insertion_site_candidates, "GB")*3) + " HDD"
         docker: docker
         cpu: 1
         memory: "2GB"
