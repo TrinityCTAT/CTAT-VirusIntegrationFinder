@@ -1206,9 +1206,6 @@ task ExtractEvidenceReads {
     }
     String prefix = sample_id + ".vif.prelim"
 
-    # Boolean if right fastq passed 
-    Boolean has_right_fq = defined(right_fq)
-
     command <<<
         set -e
         
