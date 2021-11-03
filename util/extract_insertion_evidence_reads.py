@@ -60,6 +60,7 @@ def readMeOldFormat(infile, read_names):
     If given a fastq file with older formating, 
     need to adjust the IDs by removing the "/1" or "/2" at the end 
     '''
+    total_reads = len(read_names)
     final_list = []
     # Iterate over the fastq file, 4 lines at a time
     # returns the 4 lines as a single list 
