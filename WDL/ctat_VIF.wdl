@@ -14,46 +14,47 @@ workflow ctat_vif {
         File viral_fasta
         File? viral_gtf
 
-        Boolean ref_genome_incl_viral = false
-        
         Boolean star_init_only = false
+
         Boolean remove_duplicates = false
         Boolean generate_reports = true
+
         Int min_reads = 10
 
-        Boolean filter_human_chimeric_reads = true
-      
-        File? star_reference
-        String? star_reference_dir
-
-        File? star_reference_human_only
-        
-      
+        # star indices needed
+        File star_index_human_only
+        File star_index_human_plus_virus
+              
         String igv_virus_reports_memory = "14GB"
         String igv_reports_memory = "1GB"
 
+        # where to find utilities in the docker image.
         String util_dir = "/usr/local/src/CTAT-VirusIntegrationFinder/util"
         String picard = "/usr/local/src/picard.jar"
+
         Float star_extra_disk_space = 30
         Float star_fastq_disk_space_multiplier = 10
-        String star_index_memory = "50G"
         Int sjdb_overhang = 150
-
 
         Boolean autodetect_cpu = true # auto-detect number of cpus for STAR as # of requested CPUs might not equal actual CPUs, depending on memory
         Boolean star_use_ssd = false
+
         Int star_cpu = 12
+
+        # star init settings
         Float star_init_memory = 45
         String star_init_two_pass_mode = "Basic"
 
-        Float star_memory = 45
-        String star_two_pass_mode = "Basic" # or None
+        # star validate settings
+        Float star_validate_memory = 45
+        String star_validate_two_pass_mode = "Basic" # or None
+
+
+        # general runtime settings
         Int preemptible = 2
-        String docker = "trinityctat/ctat_vif:0.1.0"
+        String docker = "trinityctat/ctat_vif:latest"
 
         # run stage 2 only
-        File? bam
-        File? bam_index
         File? insertion_site_candidates
     }
 
@@ -66,11 +67,8 @@ workflow ctat_vif {
         ref_genome_gtf:{help:"Host annotations GTF"}
         viral_fasta:{help:"Viral fasta"}
         ref_genome_incl_viral:{help:"The star index already includes the viral genomes"}
-        bam:{help:"Previously aligned bam file"}
-        bam_index:{help:"BAM index corresponding to bam file"}
         insertion_site_candidates:{help:"Previously generated candidates"}
         star_reference:{help:"STAR index archive containing both host and viral genomes"}
-        star_reference_dir:{help:"STAR directory containing both host and viral genomes (for non-Terra use)"}
         star_cpu:{help:"STAR aligner number of CPUs"}
         star_memory:{help:"STAR aligner memory"}
         util_dir:{help:"Path to util directory (for non-Docker use)"}
@@ -79,12 +77,23 @@ workflow ctat_vif {
     }
 
     output {
-        File? star_bam = select_first([RemoveDuplicates.bam, STAR_prelim.bam])
-        File? star_bam_index = select_first([RemoveDuplicates.bai, STAR_prelim.bai])
-        File? star_output_log_final = STAR_prelim.output_log_final
-        File? star_output_SJ = STAR_prelim.output_SJ
-        File? star_chimeric_junction = STAR_prelim.chimeric_junction
 
+        # STAR_init_hgOnly        
+        File? star_init_hgOnly_bam = select_first([STAR_init_hgOnly.bam])
+        File? star_init_hgOnly_bam_index = select_first([STAR_init_hgOnly.bai])
+        File? star_init_hgOnly_log_final = STAR_init_hgOnly.output_log_final
+        File? star_init_hgOnly_SJ = STAR_init_hgOnly.output_SJ
+        File? star_init_hgOnly_chimeric_junction = STAR_init_hgOnly.chimeric_junction
+        File? star_init_hgOnly_ummapped_left_fq = STAR_init_hgOnly.Unmapped_left_fq
+        File? star_init_hgOnly_unmapped_right_fq = STAR_init_hgOnly.Unmapped_right_fq
+        
+        # STAR_init_hgPlusVirus
+        File? star_init_hgPlusVirus_bam = select_first([STAR_init_hgPlusVirus.bam])
+        File? star_init_hgPlusVirus_bam_index = select_first([STAR_init_hgPlusVirus.bai])
+        File? star_init_hgPlusVirus_log_final = STAR_init_hgPlusVirus.output_log_final
+        File? star_init_hgPlusVirus_SJ = STAR_init_hgPlusVirus.output_SJ
+        File? star_init_hgPlusVirus_chimeric_junction = STAR_init_hgPlusVirus.chimeric_junction
+      
         File? insertion_site_candidates_full = InsertionSiteCandidates.full
         File? insertion_site_candidates_full_filtered = InsertionSiteCandidates.full_filtered
         File? insertion_site_candidates_abridged = InsertionSiteCandidates.abridged
@@ -115,36 +124,33 @@ workflow ctat_vif {
     }
 
     
-    Boolean create_star_index = !defined(star_reference) && !defined(star_reference_dir)
-    if(create_star_index) {
-        call STARIndex {
-            input:
-                fasta=ref_genome_fasta,
-                gtf=ref_genome_gtf,
-                sjdb_overhang=sjdb_overhang,
-                viral_fasta=viral_fasta,
-                memory = star_index_memory,
-                use_ssd = star_use_ssd,
-                autodetect_cpu = autodetect_cpu,
-                cpu = star_cpu,
-                docker = docker,
-                preemptible = preemptible
-        }
-    }
-
-    File? star_reference_use = (if(create_star_index) then STARIndex.genome else star_reference)
-    if(!defined(bam) && defined(left)) {
-        call STAR_prelim {
+    if ( !defined(insertion_site_candidates) ) {
+        call STAR_init as STAR_init_hgOnly {
             input:
                 util_dir=util_dir,
                 fastq1=left,
                 fastq2=right,
                 two_pass_mode = star_init_two_pass_mode,
-                base_name=sample_id,
-                star_reference=star_reference_use,
-                star_reference_dir=star_reference_dir,
-                ref_genome_incl_viral = ref_genome_incl_viral,
-                viral_genomes_fasta_file = viral_fasta,
+                base_name=sample_id + ".hgOnly",
+                star_reference=star_index_human_only,
+                extra_disk_space = star_extra_disk_space,
+                disk_space_multiplier = star_fastq_disk_space_multiplier,
+                memory = star_init_memory,
+                use_ssd = star_use_ssd,
+                cpu = star_cpu,
+                autodetect_cpu = autodetect_cpu,
+                docker = docker,
+                preemptible = preemptible
+            }
+
+            call STAR_init as STAR_init_hgPlusVirus {
+            input:
+                util_dir=util_dir,
+                fastq1=STAR_init_hgOnly.Unmapped_left_fq,
+                fastq2=STAR_init_hgOnly.Unmapped_right_fq,
+                two_pass_mode = star_init_two_pass_mode,
+                base_name=sample_id + ".hgPlusVirus",
+                star_reference=star_index_human_plus_virus,
                 extra_disk_space = star_extra_disk_space,
                 disk_space_multiplier = star_fastq_disk_space_multiplier,
                 memory = star_init_memory,
@@ -154,24 +160,10 @@ workflow ctat_vif {
                 docker = docker,
                 preemptible = preemptible
         }
-        if(remove_duplicates) {
-            call RemoveDuplicates {
-                input:
-                    input_bam=STAR_prelim.bam,
-                    input_bai=STAR_prelim.bai,
-                    output_bam = "Aligned.sortedByCoord.out.rm.dups.bam",
-                    util_dir=util_dir,
-                    cpu=1,
-                    preemptible=preemptible,
-                    memory="2G",
-                    docker=docker,
-                    extra_disk_space=1,
-                    disk_space_multiplier=2
-            }
-        }
+
         call InsertionSiteCandidates {
             input:
-                chimeric_junction=select_first([STAR_prelim.chimeric_junction]),
+                chimeric_junction=select_first([STAR_init_hgPlusVirus.chimeric_junction]),
                 viral_fasta=viral_fasta,
                 remove_duplicates=remove_duplicates,
                 util_dir=util_dir,
@@ -185,8 +177,9 @@ workflow ctat_vif {
         if(generate_reports) {
             call VirusReport {
                 input:
-                    bam=select_first([RemoveDuplicates.bam, STAR_prelim.bam]),
-                    bai=select_first([RemoveDuplicates.bai, STAR_prelim.bai]),
+                    bam=select_first([STAR_init_hgPlusVirus.bam]),
+                    bai=select_first([STAR_init_hgPlusVirus.bai]),
+                    remove_duplicates=remove_duplicates,
                     viral_fasta=viral_fasta,
                     insertion_site_candidates=insertion_site_candidates_output,
                     util_dir=util_dir,
@@ -199,67 +192,10 @@ workflow ctat_vif {
 
     }
 
-
-    ###############################################
-    #      Human-Human chimeric Read removal      #
-    ###############################################
-    if (filter_human_chimeric_reads) {
-
-        call ExtractEvidenceReads {
-            input:
-                fastq1=left,
-                fastq2=right,
-                orig_insertion_site_candidates=select_first([InsertionSiteCandidates.full_filtered, InsertionSiteCandidates.full]),
-                sample_id=sample_id,
-                util_dir=util_dir,
-                preemptible=preemptible,
-                docker=docker
-        }
-
-        call STAR_prelim as SP2 {
-            input:
-              util_dir=util_dir,
-              fastq1=ExtractEvidenceReads.left,
-              fastq2=ExtractEvidenceReads.right,
-              two_pass_mode = star_init_two_pass_mode,
-              base_name=sample_id,
-              star_reference=star_reference_human_only,
-              star_reference_dir=star_reference_dir,
-              ref_genome_incl_viral = true, #ref_genome_incl_viral, NOPE! TODO - refactor STAR_prelim with more sensible options
-              # viral_genomes_fasta_file = viral_fasta,
-              extra_disk_space = star_extra_disk_space,
-              disk_space_multiplier = star_fastq_disk_space_multiplier,
-              memory = star_init_memory,
-              use_ssd = star_use_ssd,
-              cpu = star_cpu,
-              autodetect_cpu = autodetect_cpu,
-              docker = docker,
-              preemptible = preemptible
-        }
-
-        #call prune_human_chimeric_from_insertion_results {
-        call PruneHumanChimericFromInsertionResults {
-            input:
-                orig_insertion_site_candidates=select_first([InsertionSiteCandidates.full_filtered, InsertionSiteCandidates.full]),
-                human_chimeric_alignments=select_first([SP2.chimeric_junction]),
-                sample_id=sample_id,
-                util_dir=util_dir,
-                preemptible=preemptible,
-                docker=docker
-        }
-      
-
-    }
-
-    
     if(!star_init_only) {
-        File aligned_bam_use = select_first([bam, RemoveDuplicates.bam, STAR_prelim.bam])
-        File aligned_bai_use= select_first([bam_index, RemoveDuplicates.bai, STAR_prelim.bai])
-        File insertion_site_candidates_use = select_first([insertion_site_candidates, PruneHumanChimericFromInsertionResults.revised_insertion_candidates, InsertionSiteCandidates.abridged_filtered, InsertionSiteCandidates.abridged])
+        File insertion_site_candidates_use = select_first([insertion_site_candidates, InsertionSiteCandidates.abridged_filtered, InsertionSiteCandidates.abridged])
         call ExtractChimericGenomicTargets {
             input:
-                bam=aligned_bam_use,
-                bai=aligned_bai_use,
                 fasta=ref_genome_fasta,
                 viral_fasta=viral_fasta,
                 insertion_site_candidates_abridged=insertion_site_candidates_use,
@@ -274,16 +210,15 @@ workflow ctat_vif {
         call STAR_validate {
             input:
                 util_dir=util_dir,
-                fastq1=select_first([left]),
-                fastq2=right,
-                two_pass_mode = star_two_pass_mode,
+                fastq1=select_first([STAR_init_hgOnly.Unmapped_left_fq, left]),
+                fastq2=select_first([STAR_init_hgOnly.Unmapped_right_fq, right]),
+                two_pass_mode = star_validate_two_pass_mode,
                 base_name=sample_id+".validate_inserts",
-                star_reference=star_reference_use,
-                star_reference_dir=star_reference_dir,
+                star_reference=star_index_human_only,
                 insertions_fasta_file=ExtractChimericGenomicTargets.fasta_extract,
                 extra_disk_space = star_extra_disk_space,
                 disk_space_multiplier = star_fastq_disk_space_multiplier,
-                memory = star_memory,
+                memory = star_validate_memory,
                 use_ssd = star_use_ssd,
                 cpu = star_cpu,
                 autodetect_cpu = autodetect_cpu,
@@ -305,13 +240,11 @@ workflow ctat_vif {
                     disk_space_multiplier=2
             }
         }
-        File aligned_bam2 = select_first([RemoveDuplicates2.bam, STAR_validate.bam])
-        File aligned_bai2 = select_first([RemoveDuplicates2.bai, STAR_validate.bai])
 
         call ChimericContigEvidenceAnalyzer {
             input:
-                bam=aligned_bam2,
-                bai=aligned_bai2,
+                bam=select_first([RemoveDuplicates2.bam, STAR_validate.bam]),
+                bai=select_first([RemoveDuplicates2.bai, STAR_validate.bai]),
                 gtf=ExtractChimericGenomicTargets.gtf_extract,
                 min_reads=min_reads,
                 util_dir=util_dir,
@@ -323,7 +256,7 @@ workflow ctat_vif {
         if(generate_reports) {
             call SummaryReport {
                 input:
-                    prelim_counts=insertion_site_candidates_use,
+                    init_counts=insertion_site_candidates_use,
                     vif_counts=ChimericContigEvidenceAnalyzer.evidence_counts,
                     alignment_bam=ChimericContigEvidenceAnalyzer.evidence_bam,
                     alignment_bai=ChimericContigEvidenceAnalyzer.evidence_bai,
@@ -342,68 +275,14 @@ workflow ctat_vif {
     }
 }
 
-task STARIndex {
-
-    input {
-        File fasta
-        File gtf
-        File viral_fasta
-        Int cpu
-        Int preemptible
-        String memory
-        String docker
-        Boolean use_ssd
-        Int sjdb_overhang
-        Boolean autodetect_cpu
-    }
-
-    Float extra_disk_space = 100
-    Float disk_space_multiplier = 10
-
-    command <<<
-        set -e
-
-        cpu=~{cpu}
-        if [ "~{autodetect_cpu}" == "true" ]; then
-            cpu=$(nproc)
-        fi
-
-        mkdir genome_dir
-
-        STAR \
-        --runThreadN $cpu \
-        --runMode genomeGenerate \
-        --genomeDir genome_dir \
-        --genomeFastaFiles ~{fasta} ~{viral_fasta} \
-        ~{"--sjdbOverhang " + sjdb_overhang + " --sjdbGTFfile " + gtf}
-
-        tar -I pigz -cf STAR.tar.gz genome_dir
-    >>>
-
-    output {
-        File genome = "STAR.tar.gz"
-    }
-
-    runtime {
-        preemptible: preemptible
-        disks: "local-disk " + ceil(size(fasta, "GB")*disk_space_multiplier + size(viral_fasta, "GB") * disk_space_multiplier + extra_disk_space) + " " + (if use_ssd then "SSD" else "HDD")
-        docker: docker
-        cpu: cpu
-        memory: memory
-    }
-}
 
 
-
-
-task STAR_prelim {
+task STAR_init {
     input {
         String util_dir
         File fastq1
         File? fastq2
         File? star_reference
-        String? star_reference_dir
-        Boolean ref_genome_incl_viral
         Float extra_disk_space
         Float disk_space_multiplier
         Boolean use_ssd
@@ -417,8 +296,6 @@ task STAR_prelim {
         File? viral_genomes_fasta_file
     }
     Int max_mate_dist = 100000
-    Boolean incl_viral_fasta_file = ( defined(viral_genomes_fasta_file) && ! ref_genome_incl_viral )
-    # String genomeFastaFilesParam = if (incl_viral_fasta_file) then "--genomeFastaFiles " + viral_genomes_fasta_file else ""
     
     command <<<
         set -e
@@ -432,10 +309,6 @@ task STAR_prelim {
         fi
         if [ "~{autodetect_cpu}" == "true" ]; then
             cpu=$(nproc)
-        fi
-
-        if [ "$genomeDir" == "" ]; then
-            genomeDir="~{star_reference_dir}"
         fi
 
         if [ -f "${genomeDir}" ] ; then
@@ -460,41 +333,8 @@ task STAR_prelim {
             fi
         fi
 
-      if [ "~{incl_viral_fasta_file}" == "true" ]; then 
-            STAR \
-            --runMode alignReads \
-            --genomeDir $genomeDir \
-            --runThreadN $cpu \
-            --readFilesIn $fastqs \
-            $readFilesCommand \
-            --outSAMtype BAM SortedByCoordinate \
-            --outFileNamePrefix ~{base_name}. \
-            --outSAMstrandField intronMotif \
-            --outSAMunmapped Within \
-            ~{"--twopassMode " + two_pass_mode} \
-            --alignSJDBoverhangMin 10 \
-            --genomeSuffixLengthMax 10000 \
-            --limitBAMsortRAM 47271261705 \
-            --alignInsertionFlush Right \
-            --genomeFastaFiles ~{viral_genomes_fasta_file} \
-            --alignMatesGapMax ~{max_mate_dist} \
-            --alignIntronMax  ~{max_mate_dist} \
-            --peOverlapNbasesMin 12 \
-            --peOverlapMMp 0.1 \
-            --alignSJstitchMismatchNmax 5 -1 5 5 \
-            --alignSplicedMateMapLminOverLmate 0 \
-            --alignSplicedMateMapLmin 30 \
-            --chimJunctionOverhangMin 12 \
-             --chimOutJunctionFormat 0 \
-             --chimSegmentMin 8 \
-             --chimSegmentReadGapMax 3 \
-             --chimScoreJunctionNonGTAG 0 \
-             --chimNonchimScoreDropMin 10 \
-             --chimMultimapScoreRange 10 \
-             --chimMultimapNmax 20 \
-             --chimOutType Junctions WithinBAM
-        else
-            STAR \
+      
+      STAR \
             --runMode alignReads \
             --genomeDir $genomeDir \
             --runThreadN $cpu \
@@ -524,10 +364,13 @@ task STAR_prelim {
              --chimNonchimScoreDropMin 10 \
              --chimMultimapScoreRange 10 \
              --chimMultimapNmax 20 \
-             --chimOutType Junctions WithinBAM
-        fi
+             --chimOutType Junctions WithinBAM \
+             --outReadsUnmapped Fastx 
+      
+      samtools index "~{base_name}.Aligned.sortedByCoord.out.bam"
 
-        samtools index "~{base_name}.Aligned.sortedByCoord.out.bam"
+      # always have at least the Unmapped.out.mate1 file
+      touch Unmapped.out.mate1
     >>>
 
           
@@ -538,6 +381,8 @@ task STAR_prelim {
         File output_log_final = "~{base_name}.Log.final.out"
         File output_SJ = "~{base_name}.SJ.out.tab"
         File? chimeric_junction = "~{base_name}.Chimeric.out.junction"
+        File Unmapped_left_fq = "Unmapped.out.mate1"
+        File? Unmapped_right_fq = "Unmapped.out.mate2"
     }
 
     runtime {
@@ -556,8 +401,7 @@ task STAR_validate {
         String util_dir
         File fastq1
         File? fastq2
-        File? star_reference
-        String? star_reference_dir
+        File star_reference
         Float extra_disk_space
         Float disk_space_multiplier
         Boolean use_ssd
@@ -586,9 +430,6 @@ task STAR_validate {
             cpu=$(nproc)
         fi
 
-        if [ "$genomeDir" == "" ]; then
-            genomeDir="~{star_reference_dir}"
-        fi
 
         if [ -f "${genomeDir}" ] ; then
             mkdir genome_dir
@@ -710,7 +551,7 @@ task InsertionSiteCandidates {
 
     }
     # Create the prefix to add to files 
-    String prefix = sample_id + ".vif.prelim"
+    String prefix = sample_id + ".vif.init"
 
     command <<<
         set -e
@@ -797,8 +638,6 @@ task InsertionSiteCandidates {
 
 task ExtractChimericGenomicTargets {
     input {
-        File bam
-        File bai
         File fasta
         File viral_fasta
         File insertion_site_candidates_abridged
@@ -834,7 +673,7 @@ task ExtractChimericGenomicTargets {
     
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil(size(viral_fasta, "GB")*2 + size(fasta, "GB")*2 + size(bam, "GB")*2 + 1) + " HDD"
+        disks: "local-disk " + ceil(size(viral_fasta, "GB")*2 + size(fasta, "GB")*2) + " HDD"
         docker: docker
         cpu: 1
         memory: "1GB"
@@ -970,69 +809,6 @@ task ChimericContigEvidenceAnalyzer {
     }
 }
 
-#task RefineVIFOutput {
-#    input {
-#        File prelim_counts # InsertionSiteCandidates.abridged
-#        File vif_counts # ChimericContigEvidenceAnalyzer.evidence_counts
-#
-#        String util_dir
-#        Int preemptible
-#        String docker
-#    }
-#
-#    command <<<
-#        set -e
-#
-#        ~{util_dir}/refine_VIF_output.Rscript \
-#        --prelim_counts ~{prelim_counts} \
-#        --vif_counts ~{vif_counts} \
-#        --output vif.refined.tsv
-#    >>>
-#
-#    output {
-#        File refined_counts =  "vif.refined.tsv"
-#    }
-#
-#    runtime {
-#        preemptible: preemptible
-#        disks: "local-disk " + ceil( size(prelim_counts, "GB")*2 + 1) + " HDD"
-#        docker: docker
-#        cpu: 1
-#        memory: "1GB"
-#    }
-#}
-#
-#task GenomeAbundancePlot {
-#    input {
-#        File counts
-#        String output_name
-#        String title
-#        String util_dir
-#        Int preemptible
-#        String docker
-#    }
-#
-#    command <<<
-#        set -e
-#
-#        ~{util_dir}/make_VIF_genome_abundance_plot.Rscript \
-#        --vif_report ~{counts} \
-#        --title "~{title}" \
-#        --output_png ~{output_name}.png
-#    >>>
-#
-#    output {
-#        File plot =  "~{output_name}.png"
-#    }
-#
-#    runtime {
-#        preemptible: preemptible
-#        disks: "local-disk " + ceil( size(counts, "GB")*2 + 1) + " HDD"
-#        docker: docker
-#        cpu: 1
-#        memory: "1GB"
-#    }
-#}
 
 task VirusReport {
     input {
@@ -1040,6 +816,7 @@ task VirusReport {
         File bai
         File viral_fasta
         File insertion_site_candidates
+        Boolean remove_duplicates
         String util_dir
         Int preemptible
         String docker
@@ -1055,13 +832,21 @@ task VirusReport {
 
         ~{util_dir}/make_VIF_genome_abundance_plot.Rscript \
         --vif_report ~{insertion_site_candidates} \
-        --title "Preliminary Genome Wide Abundance" \
-        --output_png ~{prefix}.prelim.genome_plot.png
+        --title "Initinary Genome Wide Abundance" \
+        --output_png ~{prefix}.init.genome_plot.png
 
+        bam=~{bam}
+        if [ "~{remove_duplicates}" == "true" ]; then
+            ~{util_dir}/bam_mark_duplicates.py -i ${bam}  -o dups.removed.bam -r
+            samtools index dups.removed.bam
+            bam="dups.removed.bam"
+        fi
+
+      
         # generates read_counts_summary and images
         ~{util_dir}/plot_top_virus_coverage.Rscript \
         --vif_report ~{insertion_site_candidates} \
-        --bam ~{bam} \
+        --bam ${bam} \
         --output_prefix ~{prefix}
 
         ~{util_dir}/create_insertion_site_inspector_js.py \
@@ -1077,7 +862,7 @@ task VirusReport {
         ~{util_dir}/bamsifter/bamsifter \
         -c ~{max_coverage} \
         -o ~{prefix}.virus.reads.bam \
-        ~{bam}
+        ${bam}
 
         # IGV reports expects to find, __PREFIX__.fa, __PREFIX__.bed, __PREFIX__.reads.bam
         ln -sf ~{viral_fasta} ~{prefix}.virus.fa
@@ -1092,7 +877,7 @@ task VirusReport {
 
     output {
         File html = "~{prefix}.virus.html"
-        File genome_abundance_plot = "~{prefix}.prelim.genome_plot.png"
+        File genome_abundance_plot = "~{prefix}.init.genome_plot.png"
         File read_counts_summary = "~{prefix}.virus_read_counts_summary.tsv"
         File read_counts_image = "~{prefix}.virus_read_counts.png"
         File read_counts_log_image = "~{prefix}.virus_read_counts_log.png"
@@ -1110,7 +895,7 @@ task VirusReport {
 
 task SummaryReport {
     input {
-        File prelim_counts
+        File init_counts
         File vif_counts
         File alignment_bam
         File alignment_bai
@@ -1131,7 +916,7 @@ task SummaryReport {
         set -e
 
         ~{util_dir}/refine_VIF_output.Rscript \
-        --prelim_counts ~{prelim_counts} \
+        --init_counts ~{init_counts} \
         --vif_counts ~{vif_counts} \
         --output ~{prefix}.refined.tsv
 
@@ -1182,7 +967,7 @@ task SummaryReport {
     }
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil( size(images, "GB") + size(alignment_bam, "GB")*2 + size(prelim_counts, "GB") + size(vif_counts, "GB") + size(chim_targets_fasta,"GB")*2 + 2) + " HDD"
+        disks: "local-disk " + ceil( size(images, "GB") + size(alignment_bam, "GB")*2 + size(init_counts, "GB") + size(vif_counts, "GB") + size(chim_targets_fasta,"GB")*2 + 2) + " HDD"
         docker: docker
         cpu: 1
         memory: "16GB"
@@ -1204,7 +989,7 @@ task ExtractEvidenceReads {
         String sample_id
 
     }
-    String prefix = sample_id + ".vif.prelim"
+    String prefix = sample_id + ".vif.init"
 
     command <<<
         set -e
@@ -1239,42 +1024,4 @@ task ExtractEvidenceReads {
         memory: "2GB"
     }
 }
-
-
-task PruneHumanChimericFromInsertionResults {
-    input {
-        File orig_insertion_site_candidates
-        File human_chimeric_alignments
-        String util_dir
-        Int preemptible
-        String docker
-        String sample_id
-
-    }
-    String prefix = sample_id + ".vif.prelim"
-
-    command <<<
-        set -e
-
-        
-        ~{util_dir}/prune_human_chimeric_from_insertion_results.py \
-        --human_chimeric_alignments ~{human_chimeric_alignments} \
-        --insertion_candidates ~{orig_insertion_site_candidates} \
-        --out_prefix ~{prefix}
-
-    >>>
-
-    output {
-        File revised_insertion_candidates = "~{prefix}.revised.insertion_candidates.tsv"
-    }
-
-    runtime {
-        preemptible: preemptible
-        disks: "local-disk " + ceil(size(orig_insertion_site_candidates, "GB") + size(human_chimeric_alignments, "GB")*3) + " HDD"
-        docker: docker
-        cpu: 1
-        memory: "2GB"
-    }
-}
-
 
