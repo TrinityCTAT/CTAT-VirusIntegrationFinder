@@ -68,8 +68,8 @@ def readMeOldFormat(infile, read_names):
 
         if not i:
             break
-        ID = i[0][1:].split(" ")[0][:-2]
-        print(ID)
+        ID = i[0][1:].rstrip().split(" ")[0][:-2]
+
         if ID in read_names:
             final_list.append(i)
             
@@ -166,14 +166,15 @@ class faFile:
         #~~~~~~~~~~~~~~~~~~~~~~~~~
         # CHECK
         #~~~~~~~~~~~~~~~~~~~~~~~~~
-        N_reads = len(final_output)
-        if N_reads == len(read_names):
-            m = f"All Reads Found {N_reads}/{len(read_names)}"
-            logger.info(m)
-        else:
-            m = f"NOT All Reads Found {N_reads}/{len(read_names)}"
-            logger.warning(m)
-            quit()
+        CHECK_reading(final_output, read_names)
+        # N_reads = len(final_output)
+        # if N_reads == len(read_names):
+        #     m = f"All Reads Found {N_reads}/{len(read_names)}"
+        #     logger.info(m)
+        # else:
+        #     m = f"NOT All Reads Found {N_reads}/{len(read_names)}"
+        #     logger.warning(m)
+        #     quit()
 
 
         # Now join the list of lists together 
