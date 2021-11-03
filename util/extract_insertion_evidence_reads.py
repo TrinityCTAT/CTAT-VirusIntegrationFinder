@@ -65,16 +65,17 @@ def readMeOldFormat(infile, read_names):
     # returns the 4 lines as a single list 
     while True:
         i = list(itertools.islice(infile, 4))
+
         if not i:
             break
         ID = i[0][1:].split(" ")[0][:-2]
+        print(ID)
         if ID in read_names:
             final_list.append(i)
             
             # print Percent 
             sys.stdout.write("\r"); sys.stdout.flush()
             sys.stdout.write(f"{len(final_list)/total_reads * 100}%...")
-
     return final_list
 
 
@@ -135,7 +136,7 @@ class faFile:
             with gzip.open(self.input_file, "rt") as infile:
                 # check the first line 
                 # Need to determine if these are older or newer formatted fastqs
-                first_line = infile.readline()
+                first_line = infile.readline().rstrip()
                 first_id = first_line[1:].split(" ")[0]
                 if ( (first_id.endswith("/1")) or (first_id.endswith("/2")) ):
                     logger.info("\t\tIdentified older formated Fastq, editing read names...")
@@ -150,7 +151,7 @@ class faFile:
         else:
             with open(self.input_file, "r") as infile:
                 # check the first line 
-                first_line = infile.readline()
+                first_line = infile.readline().rstrip()
                 first_id = first_line[1:].split(" ")[0]
                 if ( (first_id.endswith("/1")) or (first_id.endswith("/2")) ):
                     logger.info("\t\tIdentified older formated Fastq, editing read names...")
