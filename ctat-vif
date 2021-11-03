@@ -51,15 +51,13 @@ def main():
 
     parser.add_argument("--viral_fasta", help="Viral fasta", required=True)
 
-    parser.add_argument("--ref_genome_incl_viral", action='store_true', default=False, help="the viral_fasta is included in the star-indexed reference genome already")
-    
     parser.add_argument(
         "--genome_lib_dir",
         default=os.environ.get("CTAT_GENOME_LIB"),
         help="Genome lib directory - see http://FusionFilter.github.io for details. Uses env variable CTAT_GENOME_LIB as default",
     )
 
-    parser.add_argument("--star_reference", help="STAR index directory containing both host and viral genomes")
+    parser.add_argument("--star_index_plus_virus", type=str, required=True, help="STAR index containing both host and viral genomes")
 
     parser.add_argument("--cpu", type=int, help="Number of CPUs for multi-threaded steps")
 
@@ -68,12 +66,12 @@ def main():
         default=10
     )
     
-    parser.add_argument("--star_two_pass_mode", help="STAR 2-pass mapping mode", choices=['Basic', 'None'],
-        default='Basic')
-
     parser.add_argument("--star_init_two_pass_mode", help="STAR init 2-pass mapping mode", choices=['Basic', 'None'],
         default='Basic')
 
+    parser.add_argument("--star_validate_two_pass_mode", help="STAR validate 2-pass mapping mode", choices=['Basic', 'None'],
+                        default='Basic')
+    
     parser.add_argument(
         "--remove_duplicates", action="store_true", help="Remove duplicates"
     )
@@ -96,17 +94,18 @@ def main():
     args = parser.parse_args()
     left = args.left
     right = args.right
-    ctat_genome_lib_path = args.genome_lib_dir
-    star_reference = args.star_reference
+    ctat_genome_lib_path = os.path.abspath(args.genome_lib_dir)
+    star_index_plus_virus = os.path.abspath(args.star_index_plus_virus)
     cromwell = args.cromwell
     remove_duplicates = args.remove_duplicates
     star_init_only = args.star_init_only
     min_reads = args.min_reads
     viral_fasta = os.path.abspath(args.viral_fasta)
     cpu = args.cpu
-    output_directory = args.outputdir
+    output_directory = os.path.abspath(args.outputdir)
+    star_validate_two_pass_mode = args.star_validate_two_pass_mode
     star_init_two_pass_mode = args.star_init_two_pass_mode
-    star_two_pass_mode = args.star_two_pass_mode
+
 
     if ctat_genome_lib_path is None or not os.path.exists(ctat_genome_lib_path):
         exit("Missing path to CTAT_GENOME_LIB in $CTAT_GENOME_LIB.")
@@ -137,17 +136,12 @@ def main():
     input_json['star_two_pass_mode'] = star_two_pass_mode
     input_json['star_init_two_pass_mode'] = star_init_two_pass_mode
 
-    if star_reference is not None:
-        star_reference = os.path.abspath(star_reference)
-        input_json["star_reference_dir"] = star_reference
-    else:
-        # use ctat genome lib
-        input_json["star_reference_dir"] = ref_fasta + ".star.idx"
+    star_index_human_only = ref_fasta + ".star.idx"
+    input_json['star_index_human_only'] = star_index_human_only
+
+    input_json['star_index_human_plus_virus'] = star_index_plus_virus
 
     input_json['viral_fasta'] = viral_fasta
-
-    if args.ref_genome_incl_viral:
-        input_json['ref_genome_incl_viral'] = True
 
     
     if left is not None:
