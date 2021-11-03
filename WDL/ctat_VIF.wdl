@@ -207,8 +207,8 @@ workflow ctat_vif {
 
         call ExtractEvidenceReads {
             input:
-                left_fq=left,
-                right_fq=right,
+                fastq1=left,
+                fastq2=right,
                 orig_insertion_site_candidates=select_first([InsertionSiteCandidates.full_filtered, InsertionSiteCandidates.full]),
                 sample_id=sample_id,
                 util_dir=util_dir,
@@ -1195,8 +1195,8 @@ task SummaryReport {
 
 task ExtractEvidenceReads {
     input {
-        File left_fq
-        File? right_fq
+        File fastq1
+        File? fastq2
         File orig_insertion_site_candidates
         String util_dir
         Int preemptible
@@ -1206,25 +1206,23 @@ task ExtractEvidenceReads {
     }
     String prefix = sample_id + ".vif.prelim"
 
-    # Boolean if right fastq passed 
-    Boolean has_right_fq = defined(right_fq)
-
     command <<<
         set -e
+        
+        # Combine the FastQ's 
+        fastqs="~{fastq1} ~{fastq2}"
 
-        # If the RIGHT FastQ file was provided 
-        if [ "~{has_right_fq}" == "true" ]; then 
-            ~{util_dir}/extract_insertion_evidence_reads.py \
-            --left_fq ~{left_fq} \
-            --right_fq ~{right_fq} \
-            --insertion_candidates ~{orig_insertion_site_candidates} \
-            --out_prefix ~{prefix}
-        else
-            ~{util_dir}/extract_insertion_evidence_reads.py \
-            --left_fq ~{left_fq} \
-            --insertion_candidates ~{orig_insertion_site_candidates} \
-            --out_prefix ~{prefix}
+        # special case for tar of fastq files
+        if [[ "~{fastq1}" == *.tar.gz ]] ; then
+            mkdir fastq
+            tar -I pigz -xvf ~{fastq1} -C fastq
+            fastqs=$(find fastq -type f)
         fi
+
+        ~{util_dir}/extract_insertion_evidence_reads.py \
+            --fastqs $fastqs \
+            --insertion_candidates ~{orig_insertion_site_candidates} \
+            --out_prefix ~{prefix}
 
     >>>
 
@@ -1235,7 +1233,7 @@ task ExtractEvidenceReads {
 
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil(size(left_fq, "GB") + size(orig_insertion_site_candidates, "GB")*3) + " HDD"
+        disks: "local-disk " + ceil(size(fastq1, "GB") + size(orig_insertion_site_candidates, "GB")*3) + " HDD"
         docker: docker
         cpu: 1
         memory: "2GB"

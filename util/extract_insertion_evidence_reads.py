@@ -17,6 +17,7 @@ import sys, time
 import argparse
 import multiprocessing as mp
 import gzip
+import itertools
 
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s : %(levelname)s : %(message)s',
@@ -35,7 +36,48 @@ def CHECK_reading(true_ids, read_names):
         print(set(read_names) - set(true_ids))
         exit()
 
+def readME(infile, read_names):
+    '''
+    Read in the fastQ and iterate over it 
+    '''
+    total_reads = len(read_names)
+    final_list = []
+    while True:
+        i = list(itertools.islice(infile, 4))
+        if not i:
+            break 
+        ID = i[0][1:].split(" ")[0]
+        if ID in read_names:
+            final_list.append(i)
 
+            # print Percent
+            sys.stdout.write("\r"); sys.stdout.flush()
+            sys.stdout.write(f"{len(final_list)/total_reads * 100}%...")
+    return final_list
+
+def readMeOldFormat(infile, read_names):
+    '''
+    If given a fastq file with older formating, 
+    need to adjust the IDs by removing the "/1" or "/2" at the end 
+    '''
+    total_reads = len(read_names)
+    final_list = []
+    # Iterate over the fastq file, 4 lines at a time
+    # returns the 4 lines as a single list 
+    while True:
+        i = list(itertools.islice(infile, 4))
+
+        if not i:
+            break
+        ID = i[0][1:].rstrip().split(" ")[0][:-2]
+
+        if ID in read_names:
+            final_list.append(i)
+            
+            # print Percent 
+            sys.stdout.write("\r"); sys.stdout.flush()
+            sys.stdout.write(f"{len(final_list)/total_reads * 100}%...")
+    return final_list
 
 
 # Create class object faqFile
@@ -67,34 +109,19 @@ class faFile:
         #~~~~~~~~~~~
         # Read File 
         #~~~~~~~~~~~
-        # check if the file is gzipped 
-        if input_file.endswith(".gz"):
-            self.file = gzip.open(input_file).read().rstrip().decode()
-        else:
-            self.file = open(input_file, "r").read().rstrip()
+        # # check if the file is gzipped 
+        # if input_file.endswith(".gz"):
+        #     self.file = gzip.open(input_file).read().rstrip().decode()
+        # else:
+        #     self.file = open(input_file, "r").read().rstrip()
 
-    # def faReader(self):
-    #     # Split the file by the > character
-    #     ## this seperates the different sequences
-    #     ## skip the first as it will be blank do to .split() 
-    #     tmp = self.file.split(">")[1:]
-    #     # Create the dictionary to hold the ids and sequences 
-    #     dic = {}
-    #     # Run through each sequence and remove the \n characters 
-    #     ## Then add it to the dictionary 
-    #     for i in tmp:
-    #         idx = i.find("\n")
-    #         dic[i[0:idx]] = i[idx:].replace("\n","")
-    #     # Save the dictionary in the object as .sequences 
-    #     self.sequences = dic
-    #     # return the object
-    #     return self 
 
-    def fqReader(self):
+    def fqReader(self, read_names):
         '''
-        Read in the FastQ formated file 
-        This function assumes the file is in standard 4 line FASTQ format 
+        Subsets the given Fastq files to only include the given read_names.
+        Returns the new fastq as a sting.
 
+        This function assumes the file is in standard 4 line FASTQ format 
         FastQ file format
             line1: @sequence_identifier 
             line2: Raw_Sequence
@@ -102,42 +129,63 @@ class faFile:
             line4: Quality values s
         '''
 
-        # split all the lines by \n 
-        tmp = self.file.split("\n")
-        # Create the dictionary to hold the ids and sequences 
-        dic = {}
-        # Run through each sequence and remove the \n characters 
-        ## Then add it to the dictionary 
-        n = 4 # there are 4 lines in a single entry
-        # for i in list(range(0,len(tmp),n)):
-        #     dic[tmp[i][1:]] = "\n".join(tmp[i+1:i+n])+"\n"
-        dic = {tmp[i][1:] : "\n".join(tmp[i+1:i+n])+"\n" for i in list(range(0,len(tmp),n))}
-        
-        # # Save the dictionary in the object as .sequences 
-        # self.sequences = dic
+        # variable to tell if the files are old format or not
+        older_format = False
 
-        # Convert into Pandas DataFrame for easy subsetting 
-        # Need to adjust the ID values as there is a tag on the end 
-        df = pd.DataFrame.from_dict(dic, orient = "index")
-        df = df.reset_index()
-        df.columns = ["ID","Sequence"]
-        a = [i.split(" ")[0] for i in df.ID]
-        # a = [i.split("/")[0] for i in a]
-        df["ID2"] = a
+        # If files are gzipped
+        if self.input_file.endswith(".gz"):
+            with gzip.open(self.input_file, "rt") as infile:
+                # check the first line 
+                # Need to determine if these are older or newer formatted fastqs
+                first_line = infile.readline().rstrip()
+                first_id = first_line[1:].split(" ")[0]
+                if ( (first_id.endswith("/1")) or (first_id.endswith("/2")) ):
+                    logger.info("\t\tIdentified older formated Fastq, editing read names...")
+                    older_format = True
+            # Now iterate over file 
+            with gzip.open(self.input_file, "rt") as infile:
+                if older_format == True:
+                    final_output = readMeOldFormat(infile,read_names)
+                else:
+                    final_output = readME(infile, read_names)
 
-        # check if older formatted fastq
-        # /1 read_1 and /2 read_2
-        if ( (a[0].endswith("/1")) or (a[0].endswith("/2")) ):
-            logger.info("\t\tIdentified older formated Fastq, editing read names...")
-            
-            df["ID2"] = df["ID2"].str.replace(r'/1$', '', regex=True)
-            df["ID2"] = df["ID2"].str.replace(r'/2$', '', regex=True)
-        
-        self.df = df
-        
-        # return the object
-        return self 
+        else:
+            with open(self.input_file, "r") as infile:
+                # check the first line 
+                first_line = infile.readline().rstrip()
+                first_id = first_line[1:].split(" ")[0]
+                if ( (first_id.endswith("/1")) or (first_id.endswith("/2")) ):
+                    logger.info("\t\tIdentified older formated Fastq, editing read names...")
+                    older_format = True
 
+            with open(self.input_file, "r") as infile:
+                if older_format == True:
+                    final_output = readMeOldFormat(infile,read_names)
+                else:
+                    final_output = readME(infile, read_names)
+
+        #~~~~~~~~~~~~~~~~~~~~~~~~~
+        # CHECK
+        #~~~~~~~~~~~~~~~~~~~~~~~~~
+        CHECK_reading(final_output, read_names)
+        # N_reads = len(final_output)
+        # if N_reads == len(read_names):
+        #     m = f"All Reads Found {N_reads}/{len(read_names)}"
+        #     logger.info(m)
+        # else:
+        #     m = f"NOT All Reads Found {N_reads}/{len(read_names)}"
+        #     logger.warning(m)
+        #     quit()
+
+
+        # Now join the list of lists together 
+        final_output_join = list(itertools.chain.from_iterable(final_output))
+
+        # now join the string in the list together 
+        final_output_joined = "".join(final_output_join)
+        
+
+        return final_output_joined
 
 
 
@@ -148,18 +196,48 @@ class ExtractEvidenceReads:
     '''
     def __init__(self, args): # arguments to class instantiation 
         
-        # Class ExtractEvidenceReads inherits from class faFile
-        # super(ExtractEvidenceReads, self).__init__()
-        # super().__init__()
         #~~~~~~~~~~~~~~~~~~~~~~~~~
         # Add constants to object 
         #~~~~~~~~~~~~~~~~~~~~~~~~~
         # FASTQs
-        self.left_fq  = args.left_fq
-        if args.right_fq:
-            self.right_fq = args.right_fq
-        else: 
-            self.right_fq = None
+
+        self.fastqs  = args.fastqs
+
+        #~~~~~~~~~~~~~~~~~~~
+        # check if directory, the direcortry should hold fastq files 
+        #~~~~~~~~~~~~~~~~~~~
+        if os.path.isdir(self.fastqs[0]):
+            fastq_directory = self.fastqs[0]
+            # List files in directory 
+            fastq_list = os.listdir(self.fastqs[0])
+            self.left_fq = os.path.join(fastq_directory, fastq_list[0])
+
+            logger.info("FASTQ input Files:")
+            [print(f"\t\tfastq: {i}") for i in fastq_list]
+            # check if there is a second file 
+            if len(fastq_list) == 2:
+                self.right_fq = os.path.join(fastq_directory, fastq_list[1])
+            else:
+                self.right_fq = None
+
+            # check if there are more then 2 files in the directory 
+            if len(fastq_list) > 2:
+                logger.warning("More than two files found in fastq directory!")
+                exit()
+
+        # ~~~~~~~~~~~
+        # files 
+        # ~~~~~~~~~~~
+        else:
+            # set the left fastq file in the object 
+            self.left_fq = self.fastqs[0]
+            print(f"\t\tfastq: {self.left_fq}")
+            if len(self.fastqs) > 1:
+                self.right_fq = self.fastqs[1]
+                print(f"\t\tfastq: {self.right_fq}")
+            else:
+                self.right_fq = None
+
         # Insertion Candidate input 
         self.insertion_candidates = args.insertion_candidates
         # Prefix to use 
@@ -170,6 +248,9 @@ class ExtractEvidenceReads:
     def parsInsertionCandidates(self):
         '''
         Parse the insertion candidates file 
+
+        Adds the read names of interest found from the insertion candidates file
+            and adds them to the object as a list.
         '''
         # Read in the insertion candidates file 
         logger.info("\n################################\n Reading in Insertion Candidates \n################################")
@@ -198,10 +279,6 @@ class ExtractEvidenceReads:
             Fastq1 : Left FastQ, subset of the original Left FastQ
             Fastq2 : Right FastQ, subset of the original Right FastQ
         
-        pysam.FastxFile reads through the fastQ files 
-        each entry is of class pysam.FastqProxy
-        entry == pysam.FastqProxy class
-        
         '''
         logger.info("\n################################\n Reading in FASTQ \n################################")
         
@@ -215,52 +292,26 @@ class ExtractEvidenceReads:
 
         # Create the FASTQ object 
         fastx_obj = faFile(self.left_fq)
-        # Read the FASTQ file into the object 
-        fastx_obj = fastx_obj.fqReader()
-
-        # identify which reads to subset 
-        true_ids = list(set(self.read_names) & set(fastx_obj.df["ID2"]))
-        # print(self.read_names)
-        # print(fastx_obj.df["ID2"])
         
-        ########
-        # CHECK 
-        ########
-        # Make sure all reads are found 
-        CHECK_reading(true_ids, self.read_names)
+        # Read the FASTQ file into the object 
+        fastq_str = fastx_obj.fqReader(self.read_names)
+        
 
-        # Subset the DF to the reads of interest 
-        subset_df = fastx_obj.df[fastx_obj.df['ID2'].isin(true_ids)]
-        subset_df = subset_df[["ID","Sequence"]]
-
-        self.df_left = subset_df
+        self.str_left = fastq_str
 
 
         #~~~~~~~~~~~~~~~~
         # Right FastQ file
         #~~~~~~~~~~~~~~~~
-        logger.info("\tReading in RIGHT FASTQ")
 
         if self.right_fq != None:
+            logger.info("\tReading in RIGHT FASTQ")
             # Create the FASTQ object 
             fastx_obj = faFile(self.right_fq)
             # Read the FASTQ file into the object 
-            fastx_obj = fastx_obj.fqReader()
+            fastq_str = fastx_obj.fqReader(self.read_names)
 
-            # identify which reads to subset 
-            true_ids = list(set(self.read_names) & set(fastx_obj.df["ID2"]))
-            
-            ########
-            # CHECK 
-            ########
-            # Make sure all reads are found 
-            CHECK_reading(true_ids,self.read_names)
-
-            # Subset the DF to the reads of interest 
-            subset_df = fastx_obj.df[fastx_obj.df['ID2'].isin(true_ids)]
-            subset_df = subset_df[["ID","Sequence"]]
-
-            self.df_right = subset_df
+            self.str_right = fastq_str
 
         return self
 
@@ -280,16 +331,9 @@ class ExtractEvidenceReads:
         # Left FastQ file
         #~~~~~~~~~~~~~~~~
         logger.info(f"\tWriting Left FASTQ to: {out_filename1}")
-        # Create new fastQ file 
-        temp_list = []
-        for index, row in self.df_left.iterrows():
-            # temp_list.append("@" + row["ID"] + "\n" + row["Sequence"])
-            temp_list.append( f"@{row['ID']}\n{row['Sequence']}" )
-        
-        final_str = "".join(temp_list)
-        #final_str = final_str.rstrip("\n")
+
         output_file = open(out_filename1, "w")
-        output_file.write(final_str)
+        output_file.write(self.str_left)
         output_file.close()
 
 
@@ -299,15 +343,8 @@ class ExtractEvidenceReads:
         if self.right_fq != None:
             logger.info(f"\tWriting Right FASTQ to: {out_filename2}")
             # Create new fastQ file 
-            temp_list = []
-            for index, row in self.df_right.iterrows():
-                # temp_list.append("@" + row["ID"] + "\n" + row["Sequence"])
-                temp_list.append( f"@{row['ID']}\n{row['Sequence']}" )
-            
-            final_str = "".join(temp_list)
-            #final_str = final_str.rstrip("\n")
             output_file = open(out_filename2, "w")
-            output_file.write(final_str)
+            output_file.write(self.str_right)
             output_file.close()
 
 
@@ -321,8 +358,7 @@ def main():
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     parser = argparse.ArgumentParser(   formatter_class = argparse.RawTextHelpFormatter, 
                                         description     = "")
-    parser.add_argument('--left_fq',  required = True,  help = "fastq File input.")
-    parser.add_argument('--right_fq', required = False, help = "fastq File input.")
+    parser.add_argument('--fastqs',  required = True,  nargs='+', help = "fastq File input, or a directory holding one or two.")
     parser.add_argument('--insertion_candidates', required = True, help = "Names of the evidence reads from which you would extract from the fastq files.")
     parser.add_argument('--out_prefix', required = False, default = "ev_reads", help = "fastq File input ")
     args = parser.parse_args()
