@@ -2,7 +2,12 @@
 
 
 test:
-	../ctat-vif --left reads_1.fastq.gz --right reads_2.fastq.gz --viral_fasta HPV16.fa -O VIF.full.no_remove_dups.outdir
+	../ctat-vif \
+		--left reads_1.fastq.gz \
+		--right reads_2.fastq.gz \
+		--viral_fasta HPV16.fa \
+		--sample_id test \
+		-O VIF.full.no_remove_dups.outdir
 
 all: test star_init_only remove_dups novirus
 
