@@ -104,25 +104,17 @@ RUN wget -q https://github.com/arq5x/bedtools2/releases/download/v2.30.0/bedtool
 ## CTAT-VirusIntegrationFinder
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#ENV VIF_CO="3e48b729c099827983c63b772823e5e4fc45f9cd"
-#RUN git clone --recursive https://github.com/broadinstitute/CTAT-VirusIntegrationFinder.git && \
-#        cd CTAT-VirusIntegrationFinder && \
-#        git checkout ${VIF_CO} && \
-#        git submodule init && git submodule update && \
-#        mv * $BIN && \
-#	    cd ${BIN}/util/bamsifter && ./build_htslib.sh && make
+ENV VIF_CO=d95ff7cff3c82b1b99e4944e8bfcdcbb8d688519
+RUN git clone --recursive https://github.com/broadinstitute/CTAT-VirusIntegrationFinder.git && \
+        cd CTAT-VirusIntegrationFinder && \
+        git checkout ${VIF_CO} && \
+        git submodule init && git submodule update && \
+        make && \
+        mv * $BIN 
 
-WORKDIR $SRC
-RUN mkdir $SRC/CTAT-VirusIntegrationFinder
-ADD PyLib $SRC/CTAT-VirusIntegrationFinder/PyLib
-ADD util $SRC/CTAT-VirusIntegrationFinder/util
-ADD WDL $SRC/CTAT-VirusIntegrationFinder/WDL
-ADD ctat-vif $SRC/CTAT-VirusIntegrationFinder/
-RUN cd $SRC/CTAT-VirusIntegrationFinder/util/bamsifter && ./build_htslib.sh && make
 
-RUN wget -q https://github.com/broadinstitute/cromwell/releases/download/59/cromwell-59.jar -O $SRC/CTAT-VirusIntegrationFinder/WDL/cromwell-59.jar
-RUN wget -q https://raw.githubusercontent.com/klarman-cell-observatory/cumulus/master/docker/monitor_script.sh -O $SRC/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh
-RUN chmod a+rx $SRC/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh
+#RUN wget -q https://raw.githubusercontent.com/klarman-cell-observatory/cumulus/master/docker/monitor_script.sh -O $SRC/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh
+#RUN chmod a+rx $SRC/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh
 
 RUN apt-get -qq -y remove automake build-essential cmake curl git gcc g++ wget && \
     apt-get -qq -y autoremove && \
