@@ -133,9 +133,10 @@ def main():
     input_json["ref_genome_gtf"] = gtf
     input_json["ref_genome_fasta"] = ref_fasta
     input_json['autodetect_cpu'] = False
-    input_json['star_two_pass_mode'] = star_two_pass_mode
-    input_json['star_init_two_pass_mode'] = star_init_two_pass_mode
 
+    input_json['star_init_two_pass_mode'] = star_init_two_pass_mode
+    input_json['star_validate_two_pass_mode'] = star_validate_two_pass_mode
+    
     star_index_human_only = ref_fasta + ".star.idx"
     input_json['star_index_human_only'] = star_index_human_only
 
