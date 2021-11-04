@@ -370,7 +370,7 @@ task STAR_init {
       samtools index "~{base_name}.Aligned.sortedByCoord.out.bam"
 
       # always have at least the Unmapped.out.mate1 file
-      touch Unmapped.out.mate1
+      touch ~{base_name}.Unmapped.out.mate1
     >>>
 
           
@@ -381,8 +381,8 @@ task STAR_init {
         File output_log_final = "~{base_name}.Log.final.out"
         File output_SJ = "~{base_name}.SJ.out.tab"
         File? chimeric_junction = "~{base_name}.Chimeric.out.junction"
-        File Unmapped_left_fq = "Unmapped.out.mate1"
-        File? Unmapped_right_fq = "Unmapped.out.mate2"
+        File Unmapped_left_fq = "~{base_name}.Unmapped.out.mate1"
+        File? Unmapped_right_fq = "~{base_name}.Unmapped.out.mate2"
     }
 
     runtime {
