@@ -293,7 +293,6 @@ task STAR_init {
         String base_name
         String two_pass_mode
         Boolean autodetect_cpu
-        File? viral_genomes_fasta_file
     }
     Int max_mate_dist = 100000
     
