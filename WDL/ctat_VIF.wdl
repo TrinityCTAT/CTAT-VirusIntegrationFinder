@@ -916,7 +916,7 @@ task SummaryReport {
         set -e
 
         ~{util_dir}/refine_VIF_output.Rscript \
-        --init_counts ~{init_counts} \
+        --prelim_counts ~{init_counts} \
         --vif_counts ~{vif_counts} \
         --output ~{prefix}.refined.tsv
 
