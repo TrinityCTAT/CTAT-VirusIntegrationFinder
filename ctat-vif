@@ -92,6 +92,8 @@ def main():
         "-O",
         "--outputdir",
         dest="outputdir",
+        required=True,
+        type=str,
         help="Output directory",
     )
 
