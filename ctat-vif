@@ -10,7 +10,7 @@ import logging
 import sys
 
 
-VERSION = "0.3.0-dev"
+VERSION = "CTAT-VirusInsertionFinder:0.3.0-dev"
 
 
 if sys.version_info[0] < 3:
@@ -97,7 +97,20 @@ def main():
         help="Output directory",
     )
 
+    parser.add_argument("--version", action='store_true', help="show version tag: {}".format(VERSION))
+
+
     args = parser.parse_args()
+
+    if args.version:
+        exit(VERSION)
+
+    if not args.genome_lib_dir:
+        exit("\n\tError, must specify --genome_lib_dir or have env var CTAT_GENOME_LIB set accordingly")
+
+    
+
+    
     left = args.left
     right = args.right
     ctat_genome_lib_path = os.path.abspath(args.genome_lib_dir)
