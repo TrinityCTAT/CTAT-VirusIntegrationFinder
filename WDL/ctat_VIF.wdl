@@ -812,13 +812,13 @@ task ChimericContigEvidenceAnalyzer {
         samtools index ~{prefix}.evidence.bam
 
 
-      insertions_file = "~{prefix}.evidence_counts.tsv"
-      insertions_validated_file = "insertions_validated.txt"
-      num_insertions = $(cat ${insertions_file} | wc -l)
+      insertions_file="~{prefix}.evidence_counts.tsv"
+      insertions_validated_file="insertions_validated.txt"
+      num_insertions=$(cat ${insertions_file} | wc -l)
       if [[ ${num_insertions} -gt 1 ]]; then
-        echo "true" > insertions_validated_file
+        echo "true" > ${insertions_validated_file}
       else
-        echo "false" > insertions_validated_file
+        echo "false" > ${insertions_validated_file}
       fi
       
     >>>
