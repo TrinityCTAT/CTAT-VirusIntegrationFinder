@@ -309,15 +309,16 @@ task STAR_init {
 
         cpu=~{cpu}
         genomeDir="~{star_reference_dirpath}"
-        if [[ "${genomeDir" == "" ]]; then
+        if [[ "${genomeDir}" == "" ]]; then
             genomeDir="~{star_reference}"
         fi
       
         fastqs="~{fastq1} ~{fastq2}"
         readFilesCommand=""
-        if [[ "~{fastq1}" = *.gz ]] ; then
+        if [[ "~{fastq1}" == *.gz ]] ; then
             readFilesCommand="--readFilesCommand \"gunzip -c\""
         fi
+      
         if [ "~{autodetect_cpu}" == "true" ]; then
             cpu=$(nproc)
         fi
@@ -325,9 +326,9 @@ task STAR_init {
         if [ -f "${genomeDir}" ] ; then
             mkdir genome_dir
             compress=""
-            if [[ $genomeDir == *.tar.gz ]] ; then
+            if [[ "${genomeDir}" == *.tar.gz ]] ; then
               compress="-I pigz"
-            else if [[ $genomeDir == *.tar.bz2 ]] ; then
+            elif [[ "${genomeDir}" == *.tar.bz2 ]] ; then
                 compress="-I pbzip2"
             fi
             tar $compress -xf ~{star_reference} -C genome_dir --strip-components 1
@@ -433,14 +434,14 @@ task STAR_validate {
         set -e
 
         cpu=~{cpu}
-        genomeDir="~{star_reference}"
-        if [[ "${genomeDir" == "" ]]; then
+        genomeDir="~{star_reference_dirpath}"
+        if [[ "${genomeDir}" == "" ]]; then
             genomeDir="~{star_reference}"
         fi
 
         fastqs="~{fastq1} ~{fastq2}"
         readFilesCommand=""
-        if [[ "~{fastq1}" = *.gz ]] ; then
+        if [[ "~{fastq1}" == *.gz ]] ; then
             readFilesCommand="--readFilesCommand \"gunzip -c\""
         fi
         if [ "~{autodetect_cpu}" == "true" ]; then
@@ -453,7 +454,7 @@ task STAR_validate {
             compress=""
             if [[ $genomeDir == *.tar.gz ]] ; then
                 compress="-I pigz"
-            else if [[ $genomeDir == *.tar.bz2 ]] ; then
+            elif [[ $genomeDir == *.tar.bz2 ]] ; then
                 compress="-I pbzip2"
             fi
             tar $compress -xf ~{star_reference} -C genome_dir --strip-components 1
