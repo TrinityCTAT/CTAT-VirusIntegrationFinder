@@ -21,10 +21,14 @@ workflow ctat_vif {
 
         Int min_reads = 10
 
-        # star indices needed
-        File star_index_human_only
-        File star_index_human_plus_virus
-              
+        # star indices needed (local: point to directory name, on cloud: give tar file)
+        File? star_index_human_only
+        String? star_index_human_only_dirpath
+        
+        File? star_index_human_plus_virus
+        String? star_index_human_plus_virus_dirpath 
+
+      
         String igv_virus_reports_memory = "14GB"
         String igv_reports_memory = "1GB"
 
@@ -133,6 +137,7 @@ workflow ctat_vif {
                 two_pass_mode = star_init_two_pass_mode,
                 base_name=sample_id + ".hgOnly",
                 star_reference=star_index_human_only,
+                star_reference_dirpath = star_index_human_only_dirpath,
                 extra_disk_space = star_extra_disk_space,
                 disk_space_multiplier = star_fastq_disk_space_multiplier,
                 memory = star_init_memory,
@@ -151,6 +156,7 @@ workflow ctat_vif {
                 two_pass_mode = star_init_two_pass_mode,
                 base_name=sample_id + ".hgPlusVirus",
                 star_reference=star_index_human_plus_virus,
+                star_reference_dirpath = star_index_human_plus_virus_dirpath,
                 extra_disk_space = star_extra_disk_space,
                 disk_space_multiplier = star_fastq_disk_space_multiplier,
                 memory = star_init_memory,
@@ -215,6 +221,7 @@ workflow ctat_vif {
                 two_pass_mode = star_validate_two_pass_mode,
                 base_name=sample_id+".validate_inserts",
                 star_reference=star_index_human_only,
+                star_reference_dirpath = star_index_human_only_dirpath,
                 insertions_fasta_file=ExtractChimericGenomicTargets.fasta_extract,
                 extra_disk_space = star_extra_disk_space,
                 disk_space_multiplier = star_fastq_disk_space_multiplier,
@@ -283,6 +290,7 @@ task STAR_init {
         File fastq1
         File? fastq2
         File? star_reference
+        String? star_reference_dirpath
         Float extra_disk_space
         Float disk_space_multiplier
         Boolean use_ssd
@@ -300,7 +308,11 @@ task STAR_init {
         set -e
 
         cpu=~{cpu}
-        genomeDir="~{star_reference}"
+        genomeDir="~{star_reference_dirpath}"
+        if [[ "${genomeDir" == "" ]]; then
+            genomeDir="~{star_reference}"
+        fi
+      
         fastqs="~{fastq1} ~{fastq2}"
         readFilesCommand=""
         if [[ "~{fastq1}" = *.gz ]] ; then
@@ -400,7 +412,8 @@ task STAR_validate {
         String util_dir
         File fastq1
         File? fastq2
-        File star_reference
+        File? star_reference
+        String? star_reference_dirpath
         Float extra_disk_space
         Float disk_space_multiplier
         Boolean use_ssd
@@ -420,6 +433,10 @@ task STAR_validate {
 
         cpu=~{cpu}
         genomeDir="~{star_reference}"
+        if [[ "${genomeDir" == "" ]]; then
+            genomeDir="~{star_reference}"
+        fi
+
         fastqs="~{fastq1} ~{fastq2}"
         readFilesCommand=""
         if [[ "~{fastq1}" = *.gz ]] ; then

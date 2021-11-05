@@ -157,9 +157,9 @@ def main():
     input_json['star_validate_two_pass_mode'] = star_validate_two_pass_mode
     
     star_index_human_only = ref_fasta + ".star.idx"
-    input_json['star_index_human_only'] = star_index_human_only
+    input_json['star_index_human_only_dirpath'] = star_index_human_only
 
-    input_json['star_index_human_plus_virus'] = star_index_plus_virus
+    input_json['star_index_human_plus_virus_dirpath'] = star_index_plus_virus
 
     input_json['viral_fasta'] = viral_fasta
 
