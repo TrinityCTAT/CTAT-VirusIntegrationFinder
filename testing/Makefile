@@ -5,8 +5,8 @@ test:
 	../ctat-vif \
 		--left reads_1.fastq.gz \
 		--right reads_2.fastq.gz \
-		--viral_fasta HPV16.fa \
 		--sample_id test \
+        --genome_lib_dir ${CTAT_GENOME_LIB} \
 		-O VIF.full.no_remove_dups.outdir
 
 all: test star_init_only remove_dups novirus
@@ -16,16 +16,14 @@ star_init_only:
 	../ctat-vif \
 		--left reads_1.fastq.gz \
 		--right reads_2.fastq.gz \
-		--viral_fasta HPV16.fa \
 		--sample_id test \
 		-O VIF.star_init_only.outdir \
-		--star_init_onlys
+		--star_init_only
 
 remove_dups:
 	../ctat-vif \
 		--left reads_1.fastq.gz \
 		--right reads_2.fastq.gz \
-		--viral_fasta HPV16.fa \
 		--sample_id test \
 		-O VIF.full.remove_dups.outdir \
 		--remove_duplicates
@@ -37,7 +35,6 @@ docker:
 		-v `pwd`:/data \
 		-v ${CTAT_GENOME_LIB}:/ctat_genome_lib trinityctat/ctat_vif:latest \
 		/usr/local/src/CTAT-VirusIntegrationFinder/ctat-vif \
-		--viral_fasta /data/HPV16.fa \
 		--left /data/reads_1.fastq.gz \
 		--right /data/reads_2.fastq.gz \
 		--sample_id test \
@@ -48,7 +45,6 @@ docker:
 
 singularity:
 	singularity exec -e -H `pwd` -B ${CTAT_GENOME_LIB} ../Docker/ctat_vif.*.simg ctat-vif \
-		--viral_fasta HPV16.fa \
 		--left reads_1.fastq.gz \
 		--right reads_2.fastq.gz \
 		--sample_id test \
@@ -62,7 +58,6 @@ novirus:
 		--left test.novirus.reads_1.fastq.gz \
 		--right test.novirus.reads_2.fastq.gz \
 		--sample_id test \
-		--viral_fasta HPV16.fa \
 		-O VIF.novirus.outdir
 
 

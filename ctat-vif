@@ -53,7 +53,6 @@ def main():
 
     parser.add_argument("--right", help="Path to one of the two paired samples")
 
-    parser.add_argument("--viral_fasta", help="Viral fasta", required=True)
 
     parser.add_argument(
         "--genome_lib_dir",
@@ -61,8 +60,12 @@ def main():
         help="Genome lib directory - see http://FusionFilter.github.io for details. Uses env variable CTAT_GENOME_LIB as default",
     )
 
-    parser.add_argument("--star_index_plus_virus", type=str, required=True, help="STAR index containing both host and viral genomes")
 
+    parser.add_argument("--viral_fasta", help="Viral fasta (default: under --genome_lib_dir, VIF/virus_db.hgmasked.fasta")
+
+    parser.add_argument("--star_index_plus_virus", type=str, help="STAR index containing both host and viral genomes, default: under --genome_lib_dir, VIF/hg_plus_viraldb_hgmasked.fasta.star.idx")
+
+    
     parser.add_argument("--cpu", type=int, help="Number of CPUs for multi-threaded steps")
 
     parser.add_argument(
@@ -114,12 +117,28 @@ def main():
     left = args.left
     right = args.right
     ctat_genome_lib_path = os.path.abspath(args.genome_lib_dir)
-    star_index_plus_virus = os.path.abspath(args.star_index_plus_virus)
+
+
+    viral_fasta = args.viral_fasta
+    if not viral_fasta:
+        viral_fasta = os.path.join(ctat_genome_lib_path, "VIF/virus_db.hgmasked.fasta")
+        
+    if not os.path.exists(viral_fasta):
+        exit("Error, cannot locate {}".format(viral_fasta))
+    
+    star_index_plus_virus = args.star_index_plus_virus
+    if not star_index_plus_virus:
+        star_index_plus_virus = os.path.join(ctat_genome_lib_path, "VIF/hg_plus_viraldb_hgmasked.fasta.star.idx") 
+
+    if not os.path.exists(star_index_plus_virus):
+        exit("Error, cannot locate {}".format(star_index_plus_virus))
+    
+
     cromwell = args.cromwell
     remove_duplicates = args.remove_duplicates
     star_init_only = args.star_init_only
     min_reads = args.min_reads
-    viral_fasta = os.path.abspath(args.viral_fasta)
+    
     cpu = args.cpu
     output_directory = os.path.abspath(args.outputdir)
     star_validate_two_pass_mode = args.star_validate_two_pass_mode

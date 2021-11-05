@@ -260,7 +260,7 @@ workflow ctat_vif {
                 sample_id=sample_id
         }
 
-        if(generate_reports) {
+        if(generate_reports && ChimericContigEvidenceAnalyzer.insertions_recovered) {
             call SummaryReport {
                 input:
                     init_counts=insertion_site_candidates_use,
@@ -324,12 +324,13 @@ task STAR_init {
 
         if [ -f "${genomeDir}" ] ; then
             mkdir genome_dir
-            compress="pigz"
-
-            if [[ $genomeDir == *.bz2 ]] ; then
-                compress="pbzip2"
+            compress=""
+            if [[ $genomeDir == *.tar.gz ]] ; then
+              compress="-I pigz"
+            else if [[ $genomeDir == *.tar.bz2 ]] ; then
+                compress="-I pbzip2"
             fi
-            tar -I $compress -xf ~{star_reference} -C genome_dir --strip-components 1
+            tar $compress -xf ~{star_reference} -C genome_dir --strip-components 1
             genomeDir="genome_dir"
         fi
 
@@ -449,12 +450,13 @@ task STAR_validate {
 
         if [ -f "${genomeDir}" ] ; then
             mkdir genome_dir
-            compress="pigz"
-
-            if [[ $genomeDir == *.bz2 ]] ; then
-                compress="pbzip2"
+            compress=""
+            if [[ $genomeDir == *.tar.gz ]] ; then
+                compress="-I pigz"
+            else if [[ $genomeDir == *.tar.bz2 ]] ; then
+                compress="-I pbzip2"
             fi
-            tar -I $compress -xf ~{star_reference} -C genome_dir --strip-components 1
+            tar $compress -xf ~{star_reference} -C genome_dir --strip-components 1
             genomeDir="genome_dir"
         fi
 
@@ -807,6 +809,16 @@ task ChimericContigEvidenceAnalyzer {
         --output_prefix ~{prefix}
 
         samtools index ~{prefix}.evidence.bam
+
+
+      insertions_file = "~{prefix}.evidence_counts.tsv"
+      insertions_validated_file = "insertions_validated.txt"
+      num_insertions = $(cat ${insertions_file} | wc -l)
+      if [[ ${num_insertions} -gt 1 ]]; then
+        echo "true" > insertions_validated_file
+      else
+        echo "false" > insertions_validated_file
+      fi
       
     >>>
 
@@ -814,6 +826,7 @@ task ChimericContigEvidenceAnalyzer {
         File evidence_counts = "~{prefix}.evidence_counts.tsv"
         File evidence_bam = "~{prefix}.evidence.bam"
         File evidence_bai = "~{prefix}.evidence.bam.bai"
+        Boolean insertions_recovered = read_boolean("insertions_validated.txt")
     }
 
     runtime {
