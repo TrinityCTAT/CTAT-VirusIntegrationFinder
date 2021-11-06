@@ -53,6 +53,19 @@ singularity:
 		--CPU 10
 
 
+
+redherrings:
+	../ctat-vif \
+		--left red_herrings_1.fastq.gz \
+		--right red_herrings_2.fastq.gz \
+		--sample_id redherr \
+        --genome_lib_dir ${CTAT_GENOME_LIB} \
+		-O VIF.redherrings
+
+
+
+
+
 novirus:
 	../ctat-vif \
 		--left test.novirus.reads_1.fastq.gz \
