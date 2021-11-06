@@ -104,6 +104,7 @@ RUN wget -q https://github.com/arq5x/bedtools2/releases/download/v2.30.0/bedtool
 ## CTAT-VirusIntegrationFinder
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+WORKDIR $SRC
 ENV CTAT_VIF_VER "0.3.0-dev"
 ENV VIF_CO=b8c969b3f95f074a8d24c67f9c6034c2e728c4f9
 RUN git clone --recursive https://github.com/broadinstitute/CTAT-VirusIntegrationFinder.git && \
@@ -111,7 +112,7 @@ RUN git clone --recursive https://github.com/broadinstitute/CTAT-VirusIntegratio
         git checkout ${VIF_CO} && \
         git submodule init && git submodule update && \
         make && \
-        mv * $BIN 
+        cp -r * $BIN 
 
 
 #RUN wget -q https://raw.githubusercontent.com/klarman-cell-observatory/cumulus/master/docker/monitor_script.sh -O $SRC/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh
