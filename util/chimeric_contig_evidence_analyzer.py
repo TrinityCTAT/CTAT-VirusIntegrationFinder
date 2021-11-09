@@ -19,6 +19,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s : %(levelname)s : %(message)s',
                     datefmt='%H:%M:%S')
 
+DEBUG=False
 
 
 def main():
@@ -49,6 +50,8 @@ def main():
 
     arg_parser.add_argument("--min_per_id", type=int, default=95, required=False,
                             help='min percent identity for an aligned read')
+
+    arg_parser.add_argument("--debug", action='store_true', help='debug mode')
     
     args = arg_parser.parse_args()
 
@@ -60,6 +63,9 @@ def main():
     min_seq_entropy = args.min_seq_entropy
     min_per_id = args.min_per_id
 
+    global DEBUG
+    DEBUG = args.debug
+    
     output_tsv = output_prefix + ".evidence_counts.tsv"
     removed_output_tsv = output_prefix + ".removed.txt"
     output_bam_filename = output_prefix + ".evidence.bam"
@@ -73,14 +79,18 @@ def main():
     print("\t".join(["contig", "split", "span", "total"]), file=ofh_tsv)  # report header
 
 
-    removed_tsv = open(removed_output_tsv, 'wt')
+    removed_tsv = None
+    if DEBUG:
+        removed_tsv = open(removed_output_tsv, 'wt')
 
     #####################
     # nalyze_bam_n_gtf
     #####################
     contig_readnames_want_set = analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min_seq_entropy, min_per_id, removed_tsv)
     ofh_tsv.close()
-    removed_tsv.close()
+
+    if DEBUG:
+        removed_tsv.close()
 
     # write the bam file
     logger.info("writing read alignment evidence bam")
@@ -135,15 +145,18 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
         # 3: Missmatches 
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         if not aligned_read.mapping_quality > 0:
-            removed_tsv.write("\t".join([aligned_read.to_string(),  "mapping_quality\n"]))
+            if DEBUG:
+                removed_tsv.write("\t".join([aligned_read.to_string(),  "mapping_quality\n"]))
             continue
 
         if seq_entropy(aligned_read.query_sequence) < min_seq_entropy:
-            removed_tsv.write("\t".join([aligned_read.to_string(),  "Min_Sequence_Entropy\n"]))
+            if DEBUG:
+                removed_tsv.write("\t".join([aligned_read.to_string(),  "Min_Sequence_Entropy\n"]))
             continue
 
         if per_id(aligned_read) < min_per_id:
-            removed_tsv.write("\t".join([aligned_read.to_string(),  "Mismatch_count\n"]))
+            if DEBUG:
+                removed_tsv.write("\t".join([aligned_read.to_string(),  "Mismatch_count\n"]))
             continue
 
         
@@ -174,8 +187,9 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
             # Check the soft or hard clipping status
             ## max_end_clip == maximum amount of read end clipping
             if excessive_clipping(aligned_read, max_end_clip):
-                # Add to dictionary if this if filtered 
-                removed_tsv.write("\t".join([aligned_read.to_string(),  "Excessive_Soft_Hard_clipping\n"]))
+                # Add to dictionary if this if filtered
+                if DEBUG:
+                    removed_tsv.write("\t".join([aligned_read.to_string(),  "Excessive_Soft_Hard_clipping\n"]))
                 contig_readnames_to_excessive_soft_clip[contig].add(read_name)
             else:
                 update_anchor_lengths(contig_readnames_to_anchor_lengths[contig][read_name], brkpt, align_blocks)
@@ -187,7 +201,8 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
             
             # Check the soft or hard clipping status
             if excessive_clipping(aligned_read, max_end_clip):
-                removed_tsv.write("\t".join([aligned_read.to_string(),  "Excessive_Soft_Hard_clipping\n"]))
+                if DEBUG:
+                    removed_tsv.write("\t".join([aligned_read.to_string(),  "Excessive_Soft_Hard_clipping\n"]))
                 contig_readnames_to_excessive_soft_clip[contig].add(read_name)
                 continue
             
@@ -205,8 +220,9 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
                 # upgrade to split read
                 read_to_contig_and_type[contig][read_name] = 'split'
         
-        # Doesnt span the breakpoint 
-        removed_tsv.write("\t".join([aligned_read.to_string(),  "Doesnt_Span_Breakpoint\n"]))
+        # Doesnt span the breakpoint
+        if DEBUG:
+            removed_tsv.write("\t".join([aligned_read.to_string(),  "Doesnt_Span_Breakpoint\n"]))
     
     logger.info("counting up passing reads")
     # count up the passing reads.
@@ -231,7 +247,8 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
                 samfile = pysam.AlignmentFile(bam_file, "rb")
                 for aligned_read in samfile:
                     if aligned_read.query_name == readname:
-                        removed_tsv.write("\t".join([aligned_read.to_string(),  "Min_Anchor_length\n"]))
+                        if DEBUG:
+                            removed_tsv.write("\t".join([aligned_read.to_string(),  "Min_Anchor_length\n"]))
                         break
                 
     ## report entries
