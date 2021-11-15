@@ -89,6 +89,8 @@ def main():
         help="exclude duplicate alignments",
     )
 
+    parser.add_argument("--debug", action='store_true', help='debug mode')
+    
 
     ###########################
     # Parse input arguments 
@@ -100,6 +102,9 @@ def main():
     aggregation_dist = args_parsed.aggregation_dist
     output_prefix = args_parsed.output_prefix
 
+    if args_parsed.debug:
+        logger.setLevel(logging.DEBUG)
+    
     remove_duplicates_flag = args_parsed.remove_duplicates_flag
     
     ###########################
@@ -149,7 +154,7 @@ def main():
     #~~~~~~~~~~~~~~~~~~~~~~~~~ 
     df = df[(df["chr_donorA"].isin(patch_db_entries)) ^ (df["chr_acceptorB"].isin(patch_db_entries))]
 
-    logger.info(f"Chimeric insertions start: {df.shape[0]}")
+    logger.debug(f"Chimeric insertions start: {df.shape[0]}")
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~
     # Duplicates 
@@ -163,15 +168,22 @@ def main():
     # Filter by duplication 
     df = df[df["Duplicated_read"] == False]
 
-    logger.info(f"Chimeric insertions filter duplicates: {df.shape[0]}")
+    logger.debug(f"Chimeric insertions filter duplicates: {df.shape[0]}")
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~
     ## reorient so host (human) genome is always in the + reference orientation.
     #~~~~~~~~~~~~~~~~~~~~~~~~~
     idx = ((df["chr_donorA"].isin(patch_db_entries)) & (df["strand_acceptorB"] == "-") | (df["chr_acceptorB"].isin(patch_db_entries) & (df["strand_donorA"] == "-")))
-    df.loc[idx,['chr_donorA', 'brkpt_donorA', 'strand_donorA', 'chr_acceptorB','brkpt_acceptorB', 'strand_acceptorB']] = df.loc[idx,['chr_acceptorB','brkpt_acceptorB', 'strand_acceptorB', 'chr_donorA', 'brkpt_donorA', 'strand_donorA']]
+
+    
+    df.loc[idx, ['chr_donorA', 'brkpt_donorA', 'strand_donorA',
+                 'chr_acceptorB','brkpt_acceptorB', 'strand_acceptorB']] = df.loc[idx,['chr_acceptorB','brkpt_acceptorB', 'strand_acceptorB',
+                                                                                       'chr_donorA', 'brkpt_donorA', 'strand_donorA']].values
+    
     # adjust the orientation
     df.loc[idx,['strand_donorA','strand_acceptorB']] = df.loc[idx,['strand_donorA','strand_acceptorB']].replace({"+":"-","-":"+"})
+
+    df.to_csv("ladeda.csv", sep="\t")
     
     # Run through each line in the chimeric junctions file 
     for idx, row in df.iterrows():
@@ -208,7 +220,7 @@ def main():
         # Get the Chimeric_read object for the given Chrom-Virus pairing
         chim_reads = genome_pair_to_evidence[genome_pair]
 
-        logger.info("Genome pair: " + genome_pair)
+        logger.debug("Genome pair: " + genome_pair)
 
         chim_events = group_chim_reads_into_events(chim_reads, aggregation_dist)
 
@@ -356,7 +368,7 @@ def group_chim_reads_into_events(chim_reads_list, aggregation_dist):
         if not supplements_existing_event(chim_event, chim_events, aggregation_dist):
             # add new event to chim_events list
             chim_events.append(chim_event)
-            logger.info("-logging chimeric event: " + str(chim_event))
+            logger.debug("-logging chimeric event: " + str(chim_event))
 
     return chim_events
 
@@ -379,7 +391,7 @@ def supplements_existing_event(chim_event, chim_events_list, aggregation_dist):
             and abs(chim_event.coordB - prev_chim_event.coordB) <= aggregation_dist
         ):
 
-            logger.info(
+            logger.debug(
                 "-adding {} as supplement to {}".format(
                     str(chim_event), str(prev_chim_event)
                 )
