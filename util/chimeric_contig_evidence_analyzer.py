@@ -45,7 +45,7 @@ def main():
                             help="maximum amount of read end clipping")
 
 
-    arg_parser.add_argument("--min_seq_entropy", type=float, default=1.0, required=False,
+    arg_parser.add_argument("--min_seq_entropy", type=float, default=1.5, required=False,
                             help='min sequence entropy for consideration as evidence')
 
     arg_parser.add_argument("--min_per_id", type=int, default=95, required=False,
@@ -148,6 +148,7 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
             if DEBUG:
                 removed_tsv.write("\t".join([aligned_read.to_string(),  "mapping_quality\n"]))
             continue
+
 
         if seq_entropy(aligned_read.query_sequence) < min_seq_entropy:
             if DEBUG:
