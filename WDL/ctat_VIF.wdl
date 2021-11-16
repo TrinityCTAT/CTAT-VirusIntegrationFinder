@@ -16,7 +16,7 @@ workflow ctat_vif {
 
         Boolean star_init_only = false
 
-        Boolean remove_duplicates = false
+        Boolean remove_duplicates = true
         Boolean generate_reports = true
 
         Int min_reads = 10
@@ -103,7 +103,10 @@ workflow ctat_vif {
         File? insertion_site_candidates_abridged = InsertionSiteCandidates.abridged
         File? insertion_site_candidates_abridged_filtered = InsertionSiteCandidates.abridged_filtered
         File? insertion_site_candidates_abridged_detailed = InsertionSiteCandidates.abridged_detailed
-
+        File? insertion_site_candidates_full_read_stats = InsertionSiteCandidates.full_read_stats
+        File? insertion_site_candidates_supp_reads_bam = InsertionSiteCandidates.supp_reads_bam
+        File? insertion_site_candidates_supp_reads_bai = InsertionSiteCandidates.supp_reads_bai
+      
         File? genome_abundance_plot = VirusReport.genome_abundance_plot
         File? virus_coverage_read_counts_summary = VirusReport.read_counts_summary
         File? virus_coverage_read_counts_image = VirusReport.read_counts_image
@@ -170,6 +173,8 @@ workflow ctat_vif {
         call InsertionSiteCandidates {
             input:
                 chimeric_junction=select_first([STAR_init_hgPlusVirus.chimeric_junction]),
+                bam=select_first([STAR_init_hgPlusVirus.bam]),
+                bai=select_first([STAR_init_hgPlusVirus.bai]),
                 viral_fasta=viral_fasta,
                 remove_duplicates=remove_duplicates,
                 util_dir=util_dir,
@@ -180,6 +185,7 @@ workflow ctat_vif {
         }
         File insertion_site_candidates_output =  (if min_reads>0 then select_first([InsertionSiteCandidates.abridged_filtered]) else InsertionSiteCandidates.abridged)
 
+        
         if(generate_reports) {
             call VirusReport {
                 input:
@@ -560,6 +566,8 @@ task RemoveDuplicates {
 task InsertionSiteCandidates {
     input {
         File chimeric_junction
+        File bam
+        File bai
         File viral_fasta
         Boolean remove_duplicates
         String util_dir
@@ -594,6 +602,17 @@ task InsertionSiteCandidates {
             df.to_csv("~{prefix}.full.filtered.tsv", sep='\t', index=False)
       
         CODE
+
+        # add evidence read stats
+        samtools view -h -f 2048 ~{bam} > ~{bam}.supp_only.bam
+        samtools index ~{bam}.supp_only.bam
+      
+        ~{util_dir}/incorporate_read_alignment_stats.py \
+          --supp_reads_bam ~{bai}.supp_only.bam \
+          --vif_full_tsv ~{prefix}.full.tsv \
+          --output ~{prefix}.full_read_stats.tsv
+
+      
     >>>
 
     output {
@@ -602,6 +621,9 @@ task InsertionSiteCandidates {
         File abridged = "~{prefix}.abridged.tsv"
         File? abridged_filtered = "~{prefix}.abridged.filtered.tsv"
         File abridged_detailed = "~{prefix}.abridged.detailed.tsv"
+        File supp_reads_bam = "~{bai}.supp_only.bam"
+        File supp_reads_bai = "~{bai}.supp_only.bam.bai"
+        File full_read_stats = "~{prefix}.full_read_stats.tsv"
     }
 
     runtime {
