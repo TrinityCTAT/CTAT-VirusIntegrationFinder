@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--supp_reads_bam", required=True, type=str, help="supplemental read alignments")
     parser.add_argument("--vif_full_tsv", required=True, type=str, help="VIF full tsv containing evidence read names")
     parser.add_argument("--output", required=True, type=str, help="output tsv file containing read alignment stats")
+    parser.add_argument("--detailed", action='store_true', help='show attribute values for each read instead of mean statistic')
     
     args = parser.parse_args()
 
@@ -106,13 +107,16 @@ def main():
             mismatches.append(read_to_max_mismatch_count[readname])
             max_end_clipping.append(read_to_max_end_clipping[readname])
 
-        #vif_df.loc[i, 'hits'] = ",".join([str(x) for x in hits])
-        #vif_df.loc[i, 'mismatches'] = ",".join([str(x) for x in mismatches])
-        #vif_df.loc[i, 'max_end_clipping'] = ",".join([str(x) for x in max_end_clipping])
-        
-        vif_df.loc[i, 'hits'] = st.mean(hits)
-        vif_df.loc[i, 'mismatches'] = st.mean(mismatches)
-        vif_df.loc[i, 'max_end_clipping'] = st.mean(max_end_clipping)
+
+        if args.detailed:
+            vif_df.loc[i, 'hits'] = ",".join([str(x) for x in hits])
+            vif_df.loc[i, 'mismatches'] = ",".join([str(x) for x in mismatches])
+            vif_df.loc[i, 'max_end_clipping'] = ",".join([str(x) for x in max_end_clipping])
+
+        else:
+            vif_df.loc[i, 'hits'] = "{:.3f}".format(st.mean(hits))
+            vif_df.loc[i, 'mismatches'] = "{:.3f}".format(st.mean(mismatches))
+            vif_df.loc[i, 'max_end_clipping'] = "{:.3f}".format(st.mean(max_end_clipping))
 
     
     vif_df.drop('readnames', axis=1, inplace=True)
