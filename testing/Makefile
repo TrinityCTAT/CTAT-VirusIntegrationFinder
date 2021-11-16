@@ -60,7 +60,7 @@ redherrings:
 		--right red_herrings_2.fastq.gz \
 		--sample_id redherr \
         --genome_lib_dir ${CTAT_GENOME_LIB} \
-		-O VIF.redherrings
+		-O VIF.redherrings.outdir
 
 
 
