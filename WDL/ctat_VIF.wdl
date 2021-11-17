@@ -604,11 +604,11 @@ task InsertionSiteCandidates {
         CODE
 
         # add evidence read stats
-        samtools view -h -f 2048 ~{bam} > ~{bam}.supp_only.bam
-        samtools index ~{bam}.supp_only.bam
+        samtools view -h -f 2048 ~{bam} -bo ~{prefix}.supp_only.bam
+        samtools index ~{prefix}.supp_only.bam
       
         ~{util_dir}/incorporate_read_alignment_stats.py \
-          --supp_reads_bam ~{bai}.supp_only.bam \
+          --supp_reads_bam ~{prefix}.supp_only.bam \
           --vif_full_tsv ~{prefix}.full.tsv \
           --output ~{prefix}.full_read_stats.tsv
 
@@ -621,8 +621,8 @@ task InsertionSiteCandidates {
         File abridged = "~{prefix}.abridged.tsv"
         File? abridged_filtered = "~{prefix}.abridged.filtered.tsv"
         File abridged_detailed = "~{prefix}.abridged.detailed.tsv"
-        File supp_reads_bam = "~{bai}.supp_only.bam"
-        File supp_reads_bai = "~{bai}.supp_only.bam.bai"
+        File supp_reads_bam = "~{prefix}.supp_only.bam"
+        File supp_reads_bai = "~{prefix}.supp_only.bam.bai"
         File full_read_stats = "~{prefix}.full_read_stats.tsv"
     }
 
