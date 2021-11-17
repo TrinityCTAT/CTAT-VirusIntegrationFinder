@@ -68,12 +68,7 @@ def main():
         mismatch_count = read.get_tag('NM')
         read_to_max_mismatch_count[read_name] = max(read_to_max_mismatch_count[read_name], mismatch_count)
 
-        alignment_stats = read.get_tag('SA')
-
-        #print("alignment_stats: {}".format(alignment_stats))
-        cigar = alignment_stats.split(",")[3]
-        
-        #print("cigar: {}".format(cigar))
+        cigar = read.cigarstring
 
         max_clip = 0
         if (not read.is_paired) or read.is_read1:
@@ -103,6 +98,10 @@ def main():
         max_end_clipping = list()
         
         for readname in readnames:
+
+            if readname not in read_to_hit_count:
+                raise RuntimeError("Error, missing hit count for read: {}".format(readname))
+            
             hits.append(read_to_hit_count[readname])
             mismatches.append(read_to_max_mismatch_count[readname])
             max_end_clipping.append(read_to_max_end_clipping[readname])

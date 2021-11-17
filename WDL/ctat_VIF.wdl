@@ -104,9 +104,9 @@ workflow ctat_vif {
         File? insertion_site_candidates_abridged_filtered = InsertionSiteCandidates.abridged_filtered
         File? insertion_site_candidates_abridged_detailed = InsertionSiteCandidates.abridged_detailed
         File? insertion_site_candidates_full_read_stats = InsertionSiteCandidates.full_read_stats
-        File? insertion_site_candidates_supp_reads_bam = InsertionSiteCandidates.supp_reads_bam
-        File? insertion_site_candidates_supp_reads_bai = InsertionSiteCandidates.supp_reads_bai
-      
+        File? insertion_site_candidates_genome_chimeric_evidence_reads_bam = InsertionSiteCandidates.genome_chimeric_evidence_reads_bam
+        File? insertion_site_candidates_genome_chimeric_evidence_reads_bai = InsertionSiteCandidates.genome_chimeric_evidence_reads_bai
+        
         File? genome_abundance_plot = VirusReport.genome_abundance_plot
         File? virus_coverage_read_counts_summary = VirusReport.read_counts_summary
         File? virus_coverage_read_counts_image = VirusReport.read_counts_image
@@ -603,12 +603,16 @@ task InsertionSiteCandidates {
       
         CODE
 
-        # add evidence read stats
-        samtools view -h -f 2048 ~{bam} -bo ~{prefix}.supp_only.bam
-        samtools index ~{prefix}.supp_only.bam
+        
+        # extract the chimeric read alignments:
+        ~{util_dir}/extract_prelim_chimeric_genome_read_alignments.py \
+           --star_bam ~{bam} \
+           --vif_full_tsv ~{prefix}.full.tsv \
+           --output_bam ~{prefix}.genome_chimeric_evidence.bam
       
+        # add evidence read stats
         ~{util_dir}/incorporate_read_alignment_stats.py \
-          --supp_reads_bam ~{prefix}.supp_only.bam \
+          --supp_reads_bam ~{prefix}.genome_chimeric_evidence.bam \
           --vif_full_tsv ~{prefix}.full.tsv \
           --output ~{prefix}.full_read_stats.tsv
 
@@ -621,8 +625,8 @@ task InsertionSiteCandidates {
         File abridged = "~{prefix}.abridged.tsv"
         File? abridged_filtered = "~{prefix}.abridged.filtered.tsv"
         File abridged_detailed = "~{prefix}.abridged.detailed.tsv"
-        File supp_reads_bam = "~{prefix}.supp_only.bam"
-        File supp_reads_bai = "~{prefix}.supp_only.bam.bai"
+        File genome_chimeric_evidence_reads_bam = "~{prefix}.genome_chimeric_evidence.bam"
+        File genome_chimeric_evidence_reads_bai = "~{prefix}.genome_chimeric_evidence.bam.bai"
         File full_read_stats = "~{prefix}.full_read_stats.tsv"
     }
 
