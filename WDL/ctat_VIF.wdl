@@ -632,7 +632,7 @@ task InsertionSiteCandidates {
 
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil(size(viral_fasta, "GB") + size(chimeric_junction, "GB")*3) + " HDD"
+        disks: "local-disk " + ceil(size(viral_fasta, "GB") + size(chimeric_junction, "GB")*3 + size(bam, "GB")*2) + " HDD"
         docker: docker
         cpu: 1
         memory: "10GB"
