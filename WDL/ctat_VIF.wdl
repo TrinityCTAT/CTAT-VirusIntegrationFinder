@@ -887,11 +887,19 @@ task VirusReport {
         set -e
 
         ~{util_dir}/make_VIF_genome_abundance_plot.Rscript \
-        --vif_report ~{insertion_site_candidates} \
-        --title "Initinary Genome Wide Abundance" \
-        --output_png ~{prefix}.init.genome_plot.png
+          --vif_report ~{insertion_site_candidates} \
+          --title "Preliminary Genome Wide Abundance" \
+          --output_png ~{prefix}.init.genome_plot.png
 
         bam=~{bam}
+
+        ## restrict bam to only viruses
+        samtools faidx ~{viral_fasta}
+        awk '{printf("%s\t0\t%s\n",$1,$2);}' ~{viral_fasta}.fai  > viral_fasta.bed
+        samtools view -b -L viral_fasta.bed ${bam} -o virus_only.bam
+        samtools index virus_only.bam
+        bam="virus_only.bam"
+        
         if [ "~{remove_duplicates}" == "true" ]; then
             ~{util_dir}/bam_mark_duplicates.py -i ${bam}  -o dups.removed.bam -r
             samtools index dups.removed.bam
@@ -901,13 +909,13 @@ task VirusReport {
       
         # generates read_counts_summary and images
         ~{util_dir}/plot_top_virus_coverage.Rscript \
-        --vif_report ~{insertion_site_candidates} \
-        --bam ${bam} \
-        --output_prefix ~{prefix}
+          --vif_report ~{insertion_site_candidates} \
+          --bam ${bam} \
+          --output_prefix ~{prefix}
 
         ~{util_dir}/create_insertion_site_inspector_js.py \
-        --VIF_summary_tsv ~{prefix}.virus_read_counts_summary.tsv \
-        --json_outfile ~{prefix}.virus.json
+          --VIF_summary_tsv ~{prefix}.virus_read_counts_summary.tsv \
+          --json_outfile ~{prefix}.virus.json
 
         # make bed for igvjs
         ~{util_dir}/create_virus_bed.py \
@@ -916,24 +924,26 @@ task VirusReport {
 
         # prep for making the report
         ~{util_dir}/bamsifter/bamsifter \
-        -c ~{max_coverage} \
-        -o ~{prefix}.virus.reads.bam \
-        ${bam}
+          -c ~{max_coverage} \
+          -o ~{prefix}.virus.reads.bam \
+          ${bam}
 
         # IGV reports expects to find, __PREFIX__.fa, __PREFIX__.bed, __PREFIX__.reads.bam
         ln -sf ~{viral_fasta} ~{prefix}.virus.fa
 
         # generate the html
         ~{util_dir}/make_VIF_igvjs_html.py \
-        --html_template ~{util_dir}/resources/igvjs_VIF.html \
-        --fusions_json ~{prefix}.virus.json \
-        --input_file_prefix ~{prefix}.virus \
-        --html_output ~{prefix}.virus.html
+          --html_template ~{util_dir}/resources/igvjs_VIF.html \
+          --fusions_json ~{prefix}.virus.json \
+          --input_file_prefix ~{prefix}.virus \
+          --html_output ~{prefix}.virus.html
     >>>
 
     output {
         File html = "~{prefix}.virus.html"
         File genome_abundance_plot = "~{prefix}.init.genome_plot.png"
+        File virus_alignments_bam = "virus_only.bam"
+        File virus_alignments_bai = "virus_only.bam.bai"
         File read_counts_summary = "~{prefix}.virus_read_counts_summary.tsv"
         File read_counts_image = "~{prefix}.virus_read_counts.png"
         File read_counts_log_image = "~{prefix}.virus_read_counts_log.png"
