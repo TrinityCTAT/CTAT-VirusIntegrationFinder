@@ -71,18 +71,16 @@ def main():
         cigar = read.cigarstring
 
         max_clip = 0
-        if (not read.is_paired) or read.is_read1:
-            m =  re.search("^(\d+)[SH]", cigar)
-            if m:
-                max_clip = int(m.group(1))
+        m =  re.search("^(\d+)S", cigar)
+        if m:
+            max_clip = int(m.group(1))
 
-        if (not read.is_paired) or read.is_read2:
-            m = re.search("(\d+)[SH]$", cigar)
-            if m:
-                max_clip = max(max_clip, int(m.group(1)))
+        m = re.search("(\d+)S$", cigar)
+        if m:
+            max_clip = max(max_clip, int(m.group(1)))
 
         read_to_max_end_clipping[read_name] = max(read_to_max_end_clipping[read_name], max_clip)
-            
+        
 
 
     logger.info("-generating alignment stats report")
