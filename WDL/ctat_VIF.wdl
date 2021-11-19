@@ -918,7 +918,7 @@ task VirusReport {
           --json_outfile ~{prefix}.virus.json
 
         # make bed for igvjs
-        ~{util_dir}/create_virus_bed.py \
+        ~{util_dir}/create_igvjs_virus_bed.py \
             ~{prefix}.virus_read_counts_summary.tsv \
             ~{prefix}.virus.bed
 
@@ -929,8 +929,12 @@ task VirusReport {
           ${bam}
 
         # IGV reports expects to find, __PREFIX__.fa, __PREFIX__.bed, __PREFIX__.reads.bam
-        ln -sf ~{viral_fasta} ~{prefix}.virus.fa
-
+        #ln -sf ~{viral_fasta} ~{prefix}.virus.fa
+        ~{util_dir}/create_igvjs_virus_fa.py \
+          ~{prefix}.virus_read_counts_summary.tsv \
+          ~{viral_fasta}  \
+          ~{prefix}.virus.fa
+      
         # generate the html
         ~{util_dir}/make_VIF_igvjs_html.py \
           --html_template ~{util_dir}/resources/igvjs_VIF.html \
