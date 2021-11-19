@@ -46,11 +46,11 @@ workflow ctat_vif {
         Int star_cpu = 12
 
         # star init settings
-        Float star_init_memory = 45
+        Float star_init_memory = 50
         String star_init_two_pass_mode = "Basic"
 
         # star validate settings
-        Float star_validate_memory = 45
+        Float star_validate_memory = 75
         String star_validate_two_pass_mode = "Basic" # or None
 
 
