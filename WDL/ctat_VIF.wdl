@@ -882,6 +882,7 @@ task VirusReport {
         String docker
         String memory
         String sample_id
+        Int num_top_viruses = 10
     }
     Int max_coverage = 100
 
@@ -923,19 +924,20 @@ task VirusReport {
 
         # make bed for igvjs
         ~{util_dir}/create_igvjs_virus_bed.py \
-            ~{prefix}.virus_read_counts_summary.tsv \
-            ~{prefix}.virus.bed
+            --summary ~{prefix}.virus_read_counts_summary.tsv \
+            --output ~{prefix}.virus.bed \
+            --num_top_viruses ~{num_top_viruses}
 
         # prep for making the report
         ~{util_dir}/bamsifter/bamsifter \
           -c ~{max_coverage} \
           -o ~{prefix}.virus.reads.bam \
-          ${bam}
+          ${bam} 
 
         # IGV reports expects to find, __PREFIX__.fa, __PREFIX__.bed, __PREFIX__.reads.bam
         #ln -sf ~{viral_fasta} ~{prefix}.virus.fa
         ~{util_dir}/create_igvjs_virus_fa.py \
-          ~{prefix}.virus_read_counts_summary.tsv \
+          ~{prefix}.virus.bed \
           ~{viral_fasta}  \
           ~{prefix}.virus.fa
       
