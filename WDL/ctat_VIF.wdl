@@ -1009,7 +1009,9 @@ task SummaryReport {
             --json_outfile igv.json
 
         # make bed for igvjs
-        ~{util_dir}/region_gtf_to_bed.py ~{chim_targets_gtf} > vif.bed
+        ~{util_dir}/region_gtf_to_bed.py \
+            ~{chim_targets_gtf} \
+            > ~{prefix}.bed
 
         # prep for making the report
         ~{util_dir}/bamsifter/bamsifter \
