@@ -7,7 +7,7 @@ suppressPackageStartupMessages(library("tidyverse"))
 parser = ArgumentParser()
 parser$add_argument("--vif_report", help="final counts file", required=TRUE, nargs=1)
 parser$add_argument("--bam", help="alignments in sorted bam file", required=TRUE, nargs=1)
-
+parser$add_argument("--virus_fai", help="virus fasta fai file", required=TRUE, nargs=1)
 parser$add_argument("--output_prefix", help="output prefix for png and tsv filenames", required=TRUE, nargs=1)
 parser$add_argument("--depth", action="store_true", dest="depth", help="Create depth plots")
 
@@ -16,6 +16,7 @@ args = parser$parse_args()
 vif_report = args$vif_report
 virus_seqlens_file = args$virus_seqlens
 bam_file = args$bam
+virus_fai_file = args$virus_fai
 output_prefix = args$output_prefix
 depth_plots = args$depth
 
@@ -42,8 +43,8 @@ if (! file_test('-f', bam_index) ) {
 }
 
 
-host_chroms = c(c(1:22), 'X', 'Y', 'M')
-host_chroms = paste0("chr", host_chroms)
+viruses = read.table(virus_fai_file, header=F, stringsAsFactors=F, sep="\t")[,1]
+
 
 get_virus_mappings = function(data) {
 
@@ -54,7 +55,7 @@ get_virus_mappings = function(data) {
 
     # data_condensed$chr = str_replace(data_condensed$chr, "chr", "")
 
-    virus_mappings = data_condensed %>% filter(! chr %in% host_chroms)
+    virus_mappings = data_condensed %>% filter( chr %in% viruses)
 
     return(virus_mappings)
 
@@ -73,7 +74,7 @@ if (! file_test('-f', idxstats_filename) ) {
 
 idxstats = read.table(idxstats_filename, header=F, sep="\t", stringsAsFactors=F, comment.char = '', quote = '')
 colnames(idxstats) = c('virus', 'seqlen', 'mapped', 'unmapped')
-idxstats = idxstats %>% filter(! virus %in% host_chroms)
+idxstats = idxstats %>% filter(virus %in% viruses)
 
 counts_per_virus = virus_mappings %>% rename(virus=chr) %>% group_by(virus) %>% summarize_at(vars(counts), list(chim_reads=sum))
 virus_count_info = full_join(idxstats, counts_per_virus, by='virus')
