@@ -42,16 +42,17 @@ if (! file_test('-f', bam_index) ) {
 }
 
 
-get_virus_mappings = function(data) {
+host_chroms = c(c(1:22), 'X', 'Y', 'M')
+host_chroms = paste0("chr", host_chroms)
 
-    host_chroms = c(c(1:22), 'X', 'Y', 'M')
+get_virus_mappings = function(data) {
 
     data_condensed = bind_rows(
         data %>% select (chr=chrA, coord=coordA, orient=orientA, counts=total),
         data %>% select(chr=chrB, coord=coordB, orient=orientB, counts=total)
     )
 
-    data_condensed$chr = str_replace(data_condensed$chr, "chr", "")
+    # data_condensed$chr = str_replace(data_condensed$chr, "chr", "")
 
     virus_mappings = data_condensed %>% filter(! chr %in% host_chroms)
 
@@ -72,6 +73,7 @@ if (! file_test('-f', idxstats_filename) ) {
 
 idxstats = read.table(idxstats_filename, header=F, sep="\t", stringsAsFactors=F, comment.char = '', quote = '')
 colnames(idxstats) = c('virus', 'seqlen', 'mapped', 'unmapped')
+idxstats = idxstats %>% filter(! virus %in% host_chroms)
 
 counts_per_virus = virus_mappings %>% rename(virus=chr) %>% group_by(virus) %>% summarize_at(vars(counts), list(chim_reads=sum))
 virus_count_info = full_join(idxstats, counts_per_virus, by='virus')

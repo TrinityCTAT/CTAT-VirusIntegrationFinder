@@ -901,7 +901,7 @@ task VirusReport {
 
         # generates read_counts_summary and images
         ~{util_dir}/plot_top_virus_coverage.Rscript \
-          --vif_report ~{prefix}.igvjs.table.tsv \
+          --vif_report ~{insertion_site_candidates}  \
           --bam ${bam} \
           --output_prefix ~{prefix}
 
