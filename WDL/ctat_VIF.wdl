@@ -921,9 +921,8 @@ task VirusReport {
         
         if [ "~{remove_duplicates}" == "true" ]; then
             ~{util_dir}/bam_mark_duplicates.py -i ${bam} -o dups.removed.bam -r
-            samtools index dups.removed.bam
             mv dups.removed.bam  ${bam}
-            samtools index dups.removed.bam
+            samtools index ${bam}
         fi
         
         ~{util_dir}/create_insertion_site_inspector_js.py \
