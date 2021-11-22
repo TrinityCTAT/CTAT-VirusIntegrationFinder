@@ -7,7 +7,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--summary", type=str, required=True, help="prefix.virus_read_counts_summary.tsv")
-    parser.add_argument("--output", type=str, required=True, help="Output file")
+    parser.add_argument("--output_prefix", type=str, required=True, help="Prefix for output files")
     parser.add_argument("--num_top_viruses", type=int, required=False, default=None, help="num top viruses")
     args = parser.parse_args()
     df = pd.read_csv(args.summary, sep='\t')  # virus	seqlen	mapped	chim_reads
@@ -20,8 +20,12 @@ if __name__ == "__main__":
 
         df = df.head(args.num_top_viruses)
         
+    df.to_csv(args.output_prefix + ".igvjs.table.tsv", index=False, sep="\t")
+
+
+    # bed file
     
     df['start'] = 0
-    df.to_csv(args.output, index=False, header=False, columns=['virus', 'start', 'seqlen'], sep="\t")
+    df.to_csv(args.output_prefix + ".igvjs.bed", index=False, header=False, columns=['virus', 'start', 'seqlen'], sep="\t")
 
     sys.exit(0)

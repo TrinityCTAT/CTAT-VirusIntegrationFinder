@@ -882,11 +882,11 @@ task VirusReport {
         String docker
         String memory
         String sample_id
-        Int num_top_viruses = 10
+        Int num_top_viruses = 20
+        Int max_coverage = 100
     }
-    Int max_coverage = 100
-
-    String prefix = sample_id + ".vif"
+    
+    String prefix = sample_id + ".VirusDetect"
 
     command <<<
         set -e
@@ -898,35 +898,33 @@ task VirusReport {
 
         bam=~{bam}
 
-        ## restrict bam to only viruses
-        samtools faidx ~{viral_fasta}
-        awk '{printf("%s\t0\t%s\n",$1,$2);}' ~{viral_fasta}.fai  > viral_fasta.bed
-        samtools view -b -L viral_fasta.bed ${bam} -o virus_only.bam
-        samtools index virus_only.bam
-        bam="virus_only.bam"
-        
-        if [ "~{remove_duplicates}" == "true" ]; then
-            ~{util_dir}/bam_mark_duplicates.py -i ${bam}  -o dups.removed.bam -r
-            samtools index dups.removed.bam
-            bam="dups.removed.bam"
-        fi
 
-      
         # generates read_counts_summary and images
         ~{util_dir}/plot_top_virus_coverage.Rscript \
-          --vif_report ~{insertion_site_candidates} \
+          --vif_report ~{prefix}.igvjs.table.tsv \
           --bam ${bam} \
           --output_prefix ~{prefix}
-
-        ~{util_dir}/create_insertion_site_inspector_js.py \
-          --VIF_summary_tsv ~{prefix}.virus_read_counts_summary.tsv \
-          --json_outfile ~{prefix}.virus.json
 
         # make bed for igvjs
         ~{util_dir}/create_igvjs_virus_bed.py \
             --summary ~{prefix}.virus_read_counts_summary.tsv \
-            --output ~{prefix}.virus.bed \
+            --output_prefix ~{prefix} \
             --num_top_viruses ~{num_top_viruses}
+
+        ## restrict bam to only viruses of interest
+        samtools view -b -L ~{prefix}.igvjs.bed ${bam} -o ~{prefix}.igvjs.bam
+        samtools index virus_only.bam
+        bam="~{prefix}.igvjs.bam"
+        
+        if [ "~{remove_duplicates}" == "true" ]; then
+            ~{util_dir}/bam_mark_duplicates.py -i ${bam} -o dups.removed.bam -r
+            samtools index dups.removed.bam
+            mv dups.removed.bam  ${bam}
+        fi
+      
+        ~{util_dir}/create_insertion_site_inspector_js.py \
+          --VIF_summary_tsv ~{prefix}.igvjs.table.tsv \
+          --json_outfile ~{prefix}.virus.json
 
         # prep for making the report
         ~{util_dir}/bamsifter/bamsifter \
@@ -937,15 +935,15 @@ task VirusReport {
         # IGV reports expects to find, __PREFIX__.fa, __PREFIX__.bed, __PREFIX__.reads.bam
         #ln -sf ~{viral_fasta} ~{prefix}.virus.fa
         ~{util_dir}/create_igvjs_virus_fa.py \
-          ~{prefix}.virus.bed \
+          ~{prefix}.igvjs.bed \
           ~{viral_fasta}  \
-          ~{prefix}.virus.fa
+          ~{prefix}.igvjs.fa
       
         # generate the html
         ~{util_dir}/make_VIF_igvjs_html.py \
           --html_template ~{util_dir}/resources/igvjs_VIF.html \
           --fusions_json ~{prefix}.virus.json \
-          --input_file_prefix ~{prefix}.virus \
+          --input_file_prefix ~{prefix}.igvjs \
           --html_output ~{prefix}.virus.html
     >>>
 
