@@ -891,6 +891,8 @@ task VirusReport {
     command <<<
         set -e
 
+        samtools faidx ~{viral_fasta}
+      
         ~{util_dir}/make_VIF_genome_abundance_plot.Rscript \
           --vif_report ~{insertion_site_candidates} \
           --title "Preliminary Genome Wide Abundance" \
@@ -901,7 +903,8 @@ task VirusReport {
 
         # generates read_counts_summary and images
         ~{util_dir}/plot_top_virus_coverage.Rscript \
-          --vif_report ~{prefix}.igvjs.table.tsv \
+           --vif_report ~{insertion_site_candidates}  \
+           --virus_fai ~{viral_fasta}.fai \
           --bam ${bam} \
           --output_prefix ~{prefix}
 
@@ -912,24 +915,24 @@ task VirusReport {
             --num_top_viruses ~{num_top_viruses}
 
         ## restrict bam to only viruses of interest
-        samtools view -b -L ~{prefix}.igvjs.bed ${bam} -o ~{prefix}.igvjs.bam
-        samtools index virus_only.bam
+        samtools view -b -L ~{prefix}.igvjs.bed ${bam} -o ~{prefix}.igvjs.bam  
         bam="~{prefix}.igvjs.bam"
+        samtools index ${bam}
         
         if [ "~{remove_duplicates}" == "true" ]; then
             ~{util_dir}/bam_mark_duplicates.py -i ${bam} -o dups.removed.bam -r
-            samtools index dups.removed.bam
             mv dups.removed.bam  ${bam}
+            samtools index ${bam}
         fi
-      
+        
         ~{util_dir}/create_insertion_site_inspector_js.py \
           --VIF_summary_tsv ~{prefix}.igvjs.table.tsv \
-          --json_outfile ~{prefix}.virus.json
+          --json_outfile ~{prefix}.igvjs.json
 
         # prep for making the report
         ~{util_dir}/bamsifter/bamsifter \
           -c ~{max_coverage} \
-          -o ~{prefix}.virus.reads.bam \
+          -o ~{prefix}.igvjs.reads.bam \
           ${bam} 
 
         # IGV reports expects to find, __PREFIX__.fa, __PREFIX__.bed, __PREFIX__.reads.bam
@@ -942,16 +945,16 @@ task VirusReport {
         # generate the html
         ~{util_dir}/make_VIF_igvjs_html.py \
           --html_template ~{util_dir}/resources/igvjs_VIF.html \
-          --fusions_json ~{prefix}.virus.json \
+          --fusions_json ~{prefix}.igvjs.json \
           --input_file_prefix ~{prefix}.igvjs \
-          --html_output ~{prefix}.virus.html
+          --html_output ~{prefix}.igvjs.html
     >>>
 
     output {
-        File html = "~{prefix}.virus.html"
+        File html = "~{prefix}.igvjs.html"
         File genome_abundance_plot = "~{prefix}.init.genome_plot.png"
-        File virus_alignments_bam = "virus_only.bam"
-        File virus_alignments_bai = "virus_only.bam.bai"
+        File virus_alignments_bam = "~{prefix}.igvjs.bam"
+        File virus_alignments_bai = "~{prefix}.igvjs.bam.bai"
         File read_counts_summary = "~{prefix}.virus_read_counts_summary.tsv"
         File read_counts_image = "~{prefix}.virus_read_counts.png"
         File read_counts_log_image = "~{prefix}.virus_read_counts_log.png"

@@ -80,7 +80,7 @@ def main():
                         default='Basic')
     
     parser.add_argument(
-        "--remove_duplicates", action="store_true", help="Remove duplicates"
+        "--no_remove_duplicates", action="store_true", help="do NOT remove duplicates"
     )
 
     parser.add_argument(
@@ -135,7 +135,7 @@ def main():
     
 
     cromwell = args.cromwell
-    remove_duplicates = args.remove_duplicates
+    remove_duplicates = not args.no_remove_duplicates
     star_init_only = args.star_init_only
     min_reads = args.min_reads
     
