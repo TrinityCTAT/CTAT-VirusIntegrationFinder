@@ -245,12 +245,15 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
                 #print("{}\t{}\t{}\t{}".format(counter, contig, readname, str(anchor_lengths)))
             else:
                 # If the anchor length is too small, print to the removed read text file 
-                samfile = pysam.AlignmentFile(bam_file, "rb")
-                for aligned_read in samfile:
-                    if aligned_read.query_name == readname:
-                        if DEBUG:
-                            removed_tsv.write("\t".join([aligned_read.to_string(),  "Min_Anchor_length\n"]))
-                        break
+                # samfile = pysam.AlignmentFile(bam_file, "rb")
+                if DEBUG:
+                    removed_tsv.write("\t".join([readname,  "Min_Anchor_length\n"])) 
+                #for aligned_read in samfile:
+                #    if aligned_read.query_name == readname:
+                #        if DEBUG:
+                #            removed_tsv.write("\t".join([aligned_read.to_string(),  "Min_Anchor_length\n"]))
+                #        break
+
                 
     ## report entries
     logger.info("reporting contig evidence counts")
