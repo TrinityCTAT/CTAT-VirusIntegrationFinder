@@ -46,7 +46,7 @@ def main():
     
 
     read_to_hit_count = defaultdict(int)
-    read_to_max_mismatch_count = defaultdict(int)
+    read_to_min_per_id = dict()
     read_to_max_end_clipping = defaultdict(int)
     read_to_min_anchor_len = dict()
 
@@ -74,8 +74,13 @@ def main():
         read_to_hit_count[read_name] = max(read_to_hit_count[read_name], NH)
 
         mismatch_count = read.get_tag('NM')
-        read_to_max_mismatch_count[read_name] = max(read_to_max_mismatch_count[read_name], mismatch_count)
+        per_id = 100.0 - ( float(mismatch_count) / aligned_bases * 100.0)
 
+        if read_name in read_to_min_per_id:
+            read_to_min_per_id[read_name] = min(read_to_min_per_id[read_name], per_id)
+        else:
+            read_to_min_per_id[read_name] = per_id
+        
         cigar = read.cigarstring
 
         max_clip = 0
@@ -96,14 +101,14 @@ def main():
     logger.info("-generating alignment stats report")
 
     vif_df["hits"] = ""
-    vif_df["mismatches"] = ""
+    vif_df["min_per_id"] = ""
     vif_df["max_end_clipping"] = ""
     vif_df["min_anchor_len"] = ""
 
     for i, row in vif_df.iterrows():
         readnames = row['readnames'].split(",")
         hits = list()
-        mismatches = list()
+        min_per_ids = list()
         max_end_clipping = list()
         min_anchor_lengths = list()
         
@@ -113,19 +118,19 @@ def main():
                 raise RuntimeError("Error, missing hit count for read: {}".format(readname))
             
             hits.append(read_to_hit_count[readname])
-            mismatches.append(read_to_max_mismatch_count[readname])
+            min_per_ids.append(read_to_min_per_id[readname])
             max_end_clipping.append(read_to_max_end_clipping[readname])
             min_anchor_lengths.append(read_to_min_anchor_len[readname])
 
         if args.detailed:
             vif_df.loc[i, 'hits'] = ",".join([str(x) for x in hits])
-            vif_df.loc[i, 'mismatches'] = ",".join([str(x) for x in mismatches])
+            vif_df.loc[i, 'min_per_id'] = ",".join([str(x) for x in min_per_ids])
             vif_df.loc[i, 'max_end_clipping'] = ",".join([str(x) for x in max_end_clipping])
             vif_df.loc[i, 'min_anchor_len'] = ",".join([str(x) for x in min_anchor_lengths])
 
         else:
             vif_df.loc[i, 'hits'] = "{:.3f}".format(st.mean(hits))
-            vif_df.loc[i, 'mismatches'] = "{:.3f}".format(st.mean(mismatches))
+            vif_df.loc[i, 'min_per_id'] = "{:.1f}".format(st.mean(min_per_ids))
             vif_df.loc[i, 'max_end_clipping'] = "{:.3f}".format(st.mean(max_end_clipping))
             vif_df.loc[i, 'min_anchor_len'] = "{:.3f}".format(st.mean(min_anchor_lengths))
     
