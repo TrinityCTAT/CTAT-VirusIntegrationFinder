@@ -124,7 +124,7 @@ def main():
 
         if args.detailed:
             vif_df.loc[i, 'hits'] = ",".join([str(x) for x in hits])
-            vif_df.loc[i, 'min_per_id'] = ",".join([str(x) for x in min_per_ids])
+            vif_df.loc[i, 'min_per_id'] = ",".join(["{:.1f}".format(x) for x in min_per_ids])
             vif_df.loc[i, 'max_end_clipping'] = ",".join([str(x) for x in max_end_clipping])
             vif_df.loc[i, 'min_anchor_len'] = ",".join([str(x) for x in min_anchor_lengths])
 
