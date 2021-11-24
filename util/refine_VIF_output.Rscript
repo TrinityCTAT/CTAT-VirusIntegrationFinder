@@ -7,7 +7,7 @@ main = function () {
     suppressPackageStartupMessages(library("tidyverse"))
 
     parser = ArgumentParser()
-    parser$add_argument("--prelim_counts", help="prelim counts file", required=TRUE, nargs=1)
+    parser$add_argument("--prelim_counts", help="prelim counts file w stats", required=TRUE, nargs=1)
     parser$add_argument("--vif_counts", help="vif counts file", required=TRUE)
     parser$add_argument("--output", help="output filename", required=TRUE)
 
@@ -24,10 +24,16 @@ main = function () {
                                              prelim.total = total,
                                              prelim.primary_brkpt_type = primary_brkpt_type,
                                              prelim.num_primary_reads = num_primary_reads,
-                                             prelim.num_supp_reads = num_supp_reads)
+                                             prelim.num_supp_reads = num_supp_reads,
+                                             prelim.mean_hits = hits,
+                                             prelim.mean_min_per_id = min_per_id,
+                                             prelim.mean_max_end_clipping  = max_end_clipping,
+                                             prelim.mean_min_anchor_len = min_anchor_len)
 
     prelim_counts = prelim_counts %>% select(contig, chrA, coordA, orientA, chrB, coordB, orientB,
-                                             prelim.primary_brkpt_type, prelim.num_primary_reads, prelim.num_supp_reads, prelim.total)
+                                             prelim.primary_brkpt_type, prelim.num_primary_reads, prelim.num_supp_reads,
+                                             prelim.mean_hits, prelim.mean_min_per_id, prelim.mean_max_end_clipping, prelim.mean_min_anchor_len,
+                                             prelim.total)
 
     vif_counts = read.table(vif_counts_filename, header=T, sep="\t", stringsAsFactors = F, comment.char = '', quote = '')
 
@@ -35,11 +41,13 @@ main = function () {
 
     data[is.na(data)] = 0
 
-    data = data %>% select(contig, chrA, coordA, orientA, chrB, coordB, orientB, prelim.primary_brkpt_type, prelim.total, split, span, total) %>%
+    data = data %>% select(contig, chrA, coordA, orientA, chrB, coordB, orientB, prelim.primary_brkpt_type,
+                           prelim.mean_hits, prelim.mean_min_per_id, prelim.mean_max_end_clipping, prelim.mean_min_anchor_len,
+                           prelim.total, split, span, total) %>%
               arrange(desc(total))
-
+    
     write.table(data, file=output_filename, row.names=F, sep="\t", quote=F)
-
+    
 
     quit(save = "no", status = 0, runLast = FALSE)
 

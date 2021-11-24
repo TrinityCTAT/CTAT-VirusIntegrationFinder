@@ -205,7 +205,7 @@ workflow ctat_vif {
     }
 
     if(!star_init_only) {
-        File insertion_site_candidates_use = select_first([insertion_site_candidates, InsertionSiteCandidates.abridged_filtered, InsertionSiteCandidates.abridged])
+        File insertion_site_candidates_use = select_first([insertion_site_candidates, InsertionSiteCandidates.abridged_read_stats, InsertionSiteCandidates.full_read_stats])
         call ExtractChimericGenomicTargets {
             input:
                 fasta=ref_genome_fasta,
@@ -589,21 +589,6 @@ task InsertionSiteCandidates {
         --output_prefix ~{prefix} \
         ~{true='--remove_duplicates' false='' remove_duplicates}
 
-        python <<CODE
-        min_reads = ~{min_reads}
-        if min_reads > 0:
-            import pandas as pd
-            df = pd.read_csv("~{prefix}.abridged.tsv", sep='\t')
-            df = df[df['total'] >= min_reads]
-            df.to_csv("~{prefix}.abridged.filtered.tsv", sep='\t', index=False)
-
-            df = pd.read_csv("~{prefix}.full.tsv", sep='\t')
-            df = df[df['total'] >= min_reads]
-            df.to_csv("~{prefix}.full.filtered.tsv", sep='\t', index=False)
-      
-        CODE
-
-        
         # extract the chimeric read alignments:
         # first, to speed things up, extract all reads that are NOT properly paired
         samtools view -b -F 2 ~{bam} -o not_prop_pairs.bam
@@ -620,7 +605,26 @@ task InsertionSiteCandidates {
           --vif_full_tsv ~{prefix}.full.tsv \
           --output ~{prefix}.full_read_stats.tsv
 
+
+        python <<CODE
+        min_reads = ~{min_reads}
+        if min_reads > 0:
+            import pandas as pd
+            df = pd.read_csv("~{prefix}.abridged.tsv", sep='\t')
+            df = df[df['total'] >= min_reads]
+            df.to_csv("~{prefix}.abridged.filtered.tsv", sep='\t', index=False)
+
+            df = pd.read_csv("~{prefix}.full.tsv", sep='\t')
+            df = df[df['total'] >= min_reads]
+            df.to_csv("~{prefix}.full.filtered.tsv", sep='\t', index=False)
+
+            df = pd.read_csv("~{prefix}.full_read_stats.tsv", sep='\t')
+            df = df[df['total'] >= min_reads]
+            df.to_csv("~{prefix}.abridged_read_stats.tsv", sep='\t', index=False)
       
+        CODE
+
+              
     >>>
 
     output {
@@ -632,6 +636,7 @@ task InsertionSiteCandidates {
         File genome_chimeric_evidence_reads_bam = "~{prefix}.genome_chimeric_evidence.bam"
         File genome_chimeric_evidence_reads_bai = "~{prefix}.genome_chimeric_evidence.bam.bai"
         File full_read_stats = "~{prefix}.full_read_stats.tsv"
+        File abridged_read_stats = "~{prefix}.abridged_read_stats.tsv"
     }
 
     runtime {
