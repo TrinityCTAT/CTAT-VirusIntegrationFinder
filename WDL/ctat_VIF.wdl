@@ -896,15 +896,25 @@ task VirusReport {
     command <<<
         set -e
 
-        samtools faidx ~{viral_fasta}
       
         ~{util_dir}/make_VIF_genome_abundance_plot.Rscript \
           --vif_report ~{insertion_site_candidates} \
           --title "Preliminary Genome Wide Abundance" \
           --output_png ~{prefix}.init.genome_plot.png
 
+        ## restrict bam to only viruses of interest
         bam=~{bam}
-
+        samtools faidx ~{viral_fasta}
+        awk '{printf("%s\t0\t%s\n",$1,$2);}' ~{viral_fasta}.fai  > viruses.bed
+        samtools view -b -L viruses.bed ${bam} -o ~{prefix}.igvjs.bam  
+        bam="~{prefix}.igvjs.bam"
+        samtools index ${bam}
+        
+        if [ "~{remove_duplicates}" == "true" ]; then
+            ~{util_dir}/bam_mark_duplicates.py -i ${bam} -o dups.removed.bam -r
+            mv dups.removed.bam  ${bam}
+            samtools index ${bam}
+        fi
 
         # generates read_counts_summary and images
         ~{util_dir}/plot_top_virus_coverage.Rscript \
@@ -918,17 +928,6 @@ task VirusReport {
             --summary ~{prefix}.virus_read_counts_summary.tsv \
             --output_prefix ~{prefix} \
             --num_top_viruses ~{num_top_viruses}
-
-        ## restrict bam to only viruses of interest
-        samtools view -b -L ~{prefix}.igvjs.bed ${bam} -o ~{prefix}.igvjs.bam  
-        bam="~{prefix}.igvjs.bam"
-        samtools index ${bam}
-        
-        if [ "~{remove_duplicates}" == "true" ]; then
-            ~{util_dir}/bam_mark_duplicates.py -i ${bam} -o dups.removed.bam -r
-            mv dups.removed.bam  ${bam}
-            samtools index ${bam}
-        fi
         
         ~{util_dir}/create_insertion_site_inspector_js.py \
           --VIF_summary_tsv ~{prefix}.igvjs.table.tsv \
