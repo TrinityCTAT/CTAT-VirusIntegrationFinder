@@ -156,19 +156,6 @@ def main():
 
     logger.debug(f"Chimeric insertions start: {df.shape[0]}")
 
-    #~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Duplicates 
-    #~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Add duplicated annotations
-    # identify duplicated read names as well as duplicated insertions 
-    # duplicate insertions 
-    df["Duplicate"] = df[['chr_donorA', 'brkpt_donorA', 'strand_donorA', 'chr_acceptorB','brkpt_acceptorB', 'strand_acceptorB']].duplicated(keep="first")
-    # duplicate reads 
-    df["Duplicated_read"] = df["read_name"].duplicated(keep=False)
-    # Filter by duplication 
-    df = df[df["Duplicated_read"] == False]
-
-    logger.debug(f"Chimeric insertions filter duplicates: {df.shape[0]}")
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~
     ## reorient so host (human) genome is always in the + reference orientation.
@@ -183,7 +170,34 @@ def main():
     # adjust the orientation
     df.loc[idx,['strand_donorA','strand_acceptorB']] = df.loc[idx,['strand_donorA','strand_acceptorB']].replace({"+":"-","-":"+"})
 
-    df.to_csv("ladeda.csv", sep="\t")
+    #~~~~~~~~~~~~~~~~~~~
+    # multimapping reads
+    #~~~~~~~~~~~~~~~~~~~
+    df["Multimapped_read"] = df["read_name"].duplicated(keep=False)
+
+    # Filter by multimapping 
+    df = df[df["Multimapped_read"] == False]
+    
+    
+
+    if remove_duplicates_flag:
+
+        #~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Duplicates 
+        #~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Add duplicated annotations
+        # identify duplicated read names as well as duplicated insertions 
+        # duplicate insertions 
+
+        logger.info(f"Chimeric insertions before filter duplicates: {df.shape[0]}")
+
+        df["Duplicate"] = df[['chr_donorA', 'brkpt_donorA', 'strand_donorA', 'chr_acceptorB','brkpt_acceptorB', 'strand_acceptorB']].duplicated(keep="first")
+
+        df = df[ df["Duplicate"] == False ]
+
+        logger.info(f"Chimeric insertions AFTER filter duplicates: {df.shape[0]}")
+
+
     
     # Run through each line in the chimeric junctions file 
     for idx, row in df.iterrows():
