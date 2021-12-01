@@ -590,12 +590,8 @@ task InsertionSiteCandidates {
         ~{true='--remove_duplicates' false='' remove_duplicates}
 
         # extract the chimeric read alignments:
-        # first, to speed things up, extract all reads that are NOT properly paired
-        samtools view -b -F 2 ~{bam} -o not_prop_pairs.bam
-        samtools index not_prop_pairs.bam
-        
         ~{util_dir}/extract_prelim_chimeric_genome_read_alignments.py \
-           --star_bam not_prop_pairs.bam \
+           --star_bam ~{bam} \
            --vif_full_tsv ~{prefix}.full.tsv \
            --output_bam ~{prefix}.genome_chimeric_evidence.bam
       
