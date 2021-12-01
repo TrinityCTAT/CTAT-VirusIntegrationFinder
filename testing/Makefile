@@ -6,10 +6,20 @@ test:
 		--left reads_1.fastq.gz \
 		--right reads_2.fastq.gz \
 		--sample_id test \
+        --no_remove_duplicates \
         --genome_lib_dir ${CTAT_GENOME_LIB} \
 		-O VIF.full.no_remove_dups.outdir
 
 all: test star_init_only remove_dups novirus
+
+
+test_SE:
+	../ctat-vif \
+		--left reads_1.fastq.gz \
+		--sample_id test \
+        --no_remove_duplicates \
+        --genome_lib_dir ${CTAT_GENOME_LIB} \
+		-O VIF.full.no_remove_dups.SE.outdir
 
 
 star_init_only:
@@ -25,9 +35,7 @@ remove_dups:
 		--left reads_1.fastq.gz \
 		--right reads_2.fastq.gz \
 		--sample_id test \
-		-O VIF.full.remove_dups.outdir \
-		--remove_duplicates
-
+		-O VIF.full.remove_dups.outdir
 
 
 docker:
