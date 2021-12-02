@@ -63,8 +63,11 @@ get_virus_mappings = function(data) {
 
 
 data = read.table(vif_report, header=T, stringsAsFactors=FALSE, sep="\t", comment.char = '', quote = '')
-virus_mappings = get_virus_mappings(data)
-
+counts_per_virus = NULL
+if (nrow(data) > 0) { 
+    virus_mappings = get_virus_mappings(data)
+    counts_per_virus = virus_mappings %>% rename(virus=chr) %>% group_by(virus) %>% summarize_at(vars(counts), list(chim_reads=sum))
+}
 
 idxstats_filename = paste0(bam_file, ".idxstats")
 if (! file_test('-f', idxstats_filename) ) {
@@ -76,8 +79,12 @@ idxstats = read.table(idxstats_filename, header=F, sep="\t", stringsAsFactors=F,
 colnames(idxstats) = c('virus', 'seqlen', 'mapped', 'unmapped')
 idxstats = idxstats %>% filter(virus %in% viruses)
 
-counts_per_virus = virus_mappings %>% rename(virus=chr) %>% group_by(virus) %>% summarize_at(vars(counts), list(chim_reads=sum))
-virus_count_info = full_join(idxstats, counts_per_virus, by='virus')
+
+if (! is.null(counts_per_virus)) {
+    virus_count_info = full_join(idxstats, counts_per_virus, by='virus')
+} else {
+    virus_count_info = idxstats %>% mutate(chim_reads = 0)
+}
 
 virus_count_info = virus_count_info %>% filter(mapped > 0 | chim_reads > 0) %>% select(virus, seqlen, mapped, chim_reads) %>% arrange(desc(mapped))
 virus_count_info[is.na(virus_count_info)] = 0
