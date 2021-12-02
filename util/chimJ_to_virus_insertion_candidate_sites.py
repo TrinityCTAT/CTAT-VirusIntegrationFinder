@@ -163,9 +163,10 @@ def main():
     idx = ((df["chr_donorA"].isin(patch_db_entries)) & (df["strand_acceptorB"] == "-") | (df["chr_acceptorB"].isin(patch_db_entries) & (df["strand_donorA"] == "-")))
 
     
-    df.loc[idx, ['chr_donorA', 'brkpt_donorA', 'strand_donorA',
-                 'chr_acceptorB','brkpt_acceptorB', 'strand_acceptorB']] = df.loc[idx,['chr_acceptorB','brkpt_acceptorB', 'strand_acceptorB',
-                                                                                       'chr_donorA', 'brkpt_donorA', 'strand_donorA']].values
+    df.loc[idx, ['chr_donorA', 'brkpt_donorA', 'strand_donorA', 'repeat_left_lenA', 'start_alnA', 'cigar_alnA',
+                 'chr_acceptorB','brkpt_acceptorB', 'strand_acceptorB', 'repeat_right_lenB', 'start_alnB', 'cigar_alnB']
+           ] = df.loc[idx,['chr_acceptorB','brkpt_acceptorB', 'strand_acceptorB', 'repeat_right_lenB', 'start_alnB', 'cigar_alnB',
+                           'chr_donorA', 'brkpt_donorA', 'strand_donorA', 'repeat_left_lenA', 'start_alnA', 'cigar_alnA']].values
     
     # adjust the orientation
     df.loc[idx,['strand_donorA','strand_acceptorB']] = df.loc[idx,['strand_donorA','strand_acceptorB']].replace({"+":"-","-":"+"})
@@ -191,8 +192,8 @@ def main():
 
         logger.info(f"Chimeric insertions before filter duplicates: {df.shape[0]}")
 
-        df["Duplicate"] = df[['chr_donorA', 'brkpt_donorA', 'strand_donorA', 'chr_acceptorB','brkpt_acceptorB', 'strand_acceptorB']].duplicated(keep="first")
-
+        df["Duplicate"] = df[['chr_donorA', 'start_alnA', 'strand_donorA', 'chr_acceptorB','start_alnB', 'strand_acceptorB']].duplicated(keep="first")
+        
         df = df[ df["Duplicate"] == False ]
 
         logger.info(f"Chimeric insertions AFTER filter duplicates: {df.shape[0]}")
