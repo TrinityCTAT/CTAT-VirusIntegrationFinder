@@ -223,7 +223,7 @@ workflow ctat_vif {
             input:
                 util_dir=util_dir,
                 fastq1=select_first([STAR_init_hgOnly.Unmapped_left_fq, left]),
-                fastq2=select_first([STAR_init_hgOnly.Unmapped_right_fq, right]),
+                fastq2= if defined(STAR_init_hgOnly.Unmapped_right_fq) then STAR_init_hgOnly.Unmapped_right_fq else right, 
                 two_pass_mode = star_validate_two_pass_mode,
                 base_name=sample_id+".validate_inserts",
                 star_reference=star_index_human_plus_virus,                                                                                                                                            
