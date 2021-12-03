@@ -104,6 +104,7 @@ workflow ctat_vif {
         File? insertion_site_candidates_abridged_filtered = InsertionSiteCandidates.abridged_filtered
         File? insertion_site_candidates_abridged_detailed = InsertionSiteCandidates.abridged_detailed
         File? insertion_site_candidates_full_read_stats = InsertionSiteCandidates.full_read_stats
+        File? insertion_site_candidates_filtered_read_stats = InsertionSiteCandidates.filtered_read_stats
         File? insertion_site_candidates_genome_chimeric_evidence_reads_bam = InsertionSiteCandidates.genome_chimeric_evidence_reads_bam
         File? insertion_site_candidates_genome_chimeric_evidence_reads_bai = InsertionSiteCandidates.genome_chimeric_evidence_reads_bai
         
@@ -205,7 +206,7 @@ workflow ctat_vif {
     }
 
     if(!star_init_only) {
-        File insertion_site_candidates_use = select_first([insertion_site_candidates, InsertionSiteCandidates.abridged_read_stats, InsertionSiteCandidates.full_read_stats])
+        File insertion_site_candidates_use = select_first([insertion_site_candidates, InsertionSiteCandidates.filtered_read_stats, InsertionSiteCandidates.full_read_stats])
         call ExtractChimericGenomicTargets {
             input:
                 fasta=ref_genome_fasta,
@@ -616,7 +617,7 @@ task InsertionSiteCandidates {
 
             df = pd.read_csv("~{prefix}.full_read_stats.tsv", sep='\t')
             df = df[df['total'] >= min_reads]
-            df.to_csv("~{prefix}.abridged_read_stats.tsv", sep='\t', index=False)
+            df.to_csv("~{prefix}.read_stats.filtered.tsv", sep='\t', index=False)
       
         CODE
 
@@ -632,7 +633,7 @@ task InsertionSiteCandidates {
         File genome_chimeric_evidence_reads_bam = "~{prefix}.genome_chimeric_evidence.bam"
         File genome_chimeric_evidence_reads_bai = "~{prefix}.genome_chimeric_evidence.bam.bai"
         File full_read_stats = "~{prefix}.full_read_stats.tsv"
-        File abridged_read_stats = "~{prefix}.abridged_read_stats.tsv"
+        File filtered_read_stats = "~{prefix}.read_stats.filtered.tsv"
     }
 
     runtime {
