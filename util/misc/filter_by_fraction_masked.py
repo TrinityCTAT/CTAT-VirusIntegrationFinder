@@ -2,6 +2,7 @@
 
 import sys, os, re
 import pysam
+import textwrap
 
 
 def main():
@@ -12,7 +13,7 @@ def main():
         exit(usage)
 
     target_fasta_filename = sys.argv[1]
-    max_frac_masked = int(sys.argv[2])
+    max_frac_masked = float(sys.argv[2])
 
     with pysam.FastxFile(target_fasta_filename) as fh:
         for entry in fh:
@@ -23,7 +24,13 @@ def main():
 
             frac_masked = "{:.3f}".format(num_Ns / seqlen)
 
-            print("\t".join([seqname, frac_masked]))
+            print("\t".join([seqname, frac_masked]), file=sys.stderr)
+
+            if float(frac_masked) <= max_frac_masked:
+                print(">{}\n{}".format(seqname, "\n".join(textwrap.wrap(sequence, 60)).rstrip()))
+            else:
+                print("\t** excluding {}".format(seqname), file=sys.stderr)
+
 
     sys.exit(0)
 
