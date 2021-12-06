@@ -9,7 +9,9 @@ download group=human viruses as 'human_viruses.list.csv'
 
 download all viruses from donwload site, unzip, called 'genomes.fasta'
 
-use this script to extract the corresponding set of human viruses from genomes.fasta
+use this script to extract the corresponding set of human viruses from genomes.fasta:
+
+    extract_human_viruses.py | sed -e 's/,_complete_sequence//' | sed -e 's/,_complete_genome//' >  human_viruses.fasta
 
 
 """
@@ -37,14 +39,15 @@ with open("human_viruses.list.csv") as fh:
 with pysam.FastxFile("genomes.fasta") as fh:
     for entry in fh:
         name = entry.name
+        fullname = entry.name + " " + entry.comment
         acc = name.split("|")[1]
         if acc in accs_want:
             sequence = entry.sequence
             sequence = textwrap.wrap(sequence, 60)
             sequence = "\n".join(sequence).rstrip()
-            name = name.replace(" ", "_")
+            fullname = fullname.replace(" ", "_")
 
-            print(">{}\n{}".format(name, sequence))
+            print(">{}\n{}".format(fullname, sequence))
 
 
 sys.exit(0)
