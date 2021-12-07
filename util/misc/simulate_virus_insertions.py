@@ -29,6 +29,38 @@ and similarly for the virus, given whatever virus accession you choose
 The 1..1000 is just a ballpark.   Maybe we instead just ensure that each virus in the viral dataset is represented by at least some number of insertions (ie 5 or 10  insertions) and see how many total targets that gives us.
 Just remember your bookkeeping, so you know where your simulated insertion sites are and what viruses they represent.  You could also rename the simulated reads so they include this info.
 
+
+
+
+# additional notes on running
+
+Useful to chunk up the set of viruses and generate simulated insertions and fastq files for each chunk:
+
+How I do this for running in Terra:
+
+##  make chunks
+
+fasta_file_chunker.pl ../Virus_db_Dec072021.nonUnq1kbMsk.filt90.fasta 100 Virus_db_Dec072021
+
+## sim chunks
+
+for file in *.fasta; do ~/GITHUB/CTAT_VIF/CTAT-VirusIntegrationFinder/util/misc/simulate_virus_insertions.py --virus_db $file --ins_per_virus 10 --out_prefix $file 2>&1 | tee $file.log; done
+
+ gzip *fq
+
+ ##  upload fastqs to terra:
+
+ for file in *gz; do gsutil cp $file gs://fc-f5038732-f718-4441-8312-23d4e01e0882/Simulated_Data_Dec072021/$file; done
+
+ ##  prep terra samples file
+
+ perl -e 'print join("\n", <*fasta>);' | perl -lane '$fa = $_; $sample_id = $fa; $sample_id =~ s/\.fasta//; $gs = "gs://fc-f5038732-f718-4441-8312-23d4e01e0882/Simulated_Data_Dec072021"; print join("\t", $sample_id, "$gs/$fa.insertion_seqs.left_fq.gz", "$gs/$fa.insertion_seqs.right_fq.gz");' | tee samples.tsv
+
+ 
+then manually add the samples file header as:
+entity:sample_id(tab)left_fq(tab)right_fq
+
+
 '''
 
 
