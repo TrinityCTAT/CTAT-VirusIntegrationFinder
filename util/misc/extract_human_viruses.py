@@ -11,7 +11,7 @@ download all viruses from donwload site, unzip, called 'genomes.fasta'
 
 use this script to extract the corresponding set of human viruses from genomes.fasta:
 
-    extract_human_viruses.py | perl -lane 's/,_complete_(sequence|genome)//; print;' >  human_viruses.fasta 
+    extract_human_viruses.py | perl -lane 's/_complete_(sequence|genome)//; print;' >  human_viruses.fasta 
 
 """
 
@@ -45,6 +45,8 @@ with pysam.FastxFile("genomes.fasta") as fh:
             sequence = textwrap.wrap(sequence, 60)
             sequence = "\n".join(sequence).rstrip()
             fullname = fullname.replace(" ", "_")
+            fullname = fullname.replace(",", "_")
+            fullname = fullname.replace("__", "_")
 
             print(">{}\n{}".format(fullname, sequence))
 

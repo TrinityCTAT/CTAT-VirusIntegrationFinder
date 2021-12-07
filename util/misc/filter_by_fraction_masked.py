@@ -29,7 +29,7 @@ def main():
             if float(frac_masked) <= max_frac_masked:
                 print(">{}\n{}".format(seqname, "\n".join(textwrap.wrap(sequence, 60)).rstrip()))
             else:
-                print("\t** excluding {}".format(seqname), file=sys.stderr)
+                print("\t** excluding {} as frac masked={}".format(seqname, frac_masked), file=sys.stderr)
 
 
     sys.exit(0)
