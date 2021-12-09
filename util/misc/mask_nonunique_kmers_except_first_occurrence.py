@@ -42,11 +42,19 @@ def evaluate_kmers(sequence, kmer_len, all_seen_kmers):
         kmer = sequence[i:i+kmer_len]
         #print(kmer)
         kmer_hashcode = hash(kmer)
-        if kmer_hashcode in all_seen_kmers:
+
+        # include revcomp
+        complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
+        rc_kmer = "".join(complement.get(base, base) for base in reversed(kmer))
+        rc_kmer_hashcode = hash(rc_kmer)
+        
+        if kmer_hashcode in all_seen_kmers or rc_kmer_hashcode in all_seen_kmers:
             already_seen_kmers.append(i)
         all_seen_kmers.add(kmer_hashcode)
+        all_seen_kmers.add(rc_kmer_hashcode)
 
     return already_seen_kmers
+
 
 
 def mask_kmers(sequence, kmer_pos_list, kmer_len):
