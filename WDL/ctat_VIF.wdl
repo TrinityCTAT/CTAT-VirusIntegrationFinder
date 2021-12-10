@@ -87,7 +87,7 @@ workflow ctat_vif {
         File? star_init_hgOnly_bam_index = select_first([STAR_init_hgOnly.bai])
         File? star_init_hgOnly_log_final = STAR_init_hgOnly.output_log_final
         File? star_init_hgOnly_SJ = STAR_init_hgOnly.output_SJ
-        File? star_init_hgOnly_chimeric_junction = STAR_init_hgOnly.chimeric_junction
+        #File? star_init_hgOnly_chimeric_junction = STAR_init_hgOnly.chimeric_junction
         File? star_init_hgOnly_ummapped_left_fq = STAR_init_hgOnly.Unmapped_left_fq
         File? star_init_hgOnly_unmapped_right_fq = STAR_init_hgOnly.Unmapped_right_fq
         
@@ -138,6 +138,7 @@ workflow ctat_vif {
                 util_dir=util_dir,
                 fastq1=left,
                 fastq2=right,
+                search_chimeras=false,
                 two_pass_mode = star_init_two_pass_mode,
                 base_name=sample_id + ".hgOnly",
                 star_reference=star_index_human_only,
@@ -157,6 +158,7 @@ workflow ctat_vif {
                 util_dir=util_dir,
                 fastq1=STAR_init_hgOnly.Unmapped_left_fq,
                 fastq2=STAR_init_hgOnly.Unmapped_right_fq,
+                search_chimeras=true,
                 two_pass_mode = star_init_two_pass_mode,
                 base_name=sample_id + ".hgPlusVirus",
                 star_reference=star_index_human_plus_virus,
@@ -296,6 +298,7 @@ task STAR_init {
         String util_dir
         File fastq1
         File? fastq2
+        Boolean search_chimeras
         File? star_reference
         String? star_reference_dirpath
         Float extra_disk_space
@@ -354,7 +357,7 @@ task STAR_init {
         fi
 
       
-      STAR \
+      star_cmd="STAR \
             --runMode alignReads \
             --genomeDir $genomeDir \
             --runThreadN $cpu \
@@ -376,7 +379,11 @@ task STAR_init {
             --alignSJstitchMismatchNmax 5 -1 5 5 \
             --alignSplicedMateMapLminOverLmate 0 \
             --alignSplicedMateMapLmin 30 \
-            --chimJunctionOverhangMin 12 \
+             --outReadsUnmapped Fastx"
+
+      if [[ "~{search_chimeras}" == "true" ]]; then
+
+            star_cmd="${star_cmd} --chimJunctionOverhangMin 12 \
              --chimOutJunctionFormat 0 \
              --chimSegmentMin 8 \
              --chimSegmentReadGapMax 3 \
@@ -384,9 +391,11 @@ task STAR_init {
              --chimNonchimScoreDropMin 10 \
              --chimMultimapScoreRange 10 \
              --chimMultimapNmax 20 \
-             --chimOutType Junctions WithinBAM \
-             --outReadsUnmapped Fastx 
+             --chimOutType Junctions WithinBAM"
+      fi
       
+      eval ${star_cmd}
+
       samtools index "~{base_name}.Aligned.sortedByCoord.out.bam"
 
       # always have at least the Unmapped.out.mate1 file
