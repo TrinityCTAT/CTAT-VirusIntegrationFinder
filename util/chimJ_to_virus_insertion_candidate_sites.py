@@ -171,13 +171,20 @@ def main():
     # adjust the orientation
     df.loc[idx,['strand_donorA','strand_acceptorB']] = df.loc[idx,['strand_donorA','strand_acceptorB']].replace({"+":"-","-":"+"})
 
+
+
     #~~~~~~~~~~~~~~~~~~~
     # multimapping reads
     #~~~~~~~~~~~~~~~~~~~
-    df["Multimapped_read"] = df["read_name"].duplicated(keep=False)
 
-    # Filter by multimapping 
-    df = df[df["Multimapped_read"] == False]
+    discard_multimapping_chim_reads = False
+
+    if discard_multimapping_chim_reads:
+
+        df["Multimapped_read"] = df["read_name"].duplicated(keep=False)
+
+        # Filter by multimapping 
+        df = df[df["Multimapped_read"] == False]
     
     
 
