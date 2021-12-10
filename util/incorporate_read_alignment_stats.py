@@ -134,7 +134,7 @@ def main():
             vif_df.loc[i, 'max_end_clipping'] = "{:.3f}".format(st.mean(max_end_clipping))
             vif_df.loc[i, 'min_anchor_len'] = "{:.3f}".format(st.mean(min_anchor_lengths))
     
-    vif_df.drop('readnames', axis=1, inplace=True)
+    #vif_df.drop('readnames', axis=1, inplace=True)
 
     logger.info("-writing outputfile: {}".format(outputfilename))
     vif_df.to_csv(outputfilename, sep="\t", index=False)

@@ -20,6 +20,7 @@ workflow ctat_vif {
         Boolean generate_reports = true
 
         Int min_reads = 10
+        Int max_hits = 2
 
         # star indices needed (local: point to directory name, on cloud: give tar file)
         File? star_index_human_only
@@ -99,12 +100,9 @@ workflow ctat_vif {
         File? star_init_hgPlusVirus_chimeric_junction = STAR_init_hgPlusVirus.chimeric_junction
       
         File? insertion_site_candidates_full = InsertionSiteCandidates.full
-        File? insertion_site_candidates_full_filtered = InsertionSiteCandidates.full_filtered
-        File? insertion_site_candidates_abridged = InsertionSiteCandidates.abridged
-        File? insertion_site_candidates_abridged_filtered = InsertionSiteCandidates.abridged_filtered
-        File? insertion_site_candidates_abridged_detailed = InsertionSiteCandidates.abridged_detailed
-        File? insertion_site_candidates_full_read_stats = InsertionSiteCandidates.full_read_stats
-        File? insertion_site_candidates_filtered_read_stats = InsertionSiteCandidates.filtered_read_stats
+        File? insertion_site_candidates_filtered = InsertionSiteCandidates.filtered
+        File? insertion_site_candidates_full_abridged = InsertionSiteCandidates.full_abridged
+        File? insertion_site_candidates_filtered_abridged = InsertionSiteCandidates.filtered_abridged
         File? insertion_site_candidates_genome_chimeric_evidence_reads_bam = InsertionSiteCandidates.genome_chimeric_evidence_reads_bam
         File? insertion_site_candidates_genome_chimeric_evidence_reads_bai = InsertionSiteCandidates.genome_chimeric_evidence_reads_bai
         
@@ -182,12 +180,11 @@ workflow ctat_vif {
                 remove_duplicates=remove_duplicates,
                 util_dir=util_dir,
                 min_reads=min_reads,
+                max_hits=max_hits,
                 preemptible=preemptible,
                 docker=docker,
                 sample_id=sample_id
         }
-        File insertion_site_candidates_output =  (if min_reads>0 then select_first([InsertionSiteCandidates.abridged_filtered]) else InsertionSiteCandidates.abridged)
-
         
         if(generate_reports) {
             call VirusReport {
@@ -196,7 +193,7 @@ workflow ctat_vif {
                     bai=select_first([STAR_init_hgPlusVirus.bai]),
                     remove_duplicates=remove_duplicates,
                     viral_fasta=viral_fasta,
-                    insertion_site_candidates=insertion_site_candidates_output,
+                    insertion_site_candidates=InsertionSiteCandidates.filtered_abridged,
                     util_dir=util_dir,
                     memory=igv_virus_reports_memory,
                     preemptible=preemptible,
@@ -208,7 +205,9 @@ workflow ctat_vif {
     }
 
     if(!star_init_only) {
-        File insertion_site_candidates_use = select_first([insertion_site_candidates, InsertionSiteCandidates.filtered_read_stats, InsertionSiteCandidates.full_read_stats])
+      
+        File insertion_site_candidates_use = select_first([insertion_site_candidates, InsertionSiteCandidates.filtered_abridged])
+
         call ExtractChimericGenomicTargets {
             input:
                 fasta=ref_genome_fasta,
@@ -584,6 +583,7 @@ task InsertionSiteCandidates {
         Int preemptible
         String docker
         Int min_reads
+        Int max_hits
         String sample_id
 
     }
@@ -596,37 +596,35 @@ task InsertionSiteCandidates {
         ~{util_dir}/chimJ_to_virus_insertion_candidate_sites.py \
         --chimJ ~{chimeric_junction} \
         --patch_db_fasta ~{viral_fasta} \
-        --output_prefix ~{prefix} \
+        --output_prefix ~{prefix}.tmp \
         ~{true='--remove_duplicates' false='' remove_duplicates}
 
         # extract the chimeric read alignments:
         ~{util_dir}/extract_prelim_chimeric_genome_read_alignments.py \
            --star_bam ~{bam} \
-           --vif_full_tsv ~{prefix}.full.tsv \
+           --vif_full_tsv ~{prefix}.tmp.full.tsv \
            --output_bam ~{prefix}.genome_chimeric_evidence.bam
       
         # add evidence read stats
         ~{util_dir}/incorporate_read_alignment_stats.py \
           --supp_reads_bam ~{prefix}.genome_chimeric_evidence.bam \
-          --vif_full_tsv ~{prefix}.full.tsv \
-          --output ~{prefix}.full_read_stats.tsv
+          --vif_full_tsv ~{prefix}.tmp.full.tsv \
+          --output ~{prefix}.full.tsv
 
 
         python <<CODE
+        import pandas as pd
         min_reads = ~{min_reads}
-        if min_reads > 0:
-            import pandas as pd
-            df = pd.read_csv("~{prefix}.abridged.tsv", sep='\t')
-            df = df[df['total'] >= min_reads]
-            df.to_csv("~{prefix}.abridged.filtered.tsv", sep='\t', index=False)
+        max_hits = ~{max_hits}
 
-            df = pd.read_csv("~{prefix}.full.tsv", sep='\t')
-            df = df[df['total'] >= min_reads]
-            df.to_csv("~{prefix}.full.filtered.tsv", sep='\t', index=False)
+        # write abridged tsv
+        df = pd.read_csv("~{prefix}.full.tsv", sep="\t")
+        df.drop('readnames', axis=1).to_csv("~{prefix}.full.abridged.tsv", sep="\t", index=False)
 
-            df = pd.read_csv("~{prefix}.full_read_stats.tsv", sep='\t')
-            df = df[df['total'] >= min_reads]
-            df.to_csv("~{prefix}.read_stats.filtered.tsv", sep='\t', index=False)
+        df = df[ (df.hits <= max_hits) & (df.total >= min_reads)]
+
+        df.to_csv("~{prefix}.filtered.tsv", sep="\t", index=False)
+        df.drop('readnames', axis=1).to_csv("~{prefix}.filtered.abridged.tsv", sep="\t", index=False) 
       
         CODE
 
@@ -635,14 +633,11 @@ task InsertionSiteCandidates {
 
     output {
         File full = "~{prefix}.full.tsv"
-        File? full_filtered = "~{prefix}.full.filtered.tsv"
-        File abridged = "~{prefix}.abridged.tsv"
-        File? abridged_filtered = "~{prefix}.abridged.filtered.tsv"
-        File abridged_detailed = "~{prefix}.abridged.detailed.tsv"
+        File filtered = "~{prefix}.filtered.tsv"
+        File full_abridged = "~{prefix}.full.abridged.tsv"
+        File filtered_abridged = "~{prefix}.filtered.abridged.tsv"
         File genome_chimeric_evidence_reads_bam = "~{prefix}.genome_chimeric_evidence.bam"
         File genome_chimeric_evidence_reads_bai = "~{prefix}.genome_chimeric_evidence.bam.bai"
-        File full_read_stats = "~{prefix}.full_read_stats.tsv"
-        File filtered_read_stats = "~{prefix}.read_stats.filtered.tsv"
     }
 
     runtime {
