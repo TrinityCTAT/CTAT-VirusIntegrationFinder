@@ -185,7 +185,7 @@ def main():
     #~~~~~~~~~~~~~~~~~~~
     # - under defaults, we discard multimapping reads
     
-    discard_multimapping_chim_reads = not args.no_discard_multimapping
+    discard_multimapping_chim_reads = not args_parsed.no_discard_multimapping
 
     if discard_multimapping_chim_reads:
 
