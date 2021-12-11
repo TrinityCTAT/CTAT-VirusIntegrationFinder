@@ -89,6 +89,13 @@ def main():
         help="exclude duplicate alignments",
     )
 
+    parser.add_argument(
+        "--no_discard_multimapping",
+        action='store_true',
+        default=False,
+        help='do not discard multimapping reads. By default, multimapping reads are excluded')
+
+    
     parser.add_argument("--debug", action='store_true', help='debug mode')
     
 
@@ -176,8 +183,9 @@ def main():
     #~~~~~~~~~~~~~~~~~~~
     # multimapping reads
     #~~~~~~~~~~~~~~~~~~~
-
-    discard_multimapping_chim_reads = False
+    # - under defaults, we discard multimapping reads
+    
+    discard_multimapping_chim_reads = not args.no_discard_multimapping
 
     if discard_multimapping_chim_reads:
 
