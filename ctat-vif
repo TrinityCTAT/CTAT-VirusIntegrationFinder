@@ -102,6 +102,7 @@ def main():
 
     parser.add_argument("--version", action='store_true', help="show version tag: {}".format(VERSION))
 
+    parser.add_argument("--max_hits", default=1, type=int, help='maximum number of multimapping allowed for chimeric reads (1=unique chim reads only)')
 
     args = parser.parse_args()
 
@@ -138,6 +139,7 @@ def main():
     remove_duplicates = not args.no_remove_duplicates
     star_init_only = args.star_init_only
     min_reads = args.min_reads
+    max_hits = args.max_hits
     
     cpu = args.cpu
     output_directory = os.path.abspath(args.outputdir)
@@ -189,6 +191,7 @@ def main():
         input_json["right"] = right
 
     input_json['min_reads'] = min_reads
+    input_uson['max_hits'] = max_hits
     input_json['star_init_only'] = star_init_only
     input_json["remove_duplicates"] = remove_duplicates
     if cpu is None:

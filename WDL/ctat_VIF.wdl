@@ -19,8 +19,8 @@ workflow ctat_vif {
         Boolean remove_duplicates = true
         Boolean generate_reports = true
 
-        Int min_reads = 10
-        Int max_hits = 2
+        Int min_reads = 5 
+        Int max_hits = 1 # unique by default
 
         # star indices needed (local: point to directory name, on cloud: give tar file)
         File? star_index_human_only
