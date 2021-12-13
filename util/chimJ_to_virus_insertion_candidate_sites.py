@@ -90,11 +90,11 @@ def main():
     )
 
     parser.add_argument(
-        "--no_discard_multimapping",
-        action='store_true',
-        default=False,
-        help='do not discard multimapping reads. By default, multimapping reads are excluded')
-
+        "--max_multi_read_alignments",
+        type=int,
+        default=1, # unique chimeric read alignments
+        help='max number of multimaps for chimeric read alignments to be considered as evidence (1=unique only)')
+    
     
     parser.add_argument("--debug", action='store_true', help='debug mode')
     
@@ -108,7 +108,9 @@ def main():
     patch_db_fasta_filename = args_parsed.patch_db_fasta
     aggregation_dist = args_parsed.aggregation_dist
     output_prefix = args_parsed.output_prefix
+    max_multi_read_alignments = args_parsed.max_multi_read_alignments
 
+    
     if args_parsed.debug:
         logger.setLevel(logging.DEBUG)
     
@@ -185,17 +187,14 @@ def main():
     #~~~~~~~~~~~~~~~~~~~
     # - under defaults, we discard multimapping reads
     
-    discard_multimapping_chim_reads = not args_parsed.no_discard_multimapping
+    hitcounts = df.groupby('read_name').size().to_dict()
+    df['hitcount'] = df['read_name'].map(hitcounts)
 
-    if discard_multimapping_chim_reads:
+    # Filter by multimapping 
+    df = df[df['hitcount'] <= max_multi_read_alignments]
 
-        df["Multimapped_read"] = df["read_name"].duplicated(keep=False)
 
-        # Filter by multimapping 
-        df = df[df["Multimapped_read"] == False]
     
-    
-
     if remove_duplicates_flag:
 
         #~~~~~~~~~~~~~~~~~~~~~~~~~
