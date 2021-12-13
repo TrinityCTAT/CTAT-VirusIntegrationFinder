@@ -191,7 +191,7 @@ def main():
         input_json["right"] = right
 
     input_json['min_reads'] = min_reads
-    input_uson['max_hits'] = max_hits
+    input_json['max_hits'] = max_hits
     input_json['star_init_only'] = star_init_only
     input_json["remove_duplicates"] = remove_duplicates
     if cpu is None:
