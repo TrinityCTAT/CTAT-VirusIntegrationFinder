@@ -10,7 +10,7 @@ test:
         --genome_lib_dir ${CTAT_GENOME_LIB} \
 		-O VIF.full.no_remove_dups.outdir
 
-all: test star_init_only remove_dups novirus
+all: test star_init_only remove_dups novirus test_SE
 
 
 test_SE:
