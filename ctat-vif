@@ -10,7 +10,7 @@ import logging
 import sys
 
 
-VERSION = "CTAT-VirusInsertionFinder:0.3.0-dev"
+VERSION = "1.0.0"
 
 
 if sys.version_info[0] < 3:
@@ -267,4 +267,8 @@ def main():
 
 
 if __name__ == "__main__":
+    if "--version" in sys.argv:
+        print(f"ctat-vif v{VERSION}")
+        sys.exit(0)
+    
     main()
