@@ -152,6 +152,25 @@ def main():
     # Read in the junction file 
     df = pd.read_csv(chimJ_filename, sep = "\t")
 
+
+    #~~~~~~~~~~~~~~~~~~~
+    # multimapping reads
+    #~~~~~~~~~~~~~~~~~~~
+    # - under defaults, we discard multimapping reads
+
+    logger.info("## Mulitimapping reads")
+    logger.info("-max multi read alignments allowed: {}".format(max_multi_read_alignments))
+      
+    hitcounts = df.groupby('read_name').size().to_dict()
+    df['hitcount'] = df['read_name'].map(hitcounts)
+
+
+    logger.info(f"-chim alignments before applying max multi setting: {df.shape[0]}")
+    # Filter by multimapping 
+    df = df[df['hitcount'] <= max_multi_read_alignments]
+    logger.info(f"-chim alignments AFTER applying max multi setting: {df.shape[0]}")
+
+
     # Convert the junction types 
     df["junction_type"].replace({-1: "Span",
                              0: "Split",
@@ -181,22 +200,10 @@ def main():
     df.loc[idx,['strand_donorA','strand_acceptorB']] = df.loc[idx,['strand_donorA','strand_acceptorB']].replace({"+":"-","-":"+"})
 
 
-
-    #~~~~~~~~~~~~~~~~~~~
-    # multimapping reads
-    #~~~~~~~~~~~~~~~~~~~
-    # - under defaults, we discard multimapping reads
-    
-    hitcounts = df.groupby('read_name').size().to_dict()
-    df['hitcount'] = df['read_name'].map(hitcounts)
-
-    # Filter by multimapping 
-    df = df[df['hitcount'] <= max_multi_read_alignments]
-
-
     
     if remove_duplicates_flag:
 
+        logger.info("## Duplicate read alignments")
         #~~~~~~~~~~~~~~~~~~~~~~~~~
         # Duplicates 
         #~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -204,16 +211,15 @@ def main():
         # identify duplicated read names as well as duplicated insertions 
         # duplicate insertions 
 
-        logger.info(f"Chimeric insertions before filter duplicates: {df.shape[0]}")
+        logger.info(f"Chimeric alignments before filter duplicates: {df.shape[0]}")
 
         df["Duplicate"] = df[['chr_donorA', 'start_alnA', 'strand_donorA', 'chr_acceptorB','start_alnB', 'strand_acceptorB']].duplicated(keep="first")
         
         df = df[ df["Duplicate"] == False ]
 
-        logger.info(f"Chimeric insertions AFTER filter duplicates: {df.shape[0]}")
+        logger.info(f"Chimeric alignments AFTER filter duplicates: {df.shape[0]}")
 
 
-    
     # Run through each line in the chimeric junctions file 
     for idx, row in df.iterrows():
         # print(idx, row)
