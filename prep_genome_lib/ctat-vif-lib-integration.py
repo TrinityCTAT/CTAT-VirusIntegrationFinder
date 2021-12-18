@@ -56,14 +56,14 @@ def main():
     # copy the virus db to the VIF dir and index it.
     installed_virus_db = os.path.join(VIF_dir, "virus_db.fasta")
     logger.info("-installing virus db")
-    run_cmd(f"cp {virus_db} {installed_virus_db}")
+    run_cmd(f"cp {virus_db_fasta} {installed_virus_db}")
     run_cmd(f"samtools faidx {installed_virus_db}")
     
 
     # create new fasta file including viruses and human genome together:
-    logger.info(f"-combining {ref_genome_fasta} and {virus_db} into {combined_genomes_fa}")
     combined_genomes_fa = os.path.join(VIF_dir, "hg_plus_viraldb.fasta")
-    run_cmd(f"cat {ref_genome_fasta} {virus_db} > {combined_genomes_fa}")
+    logger.info(f"-combining {ref_genome_fasta} and {virus_db_fasta} into {combined_genomes_fa}")
+    run_cmd(f"cat {ref_genome_fasta} {virus_db_fasta} > {combined_genomes_fa}")
     run_cmd(f"samtools faidx {combined_genomes_fa}")
     
     # build star index
