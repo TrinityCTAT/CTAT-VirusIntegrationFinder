@@ -10,7 +10,7 @@ import logging
 import sys
 
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 
 if sys.version_info[0] < 3:
