@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.0.1/WDL/Terra/ctat_VIF.Terra.wdl" as ctat_VIF_wf
+import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.0.1/WDL/Terra/ctat_VIF.Terra.wdl" as ctat_VIF_Terra
 
 
 workflow ctat_VIF_Terra_hg38 {
@@ -21,7 +21,7 @@ workflow ctat_VIF_Terra_hg38 {
 
   }
   
-  call ctat_VIF_wf.ctat_vif {
+  call ctat_VIF_Terra.ctat_VIF_Terra {
     input:     
       sample_id = sample_id,
       left = left,
