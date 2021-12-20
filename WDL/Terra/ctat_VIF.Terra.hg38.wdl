@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.0.1/WDL/ctat_VIF.Terra.wdl" as ctat_VIF_wf
+import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.0.1/WDL/Terra/ctat_VIF.Terra.wdl" as ctat_VIF_wf
 
 
 workflow ctat_VIF_Terra_hg38 {
