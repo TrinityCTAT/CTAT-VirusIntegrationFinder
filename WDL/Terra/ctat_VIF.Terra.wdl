@@ -41,7 +41,7 @@ workflow ctat_VIF_Terra {
    }
 
 
-   outputs {
+   output {
 
      # STAR_init_hgOnly        
      File? star_init_hgOnly_bam = vif.star_init_hgOnly_bam
