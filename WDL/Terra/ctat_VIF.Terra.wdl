@@ -3,13 +3,25 @@ version 1.0
 import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.0.1/WDL/ctat_VIF.wdl" as ctat_VIF_wf
 
 
-workflow ctat_VIF_Terra_hg19 {
+struct CTAT_VIF_config {
+
+  File ref_genome_fasta
+  File ref_genome_gtf
+  File viral_fasta
+  File star_index_human_only
+  File star_index_human_plus_virus
+
+}
+
+
+workflow ctat_VIF_Terra {
 
   input {
     String sample_id
     File left
     File? right
-    String docker = "trinityctat/ctat_vif:1.0.1"
+    String docker = "trinityctat/ctat_vif:1.0.1",
+    CTAT_VIF_config pipe_inputs_config
 
     }
   
@@ -19,11 +31,12 @@ workflow ctat_VIF_Terra_hg19 {
       left = left,
       right = right,
       docker = docker,
-      ref_genome_fasta = "gs://ctat_genome_libs/GRCh38_gencode_v22/03-01-2021/ref_genome.fa",
-      ref_genome_gtf = "gs://ctat_genome_libs/GRCh38_gencode_v22/03-01-2021/ref_annot.gtf",
-      viral_fasta = "gs://ctat_genome_libs/GRCh38_gencode_v22/03-01-2021/Virus_db_Dec072021.nonUnq100bMsk.filt90.fasta",
-      star_index_human_only = "gs://ctat_genome_libs/GRCh38_gencode_v22/03-01-2021/ref_genome.fa.star.idx.tar",
-      star_index_human_plus_virus = "gs://ctat_genome_libs/GRCh38_gencode_v22/03-01-2021/GRCh38_plus_viraldb_Dec092021.fasta.star.idx.tar"
+    
+      ref_genome_fasta = pipe_inputs_config.ref_genome_fasta,
+      ref_genome_gtf = pipe_inputs_config.ref_genome_gtf,
+      viral_fasta = pipe_inputs_config.viral_fasta,
+      star_index_human_only = pipe_inputs_config.star_index_human_only,
+      star_index_human_plus_virus = pipe_inputs_config.star_index_human_plus_virus
 
    }
 
