@@ -20,7 +20,7 @@ workflow ctat_VIF_Terra {
     String sample_id
     File left
     File? right
-    String docker = "trinityctat/ctat_vif:1.0.1"
+    String docker = docker
     CTAT_VIF_config pipe_inputs_config
 
     }
