@@ -324,9 +324,6 @@ task STAR_init {
       
         fastqs="~{fastq1} ~{fastq2}"
         readFilesCommand=""
-        if [[ "~{fastq1}" == *.gz ]] ; then
-            readFilesCommand="--readFilesCommand \"gunzip -c\""
-        fi
       
         if [ "~{autodetect_cpu}" == "true" ]; then
             cpu=$(nproc)
@@ -353,10 +350,12 @@ task STAR_init {
             if [[ "$fastqs" = *.gz ]] ; then
                 readFilesCommand="--readFilesCommand \"gunzip -c\""
             fi
+        elif [[ "~{fastq1}" == *.gz ]] ; then
+            readFilesCommand="--readFilesCommand \"gunzip -c\""
         fi
 
       
-      star_cmd="STAR \
+        star_cmd="STAR \
             --runMode alignReads \
             --genomeDir $genomeDir \
             --runThreadN $cpu \
