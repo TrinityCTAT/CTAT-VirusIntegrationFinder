@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.0.1/WDL/ctat_VIF.wdl" as ctat_VIF_wf
+import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.0.2/WDL/ctat_VIF.wdl" as ctat_VIF_wf
 
 
 struct CTAT_VIF_config {
