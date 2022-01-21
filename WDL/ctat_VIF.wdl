@@ -346,7 +346,7 @@ task STAR_init {
             mkdir fastq
             tar -xvf ~{fastq1} -C fastq
             fastqs=$(find fastq -type f)
-            fastqs=$(echo ${fastqs} | perl -ne '$fq_line = $_; @vals = sort(split(/\s+/)); if(scalar(@vals) == 4) { print "$vals[0],$vals[2] $vals[1],$vals[3]";} else { print $fq_line;}') 
+            fastqs=$(echo ${fastqs} | perl -ne '$fq_line = $_; @vals = sort(split(/\s+/)); if(scalar(@vals) == 4) { print "$vals[0],$vals[2] $vals[1],$vals[3]";} else { print join(" ", @vals);}') 
             readFilesCommand=""
             if [[ "$fastqs" = *.gz ]] ; then
                 readFilesCommand="--readFilesCommand \"gunzip -c\""
@@ -446,7 +446,7 @@ task STAR_validate {
     Int max_mate_dist = 100000
     
     command <<<
-        set -e
+        set -ex
 
         cpu=~{cpu}
         genomeDir="~{star_reference_dirpath}"
@@ -548,7 +548,7 @@ task RemoveDuplicates {
         String output_bam
     }
     command <<<
-        set -e
+        set -ex
 
         ~{util_dir}/bam_mark_duplicates.py \
         -i ~{input_bam} \
@@ -591,7 +591,7 @@ task InsertionSiteCandidates {
     String prefix = sample_id + ".vif.init"
 
     command <<<
-        set -e
+        set -ex
 
         ~{util_dir}/chimJ_to_virus_insertion_candidate_sites.py \
         --chimJ ~{chimeric_junction} \
@@ -708,7 +708,7 @@ task ExtractChimericGenomicTargets {
     String prefix = sample_id + ".vif.extract"
 
     command <<<
-        set -e
+        set -ex
 
         ~{util_dir}/extract_chimeric_genomic_targets.py \
         --fasta ~{fasta} \
@@ -746,6 +746,9 @@ task CreateViralFasta {
     }
 
     command <<<
+
+        set -ex
+
         mv ~{fasta} virus.fasta
         # we need fasta, index, and dict in same directory
         samtools faidx virus.fasta
@@ -779,6 +782,9 @@ task ExtractViralReads {
     }
 
     command <<<
+
+        set -ex
+
         samtools faidx ~{fasta}
 
         python <<CODE
@@ -840,7 +846,7 @@ task ChimericContigEvidenceAnalyzer {
     String prefix = sample_id + ".vif"
 
     command <<<
-        set -e
+        set -ex
 
         ~{util_dir}/chimeric_contig_evidence_analyzer.py \
         --patch_db_bam ~{bam} \
@@ -897,7 +903,7 @@ task VirusReport {
     String prefix = sample_id + ".VirusDetect"
 
     command <<<
-        set -e
+        set -ex
 
       
         ~{util_dir}/make_VIF_genome_abundance_plot.Rscript \
@@ -997,7 +1003,7 @@ task SummaryReport {
     String prefix = sample_id + ".vif"
     String image_prefix = if(length(images)>0) then "--image " else ""
     command <<<
-        set -e
+        set -ex
 
         ~{util_dir}/refine_VIF_output.Rscript \
         --prelim_counts ~{init_counts} \
@@ -1078,7 +1084,7 @@ task ExtractEvidenceReads {
     String prefix = sample_id + ".vif.init"
 
     command <<<
-        set -e
+        set -ex
         
         # Combine the FastQ's 
         fastqs="~{fastq1} ~{fastq2}"
