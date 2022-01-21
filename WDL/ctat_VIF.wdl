@@ -314,7 +314,7 @@ task STAR_init {
     Int max_mate_dist = 100000
     
     command <<<
-        set -e
+        set -ex
 
         cpu=~{cpu}
         genomeDir="~{star_reference_dirpath}"
@@ -346,6 +346,7 @@ task STAR_init {
             mkdir fastq
             tar -xvf ~{fastq1} -C fastq
             fastqs=$(find fastq -type f)
+            fastqs=$(echo ${fastqs} | perl -ne '$fq_line = $_; @vals = sort(split(/\s+/)); if(scalar(@vals) == 4) { print "$vals[0],$vals[2] $vals[1],$vals[3]";} else { print $fq_line;}') 
             readFilesCommand=""
             if [[ "$fastqs" = *.gz ]] ; then
                 readFilesCommand="--readFilesCommand \"gunzip -c\""
