@@ -10,7 +10,7 @@ import logging
 import sys
 
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 
 if sys.version_info[0] < 3:
@@ -173,7 +173,8 @@ def main():
     input_json["ref_genome_gtf"] = gtf
     input_json["ref_genome_fasta"] = ref_fasta
     input_json['autodetect_cpu'] = False
-
+    input_json['star_cpu'] = cpu
+    
     input_json['star_init_two_pass_mode'] = star_init_two_pass_mode
     input_json['star_validate_two_pass_mode'] = star_validate_two_pass_mode
     
