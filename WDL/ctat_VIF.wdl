@@ -342,9 +342,9 @@ task STAR_init {
         fi
 
         # special case for tar of fastq files
-        if [[ "~{fastq1}" == *.tar.gz ]] ; then
+        if [[ "~{fastq1}" == *.tar.gz ]] || [[ "~{fastq1}" == *.tar ]]; then
             mkdir fastq
-            tar -I pigz -xvf ~{fastq1} -C fastq
+            tar -xvf ~{fastq1} -C fastq
             fastqs=$(find fastq -type f)
             readFilesCommand=""
             if [[ "$fastqs" = *.gz ]] ; then
