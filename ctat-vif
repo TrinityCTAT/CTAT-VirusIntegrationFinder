@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 import argparse
 import json
 
+utildir = os.path.join(os.path.dirname(__file__), "util")
+sys.path.insert(0, utildir)
+
 
 def is_in_path(path):
     try:
