@@ -16,6 +16,7 @@ workflow ctat_vif {
 
         Boolean star_init_only = false
 
+        Boolean clean_reads = true
         Boolean remove_duplicates = true
         Boolean generate_reports = true
 
@@ -129,13 +130,26 @@ workflow ctat_vif {
 
     }
 
+
+    if (clean_reads) {
+
+      call Trimmomatic {
+        input:
+        left=left,
+        right=right,
+        util_dir=util_dir,
+        preemptible=preemptible,
+        docker = docker,
+      }
+    }
+    
     
     if ( !defined(insertion_site_candidates) ) {
         call STAR_init as STAR_init_hgOnly {
             input:
                 util_dir=util_dir,
-                fastq1=left,
-                fastq2=right,
+                fastq1=select_first([Trimmomatic.clean_left, left]),
+                fastq2=select_first([Trimmomatic.clean_right, right]),
                 search_chimeras=false,
                 two_pass_mode = star_init_two_pass_mode,
                 base_name=sample_id + ".hgOnly",
@@ -292,6 +306,64 @@ workflow ctat_vif {
 
 
 
+
+task Trimmomatic {
+  input {
+    File left
+    File? right
+    String util_dir
+    Int cpu = 4
+    Int preemptible
+    String memory = "16G"
+    String docker
+  }
+
+  String qual_trim_params = "ILLUMINACLIP:$TRIMMOMATIC_DIR/adapters/TruSeq3-PE.fa:2:30:10 SLIDINGWINDOW:4:5 LEADING:5 TRAILING:5 MINLEN:25"
+
+  String left_trimmed_fq = left + ".trimmed.fq"
+  String right_trimmed_fq = if defined(right) then right + ".trimmed.fq" else "/dev/null" 
+  
+  command <<<
+    set -ex
+
+    if [ "~{right}" == "" ] ; then
+      # single-end mode
+      java $JAVA_OPTS -jar ~{util_dir}/Trimmomatic/trimmomatic.jar PE -threads ~{cpu} \
+        ~{left} \
+        ~{left_trimmed_fq} \
+        ~{qual_trim_params}
+    else
+    # paired-end mode
+    
+      java $JAVA_OPTS -jar ~{util_dir}/Trimmomatic/trimmomatic.jar PE -threads ~{cpu} \
+        ~{left} ~{right} \
+        ~{left_trimmed_fq} ~{left}.U.qtrim \
+        ~{right_trimmed_fq} ~{right}.U.qtrim \
+        ~{qual_trim_params}
+    
+    fi
+
+    >>>
+
+    output {
+      File clean_left = "~{left_trimmed_fq}"
+      File clean_right = "~{right_trimmed_fq}"
+    }
+
+
+    runtime {
+        preemptible: preemptible
+        disks: "local-disk " + ceil(6 * size(left, "GB"))  + "HDD"
+        docker: docker
+        cpu: cpu
+        memory: memory
+    }
+
+    
+}
+
+
+
 task STAR_init {
     input {
         String util_dir
@@ -399,6 +471,8 @@ task STAR_init {
 
       # always have at least the Unmapped.out.mate1 file
       touch ~{base_name}.Unmapped.out.mate1
+      touch ~{base_name}.Unmapped.out.mate2  # because of Terra bug - doesn't allow missing optional outputs to be used as optional inputs later.
+      
     >>>
 
           
