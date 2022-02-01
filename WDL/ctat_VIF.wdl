@@ -1003,7 +1003,8 @@ task VirusReport {
         ~{util_dir}/plot_top_virus_coverage.Rscript \
            --vif_report ~{insertion_site_candidates}  \
            --virus_fai ~{viral_fasta}.fai \
-          --bam ${bam} \
+           --bam ${bam} \
+           --utildir ~{util_dir} \
           --output_prefix ~{prefix}
 
         # make bed for igvjs
