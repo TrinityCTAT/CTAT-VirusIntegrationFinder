@@ -537,6 +537,12 @@ task STAR_validate {
         fi
 
         fastqs="~{fastq1} ~{fastq2}"
+        if [[ "~{fastq2}" == "" ]] || [[ ! -s "~{fastq2}" ]] ; then
+           fastqs="~{fastq1}"
+        fi
+
+
+      
         readFilesCommand=""
         if [[ "~{fastq1}" == *.gz ]] ; then
             readFilesCommand="--readFilesCommand \"gunzip -c\""
