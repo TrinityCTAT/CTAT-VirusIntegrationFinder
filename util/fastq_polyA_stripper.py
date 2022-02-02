@@ -63,9 +63,9 @@ def main():
         
         left_readseq, left_quals = polyA_trim(left_readseq, left_quals, trim_config)
 
-
-        if left_readseq != "":
-            if right_fq_iterator is not None:
+        if right_fq_iterator is not None:
+            ## PE mode 
+            if left_readseq != "":
                 right_read_tuple = next(right_fq_iterator)
                 right_readname, right_readseq, right_L3, right_quals = right_read_tuple
                 right_readseq_len = len(right_readseq)
@@ -82,18 +82,21 @@ def main():
                         counter['PE_untrimmed_reported'] += 1
                         
                 else:
-                    counter['PE_rejected'] += 1
-
+                    counter['PE_rejected'] += 1 # failed right
             else:
-                # unpaired, just process left fq
+                counter['PE_rejected'] += 1 # failed left
+
+        else:
+            # unpaired, just process left fq
+            if left_readseq != "":
                 print("\n".join([left_readname, left_readseq, left_L3, left_quals]), file=left_ofh)
                 if len(left_readseq) != left_readseq_len:
                     counter['SE_TRIMmed_reported'] += 1
                 else:
                     counter['SE_untrimmed_reported'] += 1
 
-        else:
-            counter['SE_rejected'] += 1
+            else:
+                counter['SE_rejected'] += 1
 
 
     print(str(counter))
