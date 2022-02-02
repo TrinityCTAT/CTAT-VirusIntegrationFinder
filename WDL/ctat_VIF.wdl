@@ -706,7 +706,7 @@ task InsertionSiteCandidates {
         ~{util_dir}/incorporate_breakpoint_entropy_info.py \
           --vif_tsv  ~{prefix}.full.w_read_stats.tsv \
           --ref_genome_fasta ~{ref_genome_fasta} \
-          --viral_genome_fasta ~{viral_genome_fasta} \
+          --viral_genome_fasta ~{viral_fasta} \
           --output ~{prefix}.full.tsv
 
         python <<CODE
