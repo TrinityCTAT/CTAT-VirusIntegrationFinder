@@ -5,6 +5,7 @@ import os, sys, re
 import logging
 import argparse
 import gzip
+from collections import defaultdict
 
 def main():
 
@@ -18,7 +19,7 @@ def main():
 
     parser.add_argument("--match_score", default=1, help='match score')
     parser.add_argument("--mismatch_penalty", default=-2, help='mismatch penalty')
-    parser.add_argument("--max_drop", default=-6, help='max drop in score to cease search')
+    parser.add_argument("--max_drop", default=-8, help='max drop in score to cease search')
     parser.add_argument("--min_seq_len", default=30, help="minimum sequence length after trimming")
 
     
@@ -53,19 +54,49 @@ def main():
         right_trimmed_outfile = os.path.basename(right_fq) + ".polyA-trimmed.fastq"
         right_ofh = open(right_trimmed_outfile, "wt")
     
+
+    counter = defaultdict(int)
     
     for left_read_tuple in left_fq_iterator:
         left_readname, left_readseq, left_L3, left_quals = left_read_tuple
-
+        left_readseq_len = len(left_readseq)
+        
         left_readseq, left_quals = polyA_trim(left_readseq, left_quals, trim_config)
 
-        if right_fq_iterator:
-            right_read_tuple = next(right_fq_iterator)
-            right_readname, right_readseq, right_L3, right_quals = right_read_tuple
+
+        if left_readseq != "":
+            if right_fq_iterator is not None:
+                right_read_tuple = next(right_fq_iterator)
+                right_readname, right_readseq, right_L3, right_quals = right_read_tuple
+                right_readseq_len = len(right_readseq)
+
+                right_readseq, right_quals = polyA_trim(right_readseq, right_quals, trim_config)
+                # require both pairs to pass trimming requirements
+                if right_readseq != "":
+                    print("\n".join([left_readname, left_readseq, left_L3, left_quals]), file=left_ofh)
+                    print("\n".join([right_readname, right_readseq, right_L3, right_quals]), file=right_ofh)
+
+                    if len(left_readseq) != left_readseq_len or len(right_readseq) != right_readseq_len:
+                        counter['PE_TRIMmed_reported'] += 1
+                    else:
+                        counter['PE_untrimmed_reported'] += 1
+                        
+                else:
+                    counter['PE_rejected'] += 1
+
+            else:
+                # unpaired, just process left fq
+                print("\n".join([left_readname, left_readseq, left_L3, left_quals]), file=left_ofh)
+                if len(left_readseq) != left_readseq_len:
+                    counter['SE_TRIMmed_reported'] += 1
+                else:
+                    counter['SE_untrimmed_reported'] += 1
+
+        else:
+            counter['SE_rejected'] += 1
 
 
-        print("\t".join([left_readseq, left_quals]))
-
+    print(str(counter))
     
     sys.exit(0)
 
@@ -75,27 +106,48 @@ def main():
 def polyA_trim(readseq, quals, trim_config):
 
     # trim terminal polyA
-    trim_rend_pos = compute_trim_pos(readseq, 'A', trim_config)
-    if trim_rend_pos is not None:
-        readseq = readseq[:trim_rend_pos]
-        quals = quals[:trim_rend_pos]
+    readseq, quals = terminal_trim(readseq, quals, 'A', trim_config)
 
-    if len(readseq) >= trim_config['min_seq_len']:
+    if readseq:
+        readseq, quals = terminal_trim(readseq, quals, readseq[-1], trim_config)
+    
         
-        # trim initial polyT
-        revreadseq = readseq[::-1]
-        trim_pos = compute_trim_pos(revreadseq, 'T', trim_config)
-        if trim_pos is not None:
-            # revcomp the trim pos
-            trim_pos = len(revreadseq) - trim_pos - 1
-            readseq = readseq[trim_pos+1:]
-            quals = quals[trim_pos+1:]
+    # trim initial polyT
+    if readseq:
+        readseq, quals = initial_trim(readseq, quals, 'T', trim_config)
 
+    if readseq:
+        readseq, quals = initial_trim(readseq, quals, readseq[0], trim_config)
     
     if len(readseq) >= trim_config['min_seq_len']:
         return(readseq, quals)
     else:
         return("", "")
+
+
+
+
+def terminal_trim(readseq, quals, nucleotide, trim_config):
+    trim_rend_pos = compute_trim_pos(readseq, nucleotide, trim_config)
+    if trim_rend_pos is not None:
+        readseq = readseq[:trim_rend_pos]
+        quals = quals[:trim_rend_pos]
+        
+    return readseq, quals
+
+
+
+def initial_trim(readseq, quals, nucleotide, trim_config):
+    
+    revreadseq = readseq[::-1]
+    trim_pos = compute_trim_pos(revreadseq, nucleotide, trim_config)
+    if trim_pos is not None:
+        # revcomp the trim pos
+        trim_pos = len(revreadseq) - trim_pos - 1
+        readseq = readseq[trim_pos+1:]
+        quals = quals[trim_pos+1:]
+        
+    return readseq, quals
 
 
 def compute_trim_pos(readseq, nucleotide, trim_config):
