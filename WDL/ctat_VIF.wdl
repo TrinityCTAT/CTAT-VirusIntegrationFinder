@@ -190,6 +190,7 @@ workflow ctat_vif {
                 chimeric_junction=select_first([STAR_init_hgPlusVirus.chimeric_junction]),
                 bam=select_first([STAR_init_hgPlusVirus.bam]),
                 bai=select_first([STAR_init_hgPlusVirus.bai]),
+                ref_genome_fasta=ref_genome_fasta,
                 viral_fasta=viral_fasta,
                 remove_duplicates=remove_duplicates,
                 util_dir=util_dir,
@@ -665,6 +666,7 @@ task InsertionSiteCandidates {
         File chimeric_junction
         File bam
         File bai
+        File ref_genome_fasta
         File viral_fasta
         Boolean remove_duplicates
         String util_dir
@@ -698,8 +700,14 @@ task InsertionSiteCandidates {
         ~{util_dir}/incorporate_read_alignment_stats.py \
           --supp_reads_bam ~{prefix}.genome_chimeric_evidence.bam \
           --vif_full_tsv ~{prefix}.tmp.full.tsv \
-          --output ~{prefix}.full.tsv
+          --output ~{prefix}.full.w_read_stats.tsv
 
+        # add seq entropy around breakpoints
+        ~{util_dir}/incorporate_breakpoint_entropy_info.py \
+          --vif_tsv  ~{prefix}.full.w_read_stats.tsv \
+          --ref_genome_fasta ~{ref_genome_fasta} \
+          --viral_genome_fasta ~{viral_genome_fasta} \
+          --output ~{prefix}.full.tsv
 
         python <<CODE
         import pandas as pd
