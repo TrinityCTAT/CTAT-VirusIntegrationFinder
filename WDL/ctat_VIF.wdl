@@ -318,7 +318,7 @@ task Trimmomatic {
     String docker
   }
 
-  String qual_trim_params = "ILLUMINACLIP:$TRIMMOMATIC_DIR/adapters/TruSeq3-PE.fa:2:30:10 SLIDINGWINDOW:4:5 LEADING:5 TRAILING:5 MINLEN:25"
+  String qual_trim_params = "ILLUMINACLIP:" + util_dir + "/Trimmomatic/adapters/TruSeq3-PE.fa:2:30:10 SLIDINGWINDOW:4:5 LEADING:5 TRAILING:5 MINLEN:25"
 
   String left_trimmed_fq = left + ".trimmed.fq"
   String right_trimmed_fq = if defined(right) then right + ".trimmed.fq" else "/dev/null" 
@@ -328,7 +328,7 @@ task Trimmomatic {
 
     if [ "~{right}" == "" ] ; then
       # single-end mode
-      java $JAVA_OPTS -jar ~{util_dir}/Trimmomatic/trimmomatic.jar PE -threads ~{cpu} \
+      java $JAVA_OPTS -jar ~{util_dir}/Trimmomatic/trimmomatic.jar SE -threads ~{cpu} \
         ~{left} \
         ~{left_trimmed_fq} \
         ~{qual_trim_params}
@@ -384,6 +384,9 @@ task STAR_init {
         Boolean autodetect_cpu
     }
     Int max_mate_dist = 100000
+
+    
+
     
     command <<<
         set -ex
@@ -395,6 +398,11 @@ task STAR_init {
         fi
       
         fastqs="~{fastq1} ~{fastq2}"
+        if [[ "~{fastq2}" == "" ]] || [[ ! -s "~{fastq2}" ]] ; then
+           fastqs="~{fastq1}"
+        fi
+
+      
         readFilesCommand=""
       
         if [ "~{autodetect_cpu}" == "true" ]; then
