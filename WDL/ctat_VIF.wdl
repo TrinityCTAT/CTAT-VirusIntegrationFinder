@@ -135,6 +135,7 @@ workflow ctat_vif {
 
       call Trimmomatic {
         input:
+          sample_id=sample_id,
           left=left,
           right=right,
           util_dir=util_dir,
@@ -144,8 +145,9 @@ workflow ctat_vif {
       
       call PolyA_stripper {
         input:
+          sample_id=sample_id,
           left=Trimmomatic.clean_left,
-          right=Trimmomatic.clean_right,
+          right=select_first([Trimmomatic.clean_right, "/dev/null"]),
           util_dir=util_dir,
           preemptible=preemptible,
           docker = docker
@@ -320,6 +322,7 @@ workflow ctat_vif {
 
 task Trimmomatic {
   input {
+    String sample_id
     File left
     File? right
     String util_dir
@@ -331,25 +334,23 @@ task Trimmomatic {
 
   String qual_trim_params = "ILLUMINACLIP:" + util_dir + "/Trimmomatic/adapters/TruSeq3-PE.fa:2:30:10 SLIDINGWINDOW:4:5 LEADING:5 TRAILING:5 MINLEN:25"
 
-  String left_trimmed_fq = left + ".trimmed.fq"
-  String right_trimmed_fq = if defined(right) then right + ".trimmed.fq" else "/dev/null" 
-  
+    
   command <<<
     set -ex
 
-    if [ "~{right}" == "" ] ; then
+    if [[ "~{right}" == "" ]] || [[ ! -s "~{right}" ]] ; then
       # single-end mode
       java $JAVA_OPTS -jar ~{util_dir}/Trimmomatic/trimmomatic.jar SE -threads ~{cpu} \
         ~{left} \
-        ~{left_trimmed_fq} \
+        ~{sample_id}.trimmomatic_1.fastq \
         ~{qual_trim_params}
     else
     # paired-end mode
     
       java $JAVA_OPTS -jar ~{util_dir}/Trimmomatic/trimmomatic.jar PE -threads ~{cpu} \
         ~{left} ~{right} \
-        ~{left_trimmed_fq} ~{left}.U.qtrim \
-        ~{right_trimmed_fq} ~{right}.U.qtrim \
+        ~{sample_id}.trimmomatic_1.fastq ~{sample_id}.U.trimmomatic_1.qtrim \
+        ~{sample_id}.trimmomatic_2.fastq ~{sample_id}.U.trimmomatic_2.qtrim \
         ~{qual_trim_params}
     
     fi
@@ -357,8 +358,8 @@ task Trimmomatic {
     >>>
 
     output {
-      File clean_left = "~{left_trimmed_fq}"
-      File clean_right = "~{right_trimmed_fq}"
+      File clean_left = "~{sample_id}.trimmomatic_1.fastq"
+      File? clean_right = "~{sample_id}.trimmomatic_1.fastq"
     }
 
 
@@ -376,6 +377,7 @@ task Trimmomatic {
 
 task PolyA_stripper {
   input {
+    String sample_id
     File left
     File? right
     String util_dir
@@ -390,20 +392,27 @@ task PolyA_stripper {
   command <<<
     set -ex
 
-    mv ~{left} left.fq
+    mv ~{left} ~{sample_id}_1.fq
     
-    if [[ "~{right}" != "" ]] ; then
-       mv ~{right} right.fq
+    if [[ "~{right}" != "" ]] && [[ -s "~{right}" ]] ; then
+       mv ~{right} ~{sample_id}_2.fq
     fi
 
-    ~{util_dir}/fastq_polyA_stripper.py --left_fq left.fq \
-      ~{true="--right_fq right.fq" false='' have_right_fq}
+    cmd="~{util_dir}/fastq_polyA_stripper.py --left_fq ~{sample_id}_1.fq"
 
+    if [[ -s "~{sample_id}_2.fq" ]] ; then
+       cmd="$cmd --right_fq ~{sample_id}_2.fq"
+    fi
+
+    $cmd
+
+    gzip *polyA-trimmed.fastq
+    
     >>>
 
     output {
-      File left_trimmed = "left.fq.polyA-trimmed.fastq"
-      File? right_trimmed = "right.fq.polyA-trimmed.fastq"
+      File left_trimmed = "~{sample_id}_1.fq.polyA-trimmed.fastq.gz"
+      File? right_trimmed = "~{sample_id}_2.fq.polyA-trimmed.fastq.gz"
     }
     
 
