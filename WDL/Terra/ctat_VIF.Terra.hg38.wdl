@@ -8,8 +8,9 @@ workflow ctat_VIF_Terra_hg38 {
 
   input {
     String sample_id
-    File left
+    File? left
     File? right
+    File? drs_path_fastqs
     String docker = "trinityctat/ctat_vif:1.0.1"
 
     CTAT_VIF_config pipe_inputs_config = {
@@ -27,6 +28,7 @@ workflow ctat_VIF_Terra_hg38 {
       sample_id = sample_id,
       left = left,
       right = right,
+      drs_path_fastqs = drs_path_fastqs,
       docker = docker,
       pipe_inputs_config = pipe_inputs_config
    }
