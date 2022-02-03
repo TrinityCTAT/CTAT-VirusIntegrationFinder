@@ -114,6 +114,7 @@ task unpack_drs {
     String sample_id
     File drs_path_fastqs
     String docker
+    Int preemptible
   }
 
   command <<<
@@ -174,7 +175,7 @@ task unpack_drs {
     }
 
     runtime {
-        preemptible: 1
+        preemptible: preemptible
         disks: "local-disk " + ceil( size(drs_path_fastqs, "GB")*10 + 1) + " HDD"
         docker: docker
         cpu: 1
