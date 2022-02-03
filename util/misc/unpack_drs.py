@@ -42,7 +42,7 @@ def main():
         else:
             os.rename(fq_files[0], sample_id + "_1.fq")
             os.rename(fq_files[1], sample_id + "_2.fq")
-            subprocess.check_call(f"gzip {sample_id}.*fq", shell=True)
+            subprocess.check_call(f"gzip {sample_id}_*.fq", shell=True)
 
     elif len(fq_files) == 4:
         method = "cat"
