@@ -739,7 +739,7 @@ task InsertionSiteCandidates {
 
         ~{util_dir}/chimJ_to_virus_insertion_candidate_sites.py \
         --chimJ ~{chimeric_junction} \
-        --patch_db_fasta ~{viral_fasta} \
+        --viral_db_fasta ~{viral_fasta} \
         --max_multi_read_alignments ~{max_hits} \
         --output_prefix ~{prefix}.tmp \
         ~{true='--remove_duplicates' false='' remove_duplicates}
