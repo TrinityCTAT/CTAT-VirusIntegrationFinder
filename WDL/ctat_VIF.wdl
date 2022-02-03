@@ -385,20 +385,27 @@ task PolyA_stripper {
     String docker
   }
 
+  Boolean have_right_fq = defined(right)
   
   command <<<
     set -ex
 
-    ~{util_dir}/fastq_polyA_stripper.py --left_fq ~{left} \
-      ~{"--right_fq" + right}
+    mv ~{left} left.fq
+    
+    if [[ "~{right}" != "" ]] ; then
+       mv ~{right} right.fq
+    fi
+
+    ~{util_dir}/fastq_polyA_stripper.py --left_fq left.fq \
+      ~{true="--right_fq right.fq" false='' have_right_fq}
 
     >>>
 
     output {
-      File left_trimmed = "~{left}.polyA-trimmed.fastq"
-      File? right_trimmed = "~{right}.polyA-trimmed.fastq"
+      File left_trimmed = "left.fq.polyA-trimmed.fastq"
+      File? right_trimmed = "right.fq.polyA-trimmed.fastq"
     }
-
+    
 
     runtime {
         preemptible: preemptible
