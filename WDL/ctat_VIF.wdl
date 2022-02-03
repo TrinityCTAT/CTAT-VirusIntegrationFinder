@@ -359,7 +359,7 @@ task Trimmomatic {
 
     output {
       File clean_left = "~{sample_id}.trimmomatic_1.fastq"
-      File? clean_right = "~{sample_id}.trimmomatic_1.fastq"
+      File? clean_right = "~{sample_id}.trimmomatic_2.fastq"
     }
 
 
