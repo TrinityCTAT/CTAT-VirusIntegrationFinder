@@ -59,20 +59,28 @@ def main():
     )
 
     parser.add_argument(
-        "--patch_db_fasta",
+        "--viral_db_fasta",
         type=str,
         required=True,
-        help="database of the additional genome targets",
+        help="database of the additional viral genome targets",
     )
 
     parser.add_argument(
-        "--aggregation_dist",
+        "--human_genome_aggregation_dist",
         type=int,
         required=False,
         default=500,
-        help="distance around top chimeric event breakpoint for aggregating supporting reads",
+        help="distance around top chimeric event breakpoint for aggregating supporting reads on human genome",
     )
 
+    parser.add_argument(
+        "--viral_genome_aggregation_dist",
+        type=int,
+        required=False,
+        default=50, # shorter because viruses have dense genomes and want to capture alt splicing here.
+        help="distance around top chimeric event breakpoint for aggregating supporting reads on viral genome",
+    )
+    
     parser.add_argument(
         "--output_prefix",
         "-o",
@@ -105,11 +113,12 @@ def main():
     args_parsed = parser.parse_args()
     # Create constants 
     chimJ_filename = args_parsed.chimJ
-    patch_db_fasta_filename = args_parsed.patch_db_fasta
-    aggregation_dist = args_parsed.aggregation_dist
+    viral_db_fasta_filename = args_parsed.viral_db_fasta
+    human_aggregation_dist = args_parsed.human_genome_aggregation_dist
+    viral_aggregation_dist = args_parsed.viral_genome_aggregation_dist
     output_prefix = args_parsed.output_prefix
     max_multi_read_alignments = args_parsed.max_multi_read_alignments
-
+    
     
     if args_parsed.debug:
         logger.setLevel(logging.DEBUG)
@@ -117,17 +126,17 @@ def main():
     remove_duplicates_flag = args_parsed.remove_duplicates_flag
     
     ###########################
-    ## get list of patch_db entries. (Viruses names found in fasta file)
+    ## get list of viral_db entries. (Viruses names found in fasta file)
     ###########################
-    patch_db_entries = set()
+    viral_db_entries = set()
     # cache the regular expression search, faster because more memory conservative 
     match_regex = re.compile("^>(\S+)")
-    with open(patch_db_fasta_filename, "rt") as fh:
+    with open(viral_db_fasta_filename, "rt") as fh:
         for line in fh:
             m = match_regex.search(line)
             if m:
                 acc = m.group(1)
-                patch_db_entries.add(acc)
+                viral_db_entries.add(acc)
 
     ################################
     # Get all Chrom-Virus pairings and store in 'genome_pair_to_evidence'
@@ -180,7 +189,7 @@ def main():
     #~~~~~~~~~~~~~~~~~~~~~~~~~
     # Check to see if chrA or chrB are in viral data base 
     #~~~~~~~~~~~~~~~~~~~~~~~~~ 
-    df = df[(df["chr_donorA"].isin(patch_db_entries)) ^ (df["chr_acceptorB"].isin(patch_db_entries))]
+    df = df[(df["chr_donorA"].isin(viral_db_entries)) ^ (df["chr_acceptorB"].isin(viral_db_entries))]
 
     logger.debug(f"Chimeric insertions start: {df.shape[0]}")
 
@@ -188,7 +197,7 @@ def main():
     #~~~~~~~~~~~~~~~~~~~~~~~~~
     ## reorient so host (human) genome is always in the + reference orientation.
     #~~~~~~~~~~~~~~~~~~~~~~~~~
-    idx = ((df["chr_donorA"].isin(patch_db_entries)) & (df["strand_acceptorB"] == "-") | (df["chr_acceptorB"].isin(patch_db_entries) & (df["strand_donorA"] == "-")))
+    idx = ((df["chr_donorA"].isin(viral_db_entries)) & (df["strand_acceptorB"] == "-") | (df["chr_acceptorB"].isin(viral_db_entries) & (df["strand_donorA"] == "-")))
 
     
     df.loc[idx, ['chr_donorA', 'brkpt_donorA', 'strand_donorA', 'repeat_left_lenA', 'start_alnA', 'cigar_alnA',
@@ -257,7 +266,7 @@ def main():
 
         logger.debug("Genome pair: " + genome_pair)
 
-        chim_events = group_chim_reads_into_events(chim_reads, aggregation_dist)
+        chim_events = group_chim_reads_into_events(chim_reads, viral_db_entries, human_aggregation_dist, viral_aggregation_dist)
 
         # //TODO: can try to link up events into paired insertion points for single events.
 
@@ -371,7 +380,7 @@ def main():
     sys.exit(0)
 
 
-def group_chim_reads_into_events(chim_reads_list, aggregation_dist):
+def group_chim_reads_into_events(chim_reads_list, viral_db_entries, human_aggregation_dist, viral_aggregation_dist):
     '''
     Function to groups all chimeric events. 
         if chimeric events occur in the same orientation and within a specific distance
@@ -400,7 +409,7 @@ def group_chim_reads_into_events(chim_reads_list, aggregation_dist):
         # IF this chimeric event is the same orientation and within a specified distance from another event 
         #   combine the event with the existing event in the chim_events list
         # IF NOT, add the new event to the chim_events list
-        if not supplements_existing_event(chim_event, chim_events, aggregation_dist):
+        if not supplements_existing_event(chim_event, chim_events, viral_db_entries, human_aggregation_dist, viral_aggregation_dist):
             # add new event to chim_events list
             chim_events.append(chim_event)
             logger.debug("-logging chimeric event: " + str(chim_event))
@@ -408,22 +417,28 @@ def group_chim_reads_into_events(chim_reads_list, aggregation_dist):
     return chim_events
 
 
-def supplements_existing_event(chim_event, chim_events_list, aggregation_dist):
+def supplements_existing_event(chim_event, chim_events_list, viral_db_entries, human_aggregation_dist, viral_aggregation_dist):
     '''
     Function to check if the current chimeric read/event can be combined with an existing event 
 
     '''
+
+    (agg_dist_A, agg_dist_B) = (human_aggregation_dist, viral_aggregation_dist) if chim_event.chrB in viral_db_entries else (viral_aggregation_dist, human_aggregation_dist)
+
+
     # Loop over stored Chimeric events 
     for prev_chim_event in chim_events_list:
 
         # if the orientation is the same 
         # if the read falls within the given distance from each other 
-        # then combine them 
+        # then combine them
+
+        
         if (
             chim_event.orientA == prev_chim_event.orientA
-            and abs(chim_event.coordA - prev_chim_event.coordA) <= aggregation_dist
+            and abs(chim_event.coordA - prev_chim_event.coordA) <= agg_dist_A
             and chim_event.orientB == prev_chim_event.orientB
-            and abs(chim_event.coordB - prev_chim_event.coordB) <= aggregation_dist
+            and abs(chim_event.coordB - prev_chim_event.coordB) <= agg_dist_B
         ):
 
             logger.debug(
