@@ -118,6 +118,10 @@ task unpack_drs {
     set -ex
 
     python <<CODE
+    import sys, os, re
+    import glob
+    import subprocess
+
     sample_id = "~{sample_id}"
     fastqs_tar = "~{drs_path_fastqs}"
 
