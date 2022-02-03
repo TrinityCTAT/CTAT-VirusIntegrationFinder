@@ -23,6 +23,7 @@ workflow ctat_VIF_Terra {
     File? drs_path_fastqs
     String docker = docker
     CTAT_VIF_config pipe_inputs_config
+    Int preemptible
 
     }
 
@@ -33,7 +34,8 @@ workflow ctat_VIF_Terra {
        input:
          sample_id = sample_id,
          drs_path_fastqs = select_first([drs_path_fastqs]),
-         docker = docker
+         docker = docker,
+         preemptible = preemptible
      }
   }
   
@@ -43,6 +45,7 @@ workflow ctat_VIF_Terra {
       left = select_first([unpack_drs.left_fq, left]),
       right = select_first([unpack_drs.right_fq, right, "/dev/null"]),
       docker = docker,
+      preemptible = preemptible,
     
       ref_genome_fasta = pipe_inputs_config.ref_genome_fasta,
       ref_genome_gtf = pipe_inputs_config.ref_genome_gtf,

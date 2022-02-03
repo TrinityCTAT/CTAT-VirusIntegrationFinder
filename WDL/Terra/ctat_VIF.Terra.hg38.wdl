@@ -12,6 +12,7 @@ workflow ctat_VIF_Terra_hg38 {
     File? right
     File? drs_path_fastqs
     String docker = "trinityctat/ctat_vif:1.0.1"
+    Int preemptible = 0
 
     CTAT_VIF_config pipe_inputs_config = {
       "ref_genome_fasta" : "gs://ctat_genome_libs/GRCh38_gencode_v22/03-01-2021/ref_genome.fa",
@@ -30,7 +31,8 @@ workflow ctat_VIF_Terra_hg38 {
       right = right,
       drs_path_fastqs = drs_path_fastqs,
       docker = docker,
-      pipe_inputs_config = pipe_inputs_config
+      pipe_inputs_config = pipe_inputs_config,
+      preemptible = preemptible
    }
 
 }
