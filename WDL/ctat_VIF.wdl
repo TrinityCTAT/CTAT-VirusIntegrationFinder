@@ -135,12 +135,22 @@ workflow ctat_vif {
 
       call Trimmomatic {
         input:
-        left=left,
-        right=right,
-        util_dir=util_dir,
-        preemptible=preemptible,
-        docker = docker,
+          left=left,
+          right=right,
+          util_dir=util_dir,
+          preemptible=preemptible,
+          docker = docker
       }
+      
+      call PolyA_stripper {
+        input:
+          left=Trimmomatic.clean_left,
+          right=Trimmomatic.clean_right,
+          util_dir=util_dir,
+          preemptible=preemptible,
+          docker = docker
+      }
+        
     }
     
     
@@ -148,8 +158,8 @@ workflow ctat_vif {
         call STAR_init as STAR_init_hgOnly {
             input:
                 util_dir=util_dir,
-                fastq1=select_first([Trimmomatic.clean_left, left]),
-                fastq2=select_first([Trimmomatic.clean_right, right]),
+                fastq1=select_first([PolyA_stripper.left_trimmed, left]),
+                fastq2=select_first([PolyA_stripper.right_trimmed, right]),
                 search_chimeras=false,
                 two_pass_mode = star_init_two_pass_mode,
                 base_name=sample_id + ".hgOnly",
@@ -363,6 +373,43 @@ task Trimmomatic {
     
 }
 
+
+task PolyA_stripper {
+  input {
+    File left
+    File? right
+    String util_dir
+    Int cpu = 4
+    Int preemptible
+    String memory = "16G"
+    String docker
+  }
+
+  
+  command <<<
+    set -ex
+
+    ~{util_dir}/fastq_polyA_stripper.py --left_fq ~{left} \
+      ~{"--right_fq" + right}
+
+    >>>
+
+    output {
+      File left_trimmed = "~{left}.polyA-trimmed.fastq"
+      File? right_trimmed = "~{right}.polyA-trimmed.fastq"
+    }
+
+
+    runtime {
+        preemptible: preemptible
+        disks: "local-disk " + ceil(6 * size(left, "GB"))  + "HDD"
+        docker: docker
+        cpu: cpu
+        memory: memory
+    }
+
+    
+}
 
 
 task STAR_init {
