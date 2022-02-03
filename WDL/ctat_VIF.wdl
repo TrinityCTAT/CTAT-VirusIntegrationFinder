@@ -159,7 +159,7 @@ workflow ctat_vif {
             input:
                 util_dir=util_dir,
                 fastq1=select_first([PolyA_stripper.left_trimmed, left]),
-                fastq2=select_first([PolyA_stripper.right_trimmed, right]),
+                fastq2=select_first([PolyA_stripper.right_trimmed, right, "/dev/null"]),
                 search_chimeras=false,
                 two_pass_mode = star_init_two_pass_mode,
                 base_name=sample_id + ".hgOnly",
@@ -385,7 +385,7 @@ task PolyA_stripper {
     String docker
   }
 
-  Boolean have_right_fq = defined(right)
+  Boolean have_right_fq = defined(right) && size(right) > 0
   
   command <<<
     set -ex
