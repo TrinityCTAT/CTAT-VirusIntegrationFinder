@@ -1092,46 +1092,49 @@ task VirusReport {
            --utildir ~{util_dir} \
           --output_prefix ~{prefix}
 
-        # make bed for igvjs
-        ~{util_dir}/create_igvjs_virus_bed.py \
+        if [[ -s "~{prefix}.virus_read_counts_summary.tsv" ]] ; then
+          # make bed for igvjs
+          ~{util_dir}/create_igvjs_virus_bed.py \
             --summary ~{prefix}.virus_read_counts_summary.tsv \
             --output_prefix ~{prefix} \
             --num_top_viruses ~{num_top_viruses}
         
-        ~{util_dir}/create_insertion_site_inspector_js.py \
-          --VIF_summary_tsv ~{prefix}.igvjs.table.tsv \
-          --json_outfile ~{prefix}.igvjs.json
+          ~{util_dir}/create_insertion_site_inspector_js.py \
+            --VIF_summary_tsv ~{prefix}.igvjs.table.tsv \
+            --json_outfile ~{prefix}.igvjs.json
 
-        # prep for making the report
-        ~{util_dir}/bamsifter/bamsifter \
-          -c ~{max_coverage} \
-          -o ~{prefix}.igvjs.reads.bam \
-          ${bam} 
+          # prep for making the report
+          ~{util_dir}/bamsifter/bamsifter \
+            -c ~{max_coverage} \
+            -o ~{prefix}.igvjs.reads.bam \
+            ${bam} 
 
-        # IGV reports expects to find, __PREFIX__.fa, __PREFIX__.bed, __PREFIX__.reads.bam
-        #ln -sf ~{viral_fasta} ~{prefix}.virus.fa
-        ~{util_dir}/create_igvjs_virus_fa.py \
-          ~{prefix}.igvjs.bed \
-          ~{viral_fasta}  \
-          ~{prefix}.igvjs.fa
+          # IGV reports expects to find, __PREFIX__.fa, __PREFIX__.bed, __PREFIX__.reads.bam
+          #ln -sf ~{viral_fasta} ~{prefix}.virus.fa
+           ~{util_dir}/create_igvjs_virus_fa.py \
+              ~{prefix}.igvjs.bed \
+              ~{viral_fasta}  \
+              ~{prefix}.igvjs.fa
       
-        # generate the html
-        ~{util_dir}/make_VIF_igvjs_html.py \
-          --html_template ~{util_dir}/resources/igvjs_VIF.html \
-          --fusions_json ~{prefix}.igvjs.json \
-          --input_file_prefix ~{prefix}.igvjs \
-          --html_output ~{prefix}.igvjs.html
+           # generate the html
+           ~{util_dir}/make_VIF_igvjs_html.py \
+              --html_template ~{util_dir}/resources/igvjs_VIF.html \
+              --fusions_json ~{prefix}.igvjs.json \
+              --input_file_prefix ~{prefix}.igvjs \
+              --html_output ~{prefix}.igvjs.html
+      fi
+      
     >>>
 
     output {
-        File html = "~{prefix}.igvjs.html"
-        File genome_abundance_plot = "~{prefix}.init.genome_plot.png"
-        File virus_alignments_bam = "~{prefix}.igvjs.bam"
-        File virus_alignments_bai = "~{prefix}.igvjs.bam.bai"
-        File read_counts_summary = "~{prefix}.virus_read_counts_summary.tsv"
-        File read_counts_image = "~{prefix}.virus_read_counts.png"
-        File read_counts_log_image = "~{prefix}.virus_read_counts_log.png"
-        Array[File] virus_images = glob("~{prefix}.virus_coverage_*.png")
+        File? html = "~{prefix}.igvjs.html"
+        File? genome_abundance_plot = "~{prefix}.init.genome_plot.png"
+        File? virus_alignments_bam = "~{prefix}.igvjs.bam"
+        File? virus_alignments_bai = "~{prefix}.igvjs.bam.bai"
+        File? read_counts_summary = "~{prefix}.virus_read_counts_summary.tsv"
+        File? read_counts_image = "~{prefix}.virus_read_counts.png"
+        File? read_counts_log_image = "~{prefix}.virus_read_counts_log.png"
+        Array[File]? virus_images = glob("~{prefix}.virus_coverage_*.png")
     }
 
     runtime {
