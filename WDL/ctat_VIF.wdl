@@ -365,7 +365,7 @@ task Trimmomatic {
 
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil(6 * size(left, "GB"))  + " HDD"
+        disks: "local-disk " + ceil(20 + 20 * size(left, "GB"))  + " HDD"
         docker: docker
         cpu: cpu
         memory: memory
@@ -803,7 +803,7 @@ task InsertionSiteCandidates {
 
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil(size(viral_fasta, "GB") + size(chimeric_junction, "GB")*3 + size(bam, "GB")*2) + " HDD"
+        disks: "local-disk " + ceil(20 + size(viral_fasta, "GB") + size(chimeric_junction, "GB")*3 + size(bam, "GB")*2) + " HDD"
         docker: docker
         cpu: 1
         memory: "10GB"
