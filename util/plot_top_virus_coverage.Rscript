@@ -104,6 +104,13 @@ dev.off()
 
 
 virus_count_info = virus_count_info %>% filter(mapped > 0)
+if (nrow(virus_count_info) == 0) {
+    message("no virus coverage info to report")
+    quit(save = "no", status = 0, runLast = FALSE)
+}
+
+
+
 
 read_depth_df = NULL
 
@@ -146,3 +153,4 @@ virus_count_info = virus_count_info %>% arrange(desc(frac_covered)) %>% mutate(f
 virus_mappings_summary_file = paste0(output_prefix, ".virus_read_counts_summary.tsv")
 write.table(virus_count_info, file=virus_mappings_summary_file, quote=F, sep="\t", row.names=F)
 
+quit(save = "no", status = 0, runLast = FALSE)
