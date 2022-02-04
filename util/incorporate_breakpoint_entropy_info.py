@@ -33,6 +33,18 @@ def main():
     viral_genome_fasta_filename = args.viral_genome_fasta
     output_filename = args.output
 
+
+    
+    vif_df = pd.read_csv(vif_tsv_filename, sep="\t")
+    print(vif_df.head())
+
+    if len(vif_df) == 0:
+        logger.info("-no candidates to pursue")
+        subprocess.check_call(f"cp {vif_tsv_filename} {output_filename}", shell=True)
+        sys.exit(0)
+
+    
+    
     ref_genome_fai_filename = ref_genome_fasta_filename + ".fai"
     if not os.path.exists(ref_genome_fai_filename):
         run_cmd("samtools faidx {}".format(ref_genome_fasta_filename))
@@ -44,8 +56,7 @@ def main():
     virus_accs = set(pd.read_csv(viral_genome_fai_filename, sep="\t", header=None)[0].tolist())
             
     
-    vif_df = pd.read_csv(vif_tsv_filename, sep="\t")
-    print(vif_df.head())
+
 
     flank_len = 30
     def compute_entropy (acc, coord, orient, left_or_right_side):
