@@ -205,8 +205,7 @@ def fastq_iterator(fastq_filename):
 
 ####### unit testing
 
-def test_trim_poly():
-
+def _get_trim_config():
     trim_config = { 'min_strip_len' : 10,
                     'match_score' : 1,
                     'mismatch_penalty' : -2,
@@ -214,12 +213,27 @@ def test_trim_poly():
                     'min_seq_len' : 5
                     }
 
+    return trim_config
+
+
+def test_trim_poly():
+
+    trim_config = _get_trim_config()
+
     readseq = "TTTTTTTTTTTTTTTTGATCGATCGATCAAAAAAAAAAAAAAA"
     trimmed_seq, trimmed_quals = polyA_trim(readseq, "2" * len(readseq), trim_config)
 
     assert trimmed_seq == "GATCGATCGATC", f"Error {trimmed_seq} not as expected" 
 
 
+def test_no_trim():
+
+    trim_config = _get_trim_config()
+    
+    readseq = "TTGGCTCTTATCTACTTTGGAGGCCTGTCTGGCTCCTTTCTCTACAC"
+    trimmed_seq, trimmed_quals = polyA_trim(readseq, "2" * len(readseq), trim_config)
+
+    assert trimmed_seq == readseq, f"Error, trimmed {trimmed_seq}  != untrimmed seq {readseq} and not supposed to trim here"
 
 
 if __name__=='__main__':
