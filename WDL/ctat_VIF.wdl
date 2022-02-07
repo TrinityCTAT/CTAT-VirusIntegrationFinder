@@ -433,6 +433,7 @@ task STAR_init {
         String util_dir
         File fastq1
         File? fastq2
+        Int chimMultimapNmax = 2
         Boolean search_chimeras
         File? star_reference
         String? star_reference_dirpath
@@ -449,9 +450,7 @@ task STAR_init {
     }
     Int max_mate_dist = 100000
 
-    
-
-    
+        
     command <<<
         set -ex
 
@@ -533,7 +532,7 @@ task STAR_init {
              --chimScoreJunctionNonGTAG 0 \
              --chimNonchimScoreDropMin 10 \
              --chimMultimapScoreRange 10 \
-             --chimMultimapNmax 20 \
+             --chimMultimapNmax ~{chimMultimapNmax} \
              --chimOutType Junctions WithinBAM"
       fi
       
