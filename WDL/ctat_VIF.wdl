@@ -16,7 +16,8 @@ workflow ctat_vif {
 
         Boolean star_init_only = false
 
-        Boolean clean_reads = true
+        Boolean clean_reads = false
+      
         Boolean remove_duplicates = true
         Boolean generate_reports = true
 
