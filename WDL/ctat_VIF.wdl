@@ -746,8 +746,11 @@ task InsertionSiteCandidates {
     command <<<
         set -ex
 
+        # make chimJ file smaller by removing the chrM hits.
+        cat  ~{chimeric_junction} | perl -lane 'unless($F[0] eq "chrM" || $F[3] eq "chrM") { print;}' > chimJ.tsv
+
         ~{util_dir}/chimJ_to_virus_insertion_candidate_sites.py \
-        --chimJ ~{chimeric_junction} \
+        --chimJ chimJ.tsv \
         --viral_db_fasta ~{viral_fasta} \
         --max_multi_read_alignments ~{max_hits} \
         --output_prefix ~{prefix}.tmp \
@@ -806,7 +809,7 @@ task InsertionSiteCandidates {
         disks: "local-disk " + ceil(20 + size(viral_fasta, "GB") + size(chimeric_junction, "GB")*3 + size(bam, "GB")*2) + " HDD"
         docker: docker
         cpu: 1
-        memory: "10GB"
+        memory: "50GB"
     }
 }
 
