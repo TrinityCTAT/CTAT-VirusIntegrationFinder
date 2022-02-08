@@ -178,10 +178,11 @@ task unpack_drs {
 
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil( size(drs_path_fastqs, "GB")*10 + 1) + " HDD"
+        disks: "local-disk " + ceil(50 + size(drs_path_fastqs, "GB")*10 + 1) + " HDD"
         docker: docker
         cpu: 1
-        memory: "1GB"
+        memory: "4GB"
+        maxRetries: 3
     }
 }
 
