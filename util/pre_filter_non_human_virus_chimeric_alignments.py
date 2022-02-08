@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 def main():
 
     parser = argparse.ArgumentParser(
-        description="filters out chimeric alignments not involving human--virus",
+        description="filters out chimeric alignments not involving human--virus or any involving chrM",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
@@ -135,7 +135,7 @@ def main():
         chr_donorA_is_virus = row['chr_donorA'] in viral_db_entries
         chr_donorB_is_virus = row['chr_acceptorB'] in viral_db_entries
 
-        if chr_donorA_is_virus ^ chr_donorB_is_virus:
+        if (chr_donorA_is_virus ^ chr_donorB_is_virus) and "chrM" not in (row['chr_donorA'], row['chr_acceptorB']):
             reads_collected.append(row)
 
         else:
