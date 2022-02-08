@@ -749,7 +749,7 @@ task InsertionSiteCandidates {
 
         ~{util_dir}/pre_filter_non_human_virus_chimeric_alignments.py  \
             --chimJ ~{chimeric_junction} \
-            --viral_db_fasta ~{viral_db_fasta} \
+            --viral_db_fasta ~{viral_fasta} \
             --output human_virus_chimJ.tsv
 
 
