@@ -114,14 +114,41 @@ def main():
 
     count_virus_chims = 0
 
+    prev_read_name = ""
+    reads_collected = list()
+    prev_nonrelevant_chim = False
+
     for row in reader:
+
+        read_name = row['read_name']
+        if read_name != prev_read_name:
+            if not prev_nonrelevant_chim:
+                count_virus_chims += 1
+                for read in reads_collected:
+                    writer.writerow(read)
+            # reinit
+            reads_collected = list()
+            prev_nonrelevant_chim = False
+
+            prev_read_name = read_name
+            
         chr_donorA_is_virus = row['chr_donorA'] in viral_db_entries
         chr_donorB_is_virus = row['chr_acceptorB'] in viral_db_entries
 
         if chr_donorA_is_virus ^ chr_donorB_is_virus:
-            writer.writerow(row)
-            count_virus_chims += 1
+            reads_collected.append(row)
 
+        else:
+            # ignore those that show up as human/human or virus/virus chimeric reads - not to be trusted as human/virus evidence
+            prev_nonrelevant_chim = True
+
+    # get last one
+    if not prev_nonrelevant_chim:
+        count_virus_chims += 1
+        for read in reads_collected:
+            writer.writerow(read)
+            
+    
     logger.info(f"Extracted {count_virus_chims} human/virus chimeric reads")
     
     fh.close()
