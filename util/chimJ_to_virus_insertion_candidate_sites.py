@@ -77,7 +77,7 @@ def main():
         "--viral_genome_aggregation_dist",
         type=int,
         required=False,
-        default=50, # shorter because viruses have dense genomes and want to capture alt splicing here.
+        default=500, 
         help="distance around top chimeric event breakpoint for aggregating supporting reads on viral genome",
     )
     
