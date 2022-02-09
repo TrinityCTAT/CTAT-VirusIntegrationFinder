@@ -18,6 +18,7 @@ workflow ctat_VIF_Terra {
 
   input {
     String sample_id
+    Boolean clean_reads = true
     File? left
     File? right
     File? drs_path_fastqs
@@ -44,6 +45,7 @@ workflow ctat_VIF_Terra {
       sample_id = sample_id,
       left = select_first([unpack_drs.left_fq, left]),
       right = select_first([unpack_drs.right_fq, right, "/dev/null"]),
+      clean_reads = clean_reads,
       docker = docker,
       preemptible = preemptible,
     
@@ -176,10 +178,11 @@ task unpack_drs {
 
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil( size(drs_path_fastqs, "GB")*10 + 1) + " HDD"
+        disks: "local-disk " + ceil(50 + size(drs_path_fastqs, "GB")*10 + 1) + " HDD"
         docker: docker
         cpu: 1
-        memory: "1GB"
+        memory: "4GB"
+        maxRetries: 3
     }
 }
 
