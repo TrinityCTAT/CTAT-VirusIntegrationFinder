@@ -64,10 +64,16 @@ def main():
         left_readseq, left_quals = polyA_trim(left_readseq, left_quals, trim_config)
 
         if right_fq_iterator is not None:
+
+            right_read_tuple = next(right_fq_iterator)
+            right_readname, right_readseq, right_L3, right_quals = right_read_tuple
+
+            assert core_readname(left_readname) == core_readname(right_readname), f"Error, fastq pair read names aren't consistent: {left_readname} vs. {right_readname}"
+            
             ## PE mode 
             if left_readseq != "":
-                right_read_tuple = next(right_fq_iterator)
-                right_readname, right_readseq, right_L3, right_quals = right_read_tuple
+
+           
                 right_readseq_len = len(right_readseq)
 
                 right_readseq, right_quals = polyA_trim(right_readseq, right_quals, trim_config)
@@ -104,6 +110,14 @@ def main():
     sys.exit(0)
 
 
+
+def core_readname(readname):
+
+    core_readname = readname.split(" ")[0]
+
+    core_readname = re.sub("/[12]$", "", core_readname)
+
+    return core_readname
 
 
 def polyA_trim(readseq, quals, trim_config):
