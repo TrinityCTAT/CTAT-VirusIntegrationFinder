@@ -11,9 +11,12 @@ def main():
 
     parser = argparse.ArgumentParser(description="strips polyA from reads", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+    
     parser.add_argument("--left_fq", required=True, type=str, help="left fastq file")
 
     parser.add_argument("--right_fq", required=False, type=str, help="right fastq file")
+
+    parser.add_argument("--out_prefix", required=True, type=str, help="output prefix for output fastqs")
 
     parser.add_argument("--min_strip_len", default = 10, help='min length to strip from terminal of sequence with poly-A')
 
@@ -27,6 +30,7 @@ def main():
 
     left_fq = args.left_fq
     right_fq = args.right_fq
+    out_prefix = args.out_prefix
     min_strip_len = args.min_strip_len
     match_score = args.match_score
     mismatch_penalty = args.mismatch_penalty
@@ -47,11 +51,11 @@ def main():
         right_fq_iterator = fastq_iterator(right_fq)
 
 
-    left_trimmed_outfile = os.path.basename(left_fq) + ".polyA-trimmed.fastq"
+    left_trimmed_outfile = f"{out_prefix}_1.polyA-trimmed.fastq"
     left_ofh = open(left_trimmed_outfile, "wt")
     
     if right_fq:
-        right_trimmed_outfile = os.path.basename(right_fq) + ".polyA-trimmed.fastq"
+        right_trimmed_outfile = f"{out_prefix}_2.polyA-trimmed.fastq"
         right_ofh = open(right_trimmed_outfile, "wt")
     
 
@@ -196,9 +200,9 @@ def compute_trim_pos(readseq, nucleotide, trim_config):
 def fastq_iterator(fastq_filename):
 
     if re.search(".gz$", fastq_filename):
-        fh = gzip.open(fastq_filename, 'rt')
+        fh = gzip.open(fastq_filename, 'rt', encoding='utf-8')
     else:
-        fh = open(fastq_filename, 'rt')
+        fh = open(fastq_filename, 'rt', encoding='utf-8')
 
     have_records = True
     while have_records:

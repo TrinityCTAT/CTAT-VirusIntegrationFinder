@@ -356,11 +356,13 @@ task Trimmomatic {
     
     fi
 
+    gzip *trimmomatic*fastq
+    
     >>>
 
     output {
-      File clean_left = "~{sample_id}.trimmomatic_1.fastq"
-      File? clean_right = "~{sample_id}.trimmomatic_2.fastq"
+      File clean_left = "~{sample_id}.trimmomatic_1.fastq.gz"
+      File? clean_right = "~{sample_id}.trimmomatic_2.fastq.gz"
     }
 
 
@@ -393,16 +395,10 @@ task PolyA_stripper {
   command <<<
     set -ex
 
-    mv ~{left} ~{sample_id}_1.fq
-    
-    if [[ "~{right}" != "" ]] && [[ -s "~{right}" ]] ; then
-       mv ~{right} ~{sample_id}_2.fq
-    fi
+    cmd="~{util_dir}/fastq_polyA_stripper.py --out_prefix ~{sample_id} --left_fq ~{left}"
 
-    cmd="~{util_dir}/fastq_polyA_stripper.py --left_fq ~{sample_id}_1.fq"
-
-    if [[ -s "~{sample_id}_2.fq" ]] ; then
-       cmd="$cmd --right_fq ~{sample_id}_2.fq"
+    if [[ -s "~{right}" ]] ; then
+       cmd="$cmd --right_fq ~{right}"
     fi
 
     $cmd
@@ -412,8 +408,8 @@ task PolyA_stripper {
     >>>
 
     output {
-      File left_trimmed = "~{sample_id}_1.fq.polyA-trimmed.fastq.gz"
-      File? right_trimmed = "~{sample_id}_2.fq.polyA-trimmed.fastq.gz"
+      File left_trimmed = "~{sample_id}_1.polyA-trimmed.fastq.gz"
+      File? right_trimmed = "~{sample_id}_2.polyA-trimmed.fastq.gz"
     }
     
 
