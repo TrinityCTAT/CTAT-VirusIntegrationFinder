@@ -169,11 +169,25 @@ workflow ctat_vif {
             }
 
 
-      call PolyA_stripper {
+     if (! clean_reads) {
+       # well, we'll still do it here then. :-)
+       call Trimmomatic as interim_trimmomatic {
         input:
           sample_id=sample_id,
           left=STAR_init_hgOnly.Unmapped_left_fq,
           right=STAR_init_hgOnly.Unmapped_right_fq,
+          util_dir=util_dir,
+          preemptible=preemptible,
+          docker = docker
+        }
+      
+      }
+            
+      call PolyA_stripper {
+        input:
+          sample_id=sample_id,
+          left=select_first([interim_trimmomatic.clean_left, STAR_init_hgOnly.Unmapped_left_fq]),
+          right=select_first([interim_trimmomatic.clean_right, STAR_init_hgOnly.Unmapped_right_fq]),
           util_dir=util_dir,
           preemptible=preemptible,
           docker = docker
