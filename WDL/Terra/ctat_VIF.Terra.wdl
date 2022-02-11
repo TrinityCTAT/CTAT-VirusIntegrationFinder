@@ -24,7 +24,8 @@ workflow ctat_VIF_Terra {
     String docker = docker
     CTAT_VIF_config pipe_inputs_config
     Int preemptible
-
+    File dev_null = "/dev/null"
+    
     }
 
 
@@ -43,7 +44,7 @@ workflow ctat_VIF_Terra {
     input:     
       sample_id = sample_id,
       left = select_first([unpack_drs.left_fq, left]),
-      right = select_first([unpack_drs.right_fq, right, "/dev/null"]),
+      right = select_first([unpack_drs.right_fq, right, dev_null]),
       docker = docker,
       preemptible = preemptible,
     
