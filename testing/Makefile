@@ -7,7 +7,6 @@ test:
 		--right reads_2.fastq.gz \
 		--sample_id test \
         --no_remove_duplicates \
-        --no_clean_reads \
         --genome_lib_dir ${CTAT_GENOME_LIB} \
 		-O VIF.full.no_remove_dups.outdir
 

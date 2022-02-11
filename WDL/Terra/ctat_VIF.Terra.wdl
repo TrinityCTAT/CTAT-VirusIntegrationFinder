@@ -18,7 +18,6 @@ workflow ctat_VIF_Terra {
 
   input {
     String sample_id
-    Boolean clean_reads = true
     File? left
     File? right
     File? drs_path_fastqs
@@ -45,7 +44,6 @@ workflow ctat_VIF_Terra {
       sample_id = sample_id,
       left = select_first([unpack_drs.left_fq, left]),
       right = select_first([unpack_drs.right_fq, right, "/dev/null"]),
-      clean_reads = clean_reads,
       docker = docker,
       preemptible = preemptible,
     

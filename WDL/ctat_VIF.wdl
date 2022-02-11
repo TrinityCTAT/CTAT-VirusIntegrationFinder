@@ -16,8 +16,6 @@ workflow ctat_vif {
 
         Boolean star_init_only = false
 
-        Boolean clean_reads = true
-      
         Boolean remove_duplicates = true
         Boolean generate_reports = true
 
@@ -131,28 +129,13 @@ workflow ctat_vif {
 
     }
 
-
-    if (clean_reads) {
-
-      call Trimmomatic {
-        input:
-          sample_id=sample_id,
-          left=left,
-          right=right,
-          util_dir=util_dir,
-          preemptible=preemptible,
-          docker = docker
-      }
-      
-    }
-    
     
     if ( !defined(insertion_site_candidates) ) {
         call STAR_init as STAR_init_hgOnly {
             input:
                 util_dir=util_dir,
-                fastq1=select_first([Trimmomatic.clean_left, left]),
-                fastq2=select_first([Trimmomatic.clean_right, right, "/dev/null"]),
+                fastq1=left,
+                fastq2=right,
                 search_chimeras=false,
                 two_pass_mode = star_init_two_pass_mode,
                 base_name=sample_id + ".hgOnly",
@@ -169,9 +152,8 @@ workflow ctat_vif {
             }
 
 
-     if (! clean_reads) {
-       # well, we'll still do it here then. :-)
-       call Trimmomatic as interim_trimmomatic {
+
+      call Trimmomatic as interim_trimmomatic {
         input:
           sample_id=sample_id,
           left=STAR_init_hgOnly.Unmapped_left_fq,
@@ -179,20 +161,18 @@ workflow ctat_vif {
           util_dir=util_dir,
           preemptible=preemptible,
           docker = docker
-        }
-      
       }
-            
+      
       call PolyA_stripper {
         input:
           sample_id=sample_id,
-          left=select_first([interim_trimmomatic.clean_left, STAR_init_hgOnly.Unmapped_left_fq]),
-          right=select_first([interim_trimmomatic.clean_right, STAR_init_hgOnly.Unmapped_right_fq]),
+          left=interim_trimmomatic.clean_left,
+          right=select_first([interim_trimmomatic.clean_right, "/dev/null"]),
           util_dir=util_dir,
           preemptible=preemptible,
           docker = docker
       }
-            
+      
       call STAR_init as STAR_init_hgPlusVirus {
             input:
                 util_dir=util_dir,

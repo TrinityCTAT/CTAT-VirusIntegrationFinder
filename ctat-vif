@@ -87,10 +87,6 @@ def main():
     )
 
     parser.add_argument(
-        "--no_clean_reads", action='store_true', help="do not run trimmomatic and polyA cleaning of reads"
-    )
-    
-    parser.add_argument(
         "--star_init_only", action="store_true", help="Only perform initial STAR chimeric junction analysis"
     )
 
@@ -182,8 +178,6 @@ def main():
     input_json['autodetect_cpu'] = False
     input_json['star_cpu'] = cpu
 
-    input_json['clean_reads'] = not args.no_clean_reads
-    
     input_json['star_init_two_pass_mode'] = star_init_two_pass_mode
     input_json['star_validate_two_pass_mode'] = star_validate_two_pass_mode
     
