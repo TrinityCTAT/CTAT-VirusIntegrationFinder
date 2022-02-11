@@ -351,10 +351,11 @@ task Trimmomatic {
     
     fi
 
-    touch ~{sample_id}.trimmomatic_1.fastq
-    touch ~{sample_id}.trimmomatic_2.fastq # for terra!
-    
     gzip *trimmomatic*fastq
+
+    touch ~{sample_id}.trimmomatic_1.fastq.gz
+    touch ~{sample_id}.trimmomatic_2.fastq.gz  # for terra!
+    
     
     >>>
 
