@@ -434,6 +434,7 @@ task PolyA_stripper {
         docker: docker
         cpu: cpu
         memory: memory
+        maxRetries: 2
     }
 
     
