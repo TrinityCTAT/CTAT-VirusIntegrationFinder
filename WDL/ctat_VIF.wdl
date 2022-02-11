@@ -402,12 +402,12 @@ task PolyA_stripper {
 
     $cmd
 
-    touch ~{sample_id}_1.polyA-trimmed.fastq
-    touch ~{sample_id}_2.polyA-trimmed.fastq # for terra
-
-    
     gzip *polyA-trimmed.fastq
     
+    touch ~{sample_id}_1.polyA-trimmed.fastq.gz
+    touch ~{sample_id}_2.polyA-trimmed.fastq.gz # for terra
+
+        
     >>>
 
     output {
