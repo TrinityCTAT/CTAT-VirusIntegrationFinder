@@ -387,6 +387,7 @@ task Trimmomatic {
         docker: docker
         cpu: cpu
         memory: memory
+        maxRetries: 3
     }
 
     
@@ -434,7 +435,7 @@ task PolyA_stripper {
         docker: docker
         cpu: cpu
         memory: memory
-        maxRetries: 2
+        maxRetries: 3
     }
 
     
@@ -577,6 +578,7 @@ task STAR_init {
         docker: docker
         cpu: cpu
         memory: memory + "GB"
+        maxRetries: 2
     }
 }
 
@@ -695,7 +697,8 @@ task STAR_validate {
         docker: docker
         cpu: cpu
         memory: memory + "GB"
-    }
+        maxRetries: 2
+    } 
 }
 
 task RemoveDuplicates {
@@ -733,6 +736,7 @@ task RemoveDuplicates {
         docker: docker
         cpu: cpu
         memory: memory
+        maxRetries: 3
     }
 }
 
@@ -827,6 +831,7 @@ task InsertionSiteCandidates {
         docker: docker
         cpu: 1
         memory: "16GB"
+        maxRetries: 3
     }
 }
 
@@ -913,6 +918,7 @@ task ExtractChimericGenomicTargets {
         docker: docker
         cpu: 1
         memory: "1GB"
+        maxRetries: 3
     }
 }
 
@@ -941,6 +947,7 @@ task CreateViralFasta {
         disks: "local-disk " + ceil(size(fasta, "GB")*2) + " HDD"
         preemptible: preemptible
         cpu: 1
+        maxRetries: 3
     }
 
     output {
@@ -1001,6 +1008,7 @@ task ExtractViralReads {
         disks: "local-disk " + ceil(size(bam, "GB")*2 + size(fasta, "GB")*2) + " HDD"
         preemptible: preemptible
         cpu: 1
+        maxRetries: 3
     }
 
     output {
@@ -1059,6 +1067,7 @@ task ChimericContigEvidenceAnalyzer {
         docker: docker
         cpu: 1
         memory: "1GB"
+        maxRetries: 3
     }
 }
 
@@ -1163,6 +1172,7 @@ task VirusReport {
         docker: docker
         cpu: 1
         memory: memory
+        maxRetries: 3
     }
 }
 
@@ -1246,6 +1256,7 @@ task SummaryReport {
         docker: docker
         cpu: 1
         memory: "16GB"
+        maxRetries: 3
     }
 }
 
@@ -1297,6 +1308,7 @@ task ExtractEvidenceReads {
         docker: docker
         cpu: 1
         memory: "2GB"
+        maxRetries: 3
     }
 }
 
