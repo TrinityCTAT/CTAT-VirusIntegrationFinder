@@ -351,6 +351,9 @@ task Trimmomatic {
     
     fi
 
+    touch ~{sample_id}.trimmomatic_1.fastq
+    touch ~{sample_id}.trimmomatic_2.fastq # for terra!
+    
     gzip *trimmomatic*fastq
     
     >>>
@@ -398,6 +401,10 @@ task PolyA_stripper {
 
     $cmd
 
+    touch ~{sample_id}_1.polyA-trimmed.fastq
+    touch ~{sample_id}_2.polyA-trimmed.fastq # for terra
+
+    
     gzip *polyA-trimmed.fastq
     
     >>>
