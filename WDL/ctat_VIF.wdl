@@ -386,7 +386,6 @@ task PolyA_stripper {
     String docker
   }
 
-  Boolean have_right_fq = defined(right) && size(right) > 0
   
   command <<<
     set -ex
