@@ -24,7 +24,6 @@ workflow ctat_VIF_Terra {
     String docker = docker
     CTAT_VIF_config pipe_inputs_config
     Int preemptible
-    File dev_null = "/dev/null"
     
     }
 
@@ -44,7 +43,7 @@ workflow ctat_VIF_Terra {
     input:     
       sample_id = sample_id,
       left = select_first([unpack_drs.left_fq, left]),
-      right = select_first([unpack_drs.right_fq, right, dev_null]),
+      right = select_first([unpack_drs.right_fq, right]),
       docker = docker,
       preemptible = preemptible,
     
@@ -149,6 +148,8 @@ task unpack_drs {
             os.rename(fq_files[0], sample_id + "_1.fq")
             subprocess.check_call("gzip " + sample_id + "_1.fq", shell=True)
 
+        subprocess.check_call("touch " + sample_id + "_2.fq.gz", shell=True) # avoid Terra problems with missing output
+
     elif len(fq_files) == 2:
         if is_gzipped(fq_files[0]):
             os.rename(fq_files[0], sample_id + "_1.fq.gz")
@@ -172,7 +173,7 @@ task unpack_drs {
 
     output {
       File left_fq = "~{sample_id}_1.fq.gz"
-      File? right_fq = "~{sample_id}_2.fq.gz"
+      File right_fq = "~{sample_id}_2.fq.gz"
     }
 
     runtime {
