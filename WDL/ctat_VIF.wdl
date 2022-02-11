@@ -430,7 +430,7 @@ task PolyA_stripper {
 
     runtime {
         preemptible: preemptible
-        disks: "local-disk " + ceil(6 * size(left, "GB"))  + " HDD"
+        disks: "local-disk " + ceil(20 + 20 * size(left, "GB"))  + " HDD"
         docker: docker
         cpu: cpu
         memory: memory
