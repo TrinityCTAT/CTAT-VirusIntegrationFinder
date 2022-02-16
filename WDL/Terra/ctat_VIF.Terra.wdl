@@ -10,6 +10,7 @@ struct CTAT_VIF_config {
   File viral_fasta
   File star_index_human_only
   File star_index_human_plus_virus
+  File NULL_file
 
 }
 
@@ -24,7 +25,7 @@ workflow ctat_VIF_Terra {
     String docker = docker
     CTAT_VIF_config pipe_inputs_config
     Int preemptible
-
+    
     }
 
 
@@ -43,7 +44,7 @@ workflow ctat_VIF_Terra {
     input:     
       sample_id = sample_id,
       left = select_first([unpack_drs.left_fq, left]),
-      right = select_first([unpack_drs.right_fq, right, "/dev/null"]),
+      right = select_first([unpack_drs.right_fq, right, pipe_inputs_config.NULL_file]),
       docker = docker,
       preemptible = preemptible,
     
@@ -147,6 +148,8 @@ task unpack_drs {
         else:
             os.rename(fq_files[0], sample_id + "_1.fq")
             subprocess.check_call("gzip " + sample_id + "_1.fq", shell=True)
+
+    
 
     elif len(fq_files) == 2:
         if is_gzipped(fq_files[0]):

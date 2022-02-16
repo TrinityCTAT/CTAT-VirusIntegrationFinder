@@ -352,6 +352,10 @@ task Trimmomatic {
     fi
 
     gzip *trimmomatic*fastq
+
+    touch ~{sample_id}.trimmomatic_1.fastq.gz
+    touch ~{sample_id}.trimmomatic_2.fastq.gz  # for terra!
+    
     
     >>>
 
@@ -386,7 +390,6 @@ task PolyA_stripper {
     String docker
   }
 
-  Boolean have_right_fq = defined(right) && size(right) > 0
   
   command <<<
     set -ex
@@ -401,6 +404,10 @@ task PolyA_stripper {
 
     gzip *polyA-trimmed.fastq
     
+    touch ~{sample_id}_1.polyA-trimmed.fastq.gz
+    touch ~{sample_id}_2.polyA-trimmed.fastq.gz # for terra
+
+        
     >>>
 
     output {
