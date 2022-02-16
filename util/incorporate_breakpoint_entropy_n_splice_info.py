@@ -121,8 +121,8 @@ def main():
     vif_df["entropyB"]  = vif_df["entropyB"].apply(lambda x: "{:.3f}".format(x) )
 
     
-    #vif_df["splice_type"] = vif_df.apply(lambda row: get_splice_info
-
+    vif_df["splice_type"] = vif_df.apply(lambda row: get_splice_info(row['flankA'], row['flankB']), axis=1)
+    
     
     logger.info("-writing outputfile: {}".format(output_filename))
     vif_df.to_csv(output_filename, sep="\t", index=False)
@@ -193,6 +193,25 @@ def revcomp(sequence):
 
     return sequence
     
+
+def get_splice_info(flankA, flankB):
+
+    splice_signals = {"GT-AG", "GC-AG"}
+
+    spliceA = flankA[-2:]
+    spliceB = flankB[0:2]
+
+    splice_candidate = f"{spliceA}-{spliceB}"
+
+    if splice_candidate in splice_signals:
+        return splice_candidate
+    else:
+        rev_splice_candidate = revcomp(splice_candidate)
+        if rev_splice_candidate in splice_signals:
+            return rev_splice_candidate
+
+    return "." # just a placeholder to indicate no canonical splice signal identified.
+
 
 def run_cmd(cmd):
     logger.info("CMD: {}".format(cmd))
