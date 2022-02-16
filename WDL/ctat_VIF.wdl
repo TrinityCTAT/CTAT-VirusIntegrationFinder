@@ -1086,6 +1086,12 @@ task VirusReport {
         samtools view -b -L viruses.bed ${bam} -o ~{prefix}.igvjs.bam  
         bam="~{prefix}.igvjs.bam"
         samtools index ${bam}
+
+        # clean up the bam, restrict to proper pairs and non-supplemental alignments
+        ~{util_dir}/restrict_bam_to_proper_aligns.py ${bam} ${bam}.clean.bam
+        mv ${bam}.clean.bam ${bam}
+        mv ${bam}.clean.bam.bai ${bam}.bai
+
         
         if [ "~{remove_duplicates}" == "true" ]; then
             ~{util_dir}/bam_mark_duplicates.py -i ${bam} -o dups.removed.bam -r
