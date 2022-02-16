@@ -11,7 +11,7 @@ workflow ctat_VIF_Terra_hg38 {
     File? left
     File? right
     File? drs_path_fastqs
-    clean_reads = true
+    Boolean clean_reads = true
     String docker = "trinityctat/ctat_vif:1.0.1"
     Int preemptible = 0
 
