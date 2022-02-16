@@ -22,6 +22,7 @@ workflow ctat_VIF_Terra {
     File? left
     File? right
     File? drs_path_fastqs
+    Boolean clean_reads = true
     String docker = docker
     CTAT_VIF_config pipe_inputs_config
     Int preemptible
@@ -45,6 +46,7 @@ workflow ctat_VIF_Terra {
       sample_id = sample_id,
       left = select_first([unpack_drs.left_fq, left]),
       right = select_first([unpack_drs.right_fq, right, pipe_inputs_config.NULL_file]),
+      clean_reads = clean_reads,
       docker = docker,
       preemptible = preemptible,
     
@@ -53,6 +55,7 @@ workflow ctat_VIF_Terra {
       viral_fasta = pipe_inputs_config.viral_fasta,
       star_index_human_only = pipe_inputs_config.star_index_human_only,
       star_index_human_plus_virus = pipe_inputs_config.star_index_human_plus_virus
+    
 
    }
 
