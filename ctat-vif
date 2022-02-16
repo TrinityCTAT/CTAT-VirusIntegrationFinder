@@ -87,6 +87,10 @@ def main():
     )
 
     parser.add_argument(
+        "--no_clean_reads", action='store_true', help='do NOT clean reads (trimmomatic and polyA-stripper)'
+    )
+    
+    parser.add_argument(
         "--star_init_only", action="store_true", help="Only perform initial STAR chimeric junction analysis"
     )
 
@@ -188,6 +192,7 @@ def main():
 
     input_json['viral_fasta'] = viral_fasta
 
+    input_json['clean_reads'] = not args.no_clean_reads
     
     if left is not None:
         input_json["left"] = left

@@ -16,6 +16,8 @@ workflow ctat_vif {
 
         Boolean star_init_only = false
 
+        Boolean clean_reads = true
+      
         Boolean remove_duplicates = true
         Boolean generate_reports = true
 
@@ -29,6 +31,7 @@ workflow ctat_vif {
         File? star_index_human_plus_virus
         String? star_index_human_plus_virus_dirpath 
 
+      
       
         String igv_virus_reports_memory = "14GB"
         String igv_reports_memory = "1GB"
@@ -152,32 +155,34 @@ workflow ctat_vif {
             }
 
 
-
-      call Trimmomatic as interim_trimmomatic {
-        input:
-          sample_id=sample_id,
-          left=STAR_init_hgOnly.Unmapped_left_fq,
-          right=STAR_init_hgOnly.Unmapped_right_fq,
-          util_dir=util_dir,
-          preemptible=preemptible,
-          docker = docker
-      }
+      if (clean_reads) {
+            
+        call Trimmomatic as interim_trimmomatic {
+          input:
+            sample_id=sample_id,
+            left=STAR_init_hgOnly.Unmapped_left_fq,
+            right=STAR_init_hgOnly.Unmapped_right_fq,
+            util_dir=util_dir,
+            preemptible=preemptible,
+            docker = docker
+        }
       
-      call PolyA_stripper {
-        input:
-          sample_id=sample_id,
-          left=interim_trimmomatic.clean_left,
-          right=select_first([interim_trimmomatic.clean_right, "/dev/null"]),
-          util_dir=util_dir,
-          preemptible=preemptible,
-          docker = docker
+        call PolyA_stripper {
+          input:
+            sample_id=sample_id,
+            left=interim_trimmomatic.clean_left,
+            right=select_first([interim_trimmomatic.clean_right, "/dev/null"]),
+            util_dir=util_dir,
+            preemptible=preemptible,
+            docker = docker
+        }
       }
       
       call STAR_init as STAR_init_hgPlusVirus {
             input:
                 util_dir=util_dir,
-                fastq1=PolyA_stripper.left_trimmed,
-                fastq2=select_first([PolyA_stripper.right_trimmed, right, "/dev/null"]),
+                fastq1=select_first([PolyA_stripper.left_trimmed, STAR_init_hgOnly.Unmapped_left_fq]),
+                fastq2=select_first([PolyA_stripper.right_trimmed, STAR_init_hgOnly.Unmapped_right_fq, "/dev/null"]),
                 search_chimeras=true,
                 two_pass_mode = star_init_two_pass_mode,
                 base_name=sample_id + ".hgPlusVirus",
