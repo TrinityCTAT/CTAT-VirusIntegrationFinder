@@ -60,24 +60,28 @@ def main():
 
     flank_len = 30
     def get_breakpoint_flanking_seq (acc, coord, orient, left_or_right_side):
+
+        # coord represents donor or acceptor site position
+        # so need to adjust for sequence extraction based on left/right and orientation info.
+        
         if left_or_right_side == "left":
             if orient == '+':
-                anchor_left = coord - flank_len + 1
-                anchor_right = coord +2
+                anchor_left = coord -1 - flank_len + 1
+                anchor_right = coord -1  +2
             elif orient == '-':
-                anchor_left = coord -2
-                anchor_right = coord + flank_len - 1
+                anchor_left = coord + 1 -2
+                anchor_right = coord + 1 + flank_len - 1
 
             else:
                 raise RuntimeError(f"cannot recognize orient {orient}")
 
         elif left_or_right_side == "right":
             if orient == '+':
-                anchor_left = coord -2
-                anchor_right = coord + flank_len -1
+                anchor_left = coord + 1 -2
+                anchor_right = coord + 1 + flank_len -1
             elif orient == '-':
-                anchor_left = coord - flank_len + 1
-                anchor_right = coord +2
+                anchor_left = coord -1 - flank_len + 1
+                anchor_right = coord -1 +2
             else:
                 raise RuntimeError(f"cannot recognize orient {orient}")
         else:
