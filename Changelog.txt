@@ -1,3 +1,17 @@
+# v1.1.0 - Feb 22, 2022
+- incorporated read cleaning step between STAR phases 1 & 2 involving trimmomatic and polyA-stripper. Can disable with --no_clean_reads parameter or using the wdl clean_reads boolean setting.
+- splicing info added to report to indicate canonical splicing types
+- breakpoint flanking sequences including candidate dinucleotide splice pairs are provided in output.
+- final (refined) report restricted to those prelim entries that had non-zero recovered evidence reads.
+- virus aligned bams are now restricted to proper pairs for PE reads.
+- virus genome coverage content restricted to ungapped regions
+- many revisions to Terra wdls to account for SE reads compatibility
+- mitochondrial containing chimeric reads are auto filtered
+
+
+# v1.0.1 - Dec 19, 2021
+Largely redesigned for further improved accuracy and general utility.
+
 # v0.1.0 - Mar 10, 2021
 - initial public release
 
