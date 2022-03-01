@@ -22,6 +22,8 @@ def main():
 
     fq_files = sorted(glob.glob("fastq/*"))
 
+    print(f"got fq files: [{fq_files}]", file=sys.stderr)
+    
     def is_gzipped(filename):
         if re.search(".gz$", filename):
             return True
@@ -49,10 +51,17 @@ def main():
         if is_gzipped(fq_files[0]):
             method = "zcat"
 
-        subprocess.check_call(f"{method} {fq_files[0]} {fq_files[1]} | gzip -c > {sample_id}_1.fq.gz", shell=True)
-        subprocess.check_call(f"{method} {fq_files[2]} {fq_files[3]} | gzip -c > {sample_id}_2.fq.gz", shell=True)
+        cmd = f"{method} {fq_files[0]} {fq_files[2]} | gzip -c > {sample_id}_1.fq.gz"
+        print(cmd, file=sys.stderr)
+        subprocess.check_call(cmd, shell=True)
 
-        
+        cmd = f"{method} {fq_files[1]} {fq_files[3]} | gzip -c > {sample_id}_2.fq.gz"
+        print(cmd, file=sys.stderr)
+        subprocess.check_call(cmd, shell=True)
+
+
+    sys.exit(0)
+    
 
 
 if __name__=='__main__':
