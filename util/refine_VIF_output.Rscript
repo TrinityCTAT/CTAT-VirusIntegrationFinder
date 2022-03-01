@@ -33,7 +33,7 @@ main = function () {
     prelim_counts = prelim_counts %>% select(contig, chrA, coordA, orientA, chrB, coordB, orientB,
                                              prelim.primary_brkpt_type, prelim.num_primary_reads, prelim.num_supp_reads,
                                              prelim.mean_hits, prelim.mean_min_per_id, prelim.mean_max_end_clipping, prelim.mean_min_anchor_len,
-                                             prelim.total, entropyA, entropyB)
+                                             prelim.total, entropyA, entropyB, flankA, flankB, splice_type)
 
     vif_counts = read.table(vif_counts_filename, header=T, sep="\t", stringsAsFactors = F, comment.char = '', quote = '')
 
@@ -41,9 +41,13 @@ main = function () {
 
     data[is.na(data)] = 0
 
-    data = data %>% select(contig, chrA, coordA, orientA, entropyA, chrB, coordB, orientB, entropyB, prelim.primary_brkpt_type,
+    data = data %>% select(contig, chrA, coordA, orientA, flankA, entropyA,
+                           chrB, coordB, orientB, flankB, entropyB,
+                           prelim.primary_brkpt_type,
                            prelim.mean_hits, prelim.mean_min_per_id, prelim.mean_max_end_clipping, prelim.mean_min_anchor_len,
-                           prelim.total, split, span, total) %>%
+                           prelim.total,
+                           splice_type, split, span, total) %>%
+              filter (total > 0) %>%
               arrange(desc(total))
     
     write.table(data, file=output_filename, row.names=F, sep="\t", quote=F)
