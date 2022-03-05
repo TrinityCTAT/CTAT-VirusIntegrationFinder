@@ -168,8 +168,8 @@ task unpack_drs {
         if is_gzipped(fq_files[0]):
             method = "zcat"
 
-        subprocess.check_call(f"{method} {fq_files[0]} {fq_files[1]} | gzip -c > {sample_id}_1.fq.gz", shell=True)
-        subprocess.check_call(f"{method} {fq_files[2]} {fq_files[3]} | gzip -c > {sample_id}_2.fq.gz", shell=True)
+        subprocess.check_call(f"{method} {fq_files[0]} {fq_files[2]} | gzip -c > {sample_id}_1.fq.gz", shell=True)
+        subprocess.check_call(f"{method} {fq_files[1]} {fq_files[3]} | gzip -c > {sample_id}_2.fq.gz", shell=True)
 
     CODE
 
