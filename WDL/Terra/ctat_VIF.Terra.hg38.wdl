@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.0.1c/WDL/Terra/ctat_VIF.Terra.wdl" as ctat_VIF_Terra
+import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.1.0/WDL/Terra/ctat_VIF.Terra.wdl" as ctat_VIF_Terra
 #import "ctat_VIF.Terra.wdl" as ctat_VIF_Terra
 
 
@@ -12,7 +12,8 @@ workflow ctat_VIF_Terra_hg38 {
     File? right
     File? drs_path_fastqs
     Boolean clean_reads = true
-    String docker = "trinityctat/ctat_vif:1.0.1"
+    Int max_hits = 1
+    String docker = "trinityctat/ctat_vif:1.1.0"
     Int preemptible = 0
 
     CTAT_VIF_config pipe_inputs_config = {
@@ -32,6 +33,7 @@ workflow ctat_VIF_Terra_hg38 {
       left = left,
       right = right,
       clean_reads = clean_reads,
+      max_hits = max_hits,
       drs_path_fastqs = drs_path_fastqs,
       docker = docker,
       pipe_inputs_config = pipe_inputs_config,

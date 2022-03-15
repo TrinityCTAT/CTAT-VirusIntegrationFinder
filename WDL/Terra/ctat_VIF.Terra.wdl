@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.0.1c/WDL/ctat_VIF.wdl" as ctat_VIF_wf
+import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.1.0/WDL/ctat_VIF.wdl" as ctat_VIF_wf
 
 
 struct CTAT_VIF_config {
@@ -23,6 +23,7 @@ workflow ctat_VIF_Terra {
     File? right
     File? drs_path_fastqs
     Boolean clean_reads = true
+    Int max_hits = 1
     String docker = docker
     CTAT_VIF_config pipe_inputs_config
     Int preemptible
@@ -47,6 +48,7 @@ workflow ctat_VIF_Terra {
       left = select_first([unpack_drs.left_fq, left]),
       right = select_first([unpack_drs.right_fq, right, pipe_inputs_config.NULL_file]),
       clean_reads = clean_reads,
+      max_hits = max_hits,
       docker = docker,
       preemptible = preemptible,
     

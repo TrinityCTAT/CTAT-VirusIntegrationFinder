@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.0.1c/WDL/Terra/ctat_VIF.Terra.wdl" as ctat_VIF_Terra
+import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.1.0/WDL/Terra/ctat_VIF.Terra.wdl" as ctat_VIF_Terra
 #import "ctat_VIF.Terra.wdl" as ctat_VIF_Terra
 
 
@@ -10,7 +10,7 @@ workflow ctat_VIF_Terra_hg19 {
     String sample_id
     File left
     File? right
-    String docker = "trinityctat/ctat_vif:1.0.1"
+    String docker = "trinityctat/ctat_vif:1.1.0"
 
     CTAT_VIF_config pipe_inputs_config = {
       "ref_genome_fasta" : "gs://ctat_genome_libs/__genome_libs_StarFv1.10/GRCh37_gencode_v19_CTAT_lib_Mar012021.plug-n-play/ref_genome.fa",
