@@ -184,6 +184,7 @@ workflow ctat_vif {
                 fastq1=select_first([PolyA_stripper.left_trimmed, STAR_init_hgOnly.Unmapped_left_fq]),
                 fastq2=select_first([PolyA_stripper.right_trimmed, STAR_init_hgOnly.Unmapped_right_fq, "/dev/null"]),
                 search_chimeras=true,
+                chimMultimapNmax = max_hits,
                 two_pass_mode = star_init_two_pass_mode,
                 base_name=sample_id + ".hgPlusVirus",
                 star_reference=star_index_human_plus_virus,
