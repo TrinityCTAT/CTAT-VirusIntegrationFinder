@@ -224,7 +224,7 @@ task revert_bam_to_fastqs {
 
 
     # revert aligned bam
-    java -Xmx1000m -jar /usr/local/bin/picard.jar \
+    java -Xmx1000m -jar /usr/local/src/picard.jar \
         RevertSam \
         INPUT=~{sample_id}.cleaned.bam \
         OUTPUT_BY_READGROUP=false \
@@ -234,7 +234,7 @@ task revert_bam_to_fastqs {
 
 
     # bam to fastq
-    java -jar /usr/local/bin/picard.jar \
+    java -jar /usr/local/src/picard.jar \
         SamToFastq I=~{sample_id}.reverted.bam \
         F=~{sample_id}_1.fastq F2=~{sample_id}_2.fastq \
         INTERLEAVE=false NON_PF=true \
