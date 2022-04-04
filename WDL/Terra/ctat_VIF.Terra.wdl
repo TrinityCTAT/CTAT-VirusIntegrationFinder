@@ -230,19 +230,19 @@ task revert_bam_to_fastqs {
         OUTPUT_BY_READGROUP=false \
         VALIDATION_STRINGENCY=SILENT \
         SORT_ORDER=queryname \
-        OUTPUT=${sample_id}.reverted.bam 
+        OUTPUT=~{sample_id}.reverted.bam 
 
 
     # bam to fastq
     java -jar /usr/local/bin/picard.jar \
-        SamToFastq I=${sample_id}.reverted.bam \
-        F=${sample_id}_1.fastq F2=${sample_id}_2.fastq \
+        SamToFastq I=~{sample_id}.reverted.bam \
+        F=~{sample_id}_1.fastq F2=~{sample_id}_2.fastq \
         INTERLEAVE=false NON_PF=true \
         CLIPPING_ATTRIBUTE=XT CLIPPING_ACTION=2
     
 
-    gzip ${sample_id}_1.fastq
-    gzip ${sample_id}_2.fastq
+    gzip ~{sample_id}_1.fastq
+    gzip ~{sample_id}_2.fastq
 
     >>>
 
@@ -257,7 +257,7 @@ task revert_bam_to_fastqs {
         docker: docker
         cpu: 1
         memory: "4GB"
-        maxRetries: 3
+        maxRetries: 0
     }
 }
 
