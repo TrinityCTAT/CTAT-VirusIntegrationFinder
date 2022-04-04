@@ -22,6 +22,7 @@ workflow ctat_VIF_Terra {
     File? left
     File? right
     File? drs_path_fastqs
+    File? rnaseq_aligned_bam
     Boolean clean_reads = true
     Int max_hits = 1
     String docker = docker
@@ -29,7 +30,6 @@ workflow ctat_VIF_Terra {
     Int preemptible
     
     }
-
 
 
    if (defined(drs_path_fastqs)) {
@@ -41,12 +41,25 @@ workflow ctat_VIF_Terra {
          preemptible = preemptible
      }
   }
+
+
+  if (defined(rnaseq_aligned_bam)) {
+    call revert_bam_to_fastqs {
+      input:
+        sample_id = sample_id,
+        rnaseq_aligned_bam = select_first([rnaseq_aligned_bam]),
+        docker = docker,
+        preemptible = preemptible
+    }
+
+  }
+
   
   call ctat_VIF_wf.ctat_vif as vif {
     input:     
       sample_id = sample_id,
-      left = select_first([unpack_drs.left_fq, left]),
-      right = select_first([unpack_drs.right_fq, right, pipe_inputs_config.NULL_file]),
+      left = select_first([unpack_drs.left_fq, revert_bam_to_fastqs.left_fq, left]),
+      right = select_first([unpack_drs.right_fq, revert_bam_to_fastqs.right_fq, right, pipe_inputs_config.NULL_file]),
       clean_reads = clean_reads,
       max_hits = max_hits,
       docker = docker,
@@ -185,6 +198,62 @@ task unpack_drs {
     runtime {
         preemptible: preemptible
         disks: "local-disk " + ceil(50 + size(drs_path_fastqs, "GB")*10 + 1) + " HDD"
+        docker: docker
+        cpu: 1
+        memory: "4GB"
+        maxRetries: 3
+    }
+}
+
+
+
+task revert_bam_to_fastqs {
+  input {
+    String sample_id
+    File rnaseq_aligned_bam
+    String docker
+    Int preemptible
+  }
+
+  command <<<
+
+    set -ex
+
+    # initial potential cleanup of read names in the bam file
+    /usr/local/bin/sam_readname_cleaner.py ~{rnaseq_aligned_bam} ~{sample_id}.cleaned.bam
+
+
+    # revert aligned bam
+    java -Xmx1000m -jar /usr/local/bin/picard.jar \
+        RevertSam \
+        INPUT=~{sample_id}.cleaned.bam \
+        OUTPUT_BY_READGROUP=false \
+        VALIDATION_STRINGENCY=SILENT \
+        SORT_ORDER=queryname \
+        OUTPUT=${sample_id}.reverted.bam 
+
+
+    # bam to fastq
+    java -jar /usr/local/bin/picard.jar \
+        SamToFastq I=${sample_id}.reverted.bam \
+        F=${sample_id}_1.fastq F2=${sample_id}_2.fastq \
+        INTERLEAVE=false NON_PF=true \
+        CLIPPING_ATTRIBUTE=XT CLIPPING_ACTION=2
+    
+
+    gzip ${sample_id}_1.fastq
+    gzip ${sample_id}_2.fastq
+
+    >>>
+
+    output {
+      File left_fq = "~{sample_id}_1.fastq.gz"
+      File right_fq = "~{sample_id}_2.fastq.gz"
+    }
+
+    runtime {
+        preemptible: preemptible
+        disks: "local-disk " + ceil(50 + size(rnaseq_aligned_bam, "GB")*10 + 1) + " HDD"
         docker: docker
         cpu: 1
         memory: "4GB"
