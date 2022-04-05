@@ -58,7 +58,7 @@ singularity:
 		--sample_id test \
 		--genome_lib_dir ${CTAT_GENOME_LIB}  \
 		-O VIF.singularity.outdir \
-		--CPU 10
+		--cpu 10
 
 
 

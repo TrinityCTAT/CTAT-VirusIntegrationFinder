@@ -62,7 +62,7 @@ def main():
 
 
 
-    fieldnames = list(tab_reader.fieldnames) + ["adj_total", "excluded_reads", "frac_reads_removed", "alt_brkpts", "virus_brkend_grp", "is_primary"]
+    fieldnames = list(tab_reader.fieldnames) + ["adj_total", "excluded_reads", "frac_reads_removed", "virus_brkend_grp", "is_primary"]
     if not INCLUDE_READNAMES:
         fieldnames.remove("readnames")
         fieldnames.remove("excluded_reads")
@@ -85,35 +85,37 @@ def main():
         shared_virus_brkpt_rows = rows_grouped_by_virus_brkpt[virus_brkpt_token]
 
         # define adjusted totals based on earlier defined multimapping reads
-        for row in shared_virus_brkpt_rows:
-            compute_adjusted_total(row, ev_reads_seen)
+        for loc_row in shared_virus_brkpt_rows:
+            compute_adjusted_total(loc_row, ev_reads_seen)
 
         shared_virus_brkpt_rows = sorted(shared_virus_brkpt_rows, key=lambda x: x['adj_total'], reverse=True)
+
+
 
         top_scoring_brkpt_row = shared_virus_brkpt_rows[0]
         top_score = top_scoring_brkpt_row['adj_total']
         top_scoring_brkpt_row['virus_brkend_grp'] = virus_brkpt_token
-        top_scoring_brkpt_row['is_primary'] = True
+        top_scoring_brkpt_row['is_primary'] = "True"
 
         add_ev_read_exclusion(top_scoring_brkpt_row, ev_reads_seen)
 
         for remaining_row in shared_virus_brkpt_rows[1:] :
             add_ev_read_exclusion(remaining_row, ev_reads_seen)
-            top_scoring_brkpt_row['virus_brkend_grp'] = virus_brkpt_token
-            top_scoring_brkpt_row['is_primary'] = False
+            remaining_row['virus_brkend_grp'] = virus_brkpt_token
+            remaining_row['is_primary'] = "False"
 
-
-        for row in shared_virus_brkpt_rows:
+        # report entries
+        for loc_row in shared_virus_brkpt_rows:
 
             if not INCLUDE_READNAMES:
-                del(row['readnames'])
-                del(row['excluded_reads'])
+                del(loc_row['readnames'])
+                del(loc_row['excluded_reads'])
 
-            if (row['adj_total'] > 0 and row['adj_total'] / top_score >= MIN_ALT_BREAK_FRAC_READS
+            if (loc_row['adj_total'] > 0 and loc_row['adj_total'] / top_score >= MIN_ALT_BREAK_FRAC_READS
                 and
-                float(row['frac_reads_removed']) < MAX_FRAC_MULTIMAPPING_NONPRIMARY) :
+                float(loc_row['frac_reads_removed']) < MAX_FRAC_MULTIMAPPING_NONPRIMARY) :
 
-                writer.writerow(top_scoring_brkpt_row)    
+                writer.writerow(loc_row)    
 
 
         processed_brkpts.add(virus_brkpt_token)

@@ -799,12 +799,12 @@ task InsertionSiteCandidates {
 
         # write abridged tsv
         df = pd.read_csv("~{prefix}.full.tsv", sep="\t")
-        df.drop('readnames', axis=1).to_csv("~{prefix}.full.abridged.tsv", sep="\t", index=False)
+        df.drop(['readnames', 'excluded_reads'], axis=1).to_csv("~{prefix}.full.abridged.tsv", sep="\t", index=False)
 
         df = df[ df.total >= min_reads ]
 
         df.to_csv("~{prefix}.filtered.tsv", sep="\t", index=False)
-        df.drop('readnames', axis=1).to_csv("~{prefix}.filtered.abridged.tsv", sep="\t", index=False) 
+        df.drop(['readnames', 'excluded_reads'], axis=1).to_csv("~{prefix}.filtered.abridged.tsv", sep="\t", index=False) 
       
         CODE
 
