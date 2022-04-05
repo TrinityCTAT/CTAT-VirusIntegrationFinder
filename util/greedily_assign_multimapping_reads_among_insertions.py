@@ -62,7 +62,7 @@ def main():
 
 
 
-    fieldnames = list(tab_reader.fieldnames) + ["adj_total", "excluded_reads", "frac_reads_removed", "alt_brkpts"]
+    fieldnames = list(tab_reader.fieldnames) + ["adj_total", "excluded_reads", "frac_reads_removed", "alt_brkpts", "virus_brkend_grp", "is_primary"]
     if not INCLUDE_READNAMES:
         fieldnames.remove("readnames")
         fieldnames.remove("excluded_reads")
@@ -92,30 +92,32 @@ def main():
 
         top_scoring_brkpt_row = shared_virus_brkpt_rows[0]
         top_score = top_scoring_brkpt_row['adj_total']
-        top_scoring_brkpt_row['alt_brkpts'] = list()
+        top_scoring_brkpt_row['virus_brkend_grp'] = virus_brkpt_token
+        top_scoring_brkpt_row['is_primary'] = True
 
         add_ev_read_exclusion(top_scoring_brkpt_row, ev_reads_seen)
 
         for remaining_row in shared_virus_brkpt_rows[1:] :
-
-            if top_score > 0 and remaining_row['adj_total'] / top_score >= MIN_ALT_BREAK_FRAC_READS:
-                top_scoring_brkpt_row['alt_brkpts'].append(
-                    "^".join([remaining_row['entry'], str(remaining_row['adj_total']) ])
-                )
-
             add_ev_read_exclusion(remaining_row, ev_reads_seen)
+            top_scoring_brkpt_row['virus_brkend_grp'] = virus_brkpt_token
+            top_scoring_brkpt_row['is_primary'] = False
 
-        top_scoring_brkpt_row['alt_brkpts'] = ",".join(top_scoring_brkpt_row['alt_brkpts'])
 
+        for row in shared_virus_brkpt_rows:
 
-        if not INCLUDE_READNAMES:
-            del(top_scoring_brkpt_row['readnames'])
-            del(top_scoring_brkpt_row['excluded_reads'])
+            if not INCLUDE_READNAMES:
+                del(row['readnames'])
+                del(row['excluded_reads'])
 
-        if float(top_scoring_brkpt_row['frac_reads_removed']) < MAX_FRAC_MULTIMAPPING_NONPRIMARY:
-            writer.writerow(top_scoring_brkpt_row)    
+            if (row['adj_total'] > 0 and row['adj_total'] / top_score >= MIN_ALT_BREAK_FRAC_READS
+                and
+                float(row['frac_reads_removed']) < MAX_FRAC_MULTIMAPPING_NONPRIMARY) :
+
+                writer.writerow(top_scoring_brkpt_row)    
+
 
         processed_brkpts.add(virus_brkpt_token)
+
 
         
 def compute_adjusted_total(row, ev_reads_seen):
