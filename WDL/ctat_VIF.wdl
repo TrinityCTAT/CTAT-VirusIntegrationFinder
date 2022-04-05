@@ -22,7 +22,7 @@ workflow ctat_vif {
         Boolean generate_reports = true
 
         Int min_reads = 5 
-        Int max_hits = 1 # unique by default
+        Int max_hits = 20
 
         # star indices needed (local: point to directory name, on cloud: give tar file)
         File? star_index_human_only
@@ -30,7 +30,6 @@ workflow ctat_vif {
         
         File? star_index_human_plus_virus
         String? star_index_human_plus_virus_dirpath 
-
       
       
         String igv_virus_reports_memory = "14GB"
@@ -775,10 +774,16 @@ task InsertionSiteCandidates {
            --vif_full_tsv ~{prefix}.tmp.full.tsv \
            --output_bam ~{prefix}.genome_chimeric_evidence.bam
       
+        # organize insertion candidates by virus chimeric breakends
+        ~{util_dir}/greedily_assign_multimapping_reads_among_insertions.py \
+           --init_full_tsv ~{prefix}.tmp.full.tsv \
+           --include_readnames \
+           > ~{prefix}.tmp.full.virus_breakend_grouped.tsv
+
         # add evidence read stats
         ~{util_dir}/incorporate_read_alignment_stats.py \
           --supp_reads_bam ~{prefix}.genome_chimeric_evidence.bam \
-          --vif_full_tsv ~{prefix}.tmp.full.tsv \
+          --vif_full_tsv ~{prefix}.tmp.full.virus_breakend_grouped.tsv \
           --output ~{prefix}.full.w_read_stats.tsv
 
         # add seq entropy around breakpoints
@@ -791,13 +796,11 @@ task InsertionSiteCandidates {
         python <<CODE
         import pandas as pd
         min_reads = ~{min_reads}
-        #max_hits = ~{max_hits}
 
         # write abridged tsv
         df = pd.read_csv("~{prefix}.full.tsv", sep="\t")
         df.drop('readnames', axis=1).to_csv("~{prefix}.full.abridged.tsv", sep="\t", index=False)
 
-        #df = df[ (df.hits <= max_hits) & (df.total >= min_reads)]
         df = df[ df.total >= min_reads ]
 
         df.to_csv("~{prefix}.filtered.tsv", sep="\t", index=False)

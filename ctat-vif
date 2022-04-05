@@ -109,7 +109,7 @@ def main():
 
     parser.add_argument("--version", action='store_true', help="show version tag: {}".format(VERSION))
 
-    parser.add_argument("--max_hits", default=1, type=int, help='maximum number of multimapping allowed for chimeric reads (1=unique chim reads only)')
+    parser.add_argument("--max_hits", default=20, type=int, help='maximum number of multimapping allowed for chimeric reads (1=unique chim reads only)')
 
     args = parser.parse_args()
 
