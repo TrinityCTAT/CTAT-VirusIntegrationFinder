@@ -22,6 +22,8 @@ main = function () {
     prelim_counts = read.table(prelim_counts_filename, header=T, sep="\t", stringsAsFactors = F, comment.char = '', quote = '')
     prelim_counts = prelim_counts %>% rename(contig = entry,
                                              prelim.total = total,
+                                             prelim.adj_total = adj_total,
+                                             prelim.frac_reads_removed = frac_reads_removed,
                                              prelim.primary_brkpt_type = primary_brkpt_type,
                                              prelim.num_primary_reads = num_primary_reads,
                                              prelim.num_supp_reads = num_supp_reads,
@@ -33,7 +35,9 @@ main = function () {
     prelim_counts = prelim_counts %>% select(contig, chrA, coordA, orientA, chrB, coordB, orientB,
                                              prelim.primary_brkpt_type, prelim.num_primary_reads, prelim.num_supp_reads,
                                              prelim.mean_hits, prelim.mean_min_per_id, prelim.mean_max_end_clipping, prelim.mean_min_anchor_len,
-                                             prelim.total, entropyA, entropyB, flankA, flankB, splice_type)
+                                             prelim.total, prelim.adj_total, prelim.frac_reads_removed,
+                                             entropyA, entropyB, flankA, flankB, splice_type,
+                                             virus_brkend_grp, is_primary)
 
     vif_counts = read.table(vif_counts_filename, header=T, sep="\t", stringsAsFactors = F, comment.char = '', quote = '')
 
@@ -41,14 +45,22 @@ main = function () {
 
     data[is.na(data)] = 0
 
-    data = data %>% select(contig, chrA, coordA, orientA, flankA, entropyA,
-                           chrB, coordB, orientB, flankB, entropyB,
-                           prelim.primary_brkpt_type,
-                           prelim.mean_hits, prelim.mean_min_per_id, prelim.mean_max_end_clipping, prelim.mean_min_anchor_len,
-                           prelim.total,
-                           splice_type, split, span, total) %>%
-              filter (total > 0) %>%
-              arrange(desc(total))
+    # join with non-primary insetions of the same virus brkpt group
+    virus_brkend_grps_want = data %>% pull(virus_brkend_grp)
+    data = bind_rows(data,
+                     prelim_counts %>% filter(is_primary == "False") %>% filter(virus_brkend_grp %in% virus_brkend_grps_want) )
+    
+    
+    #data = data %>% select(contig, chrA, coordA, orientA, flankA, entropyA,
+    #                       chrB, coordB, orientB, flankB, entropyB,
+    #                       prelim.primary_brkpt_type,
+    #                       prelim.mean_hits, prelim.mean_min_per_id, prelim.mean_max_end_clipping, prelim.mean_min_anchor_len,
+    #                       prelim.total,
+    #                       splice_type, split, span, total) %>%
+    #          filter (total > 0) %>%
+    #          arrange(desc(total))
+
+    data = data %>% arrange(desc(total), desc(prelim.adj_total))
     
     write.table(data, file=output_filename, row.names=F, sep="\t", quote=F)
     
