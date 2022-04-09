@@ -347,6 +347,9 @@ def main():
             )
 
             for chim_event in all_chim_events:
+
+                chim_event.refine_insertion_coordinates()
+                
                 print(
                     chim_event.get_event_accession() + "\t" + str(chim_event), file=ofh
                 )
@@ -573,7 +576,7 @@ class Chimeric_event(Chimeric_read):
             raise RuntimeError("chimeric event already refined, can only do this once")
         self._refined = True
 
-        if self.splitType != -1:
+        if self.splitType != "Span":
             # Split read, coodinates fixed.
             return
 

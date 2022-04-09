@@ -107,6 +107,7 @@ workflow ctat_vif {
         File? insertion_site_candidates_filtered_abridged = InsertionSiteCandidates.filtered_abridged
         File? insertion_site_candidates_genome_chimeric_evidence_reads_bam = InsertionSiteCandidates.genome_chimeric_evidence_reads_bam
         File? insertion_site_candidates_genome_chimeric_evidence_reads_bai = InsertionSiteCandidates.genome_chimeric_evidence_reads_bai
+        File? insertion_site_candidates_human_virus_chimJ = InsertionSiteCandidates.human_virus_chimJ
         
         File? genome_abundance_plot = VirusReport.genome_abundance_plot
         File? virus_coverage_read_counts_summary = VirusReport.read_counts_summary
