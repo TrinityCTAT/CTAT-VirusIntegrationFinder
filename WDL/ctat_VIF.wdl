@@ -22,7 +22,7 @@ workflow ctat_vif {
         Boolean generate_reports = true
 
         Int min_reads = 5 
-        Int max_hits = 20
+        Int max_hits = 50
 
         # star indices needed (local: point to directory name, on cloud: give tar file)
         File? star_index_human_only
