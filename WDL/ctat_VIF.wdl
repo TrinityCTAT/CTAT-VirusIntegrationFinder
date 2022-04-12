@@ -792,7 +792,12 @@ task InsertionSiteCandidates {
           --vif_tsv  ~{prefix}.full.w_read_stats.tsv \
           --ref_genome_fasta ~{ref_genome_fasta} \
           --viral_genome_fasta ~{viral_fasta} \
-          --output ~{prefix}.full.tsv
+          --output ~{prefix}.full.w_brkpt_seq_entropy.tsv
+
+        # identify additional primary targets to pursue (set is_primary='Maybe')
+        ~{util_dir}/revise_primary_target_list_via_brkpt_homologies.py \
+           --vif_tsv ~{prefix}.full.w_brkpt_seq_entropy.tsv \
+           > ~{prefix}.full.tsv 
 
         python <<CODE
         import pandas as pd

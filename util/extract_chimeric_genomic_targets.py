@@ -231,7 +231,7 @@ def parse_chim_events(chim_events_filename):
         for row in reader:
             event_num = row["entry"]
             # only examining primary entries
-            if row["is_primary"] == "True":
+            if row["is_primary"] != "False":
                 event_info_dict[event_num] = row
 
     return event_info_dict
