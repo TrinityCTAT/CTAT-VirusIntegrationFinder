@@ -41,12 +41,12 @@ main = function () {
 
     vif_counts = read.table(vif_counts_filename, header=T, sep="\t", stringsAsFactors = F, comment.char = '', quote = '')
 
-    data = full_join(prelim_counts, vif_counts, by='contig')
+    data = right_join(prelim_counts, vif_counts, by='contig')
 
     #data[is.na(data)] = 0
 
     # join with non-primary insetions of the same virus brkpt group
-    data = data %>% mutate(search_grp = paste(virus_brkend_grp, flankA, flankB)) 
+    data = data %>% mutate(search_grp = paste(virus_brkend_grp, flankA, flankB))
     virus_brkend_grps_want = data %>% pull(search_grp)
     prelim_counts = prelim_counts %>% mutate(search_grp = paste(virus_brkend_grp, flankA, flankB))
 
@@ -57,15 +57,15 @@ main = function () {
     # for the imputed entries, assign total read count to that of the virus brken grp
     data = data %>% group_by(search_grp) %>% mutate(total2 = max(total, na.rm=T)) %>% ungroup()
     data = data %>% mutate(total = ifelse(is.na(total), total2, total)) %>% select(-total2)
-    
+
     data = data %>% select(-search_grp)
-    
+
     data = data %>% arrange(desc(total), desc(prelim.adj_total))
 
     #data = data %>% arrange(search_grp)
-    
+
     write.table(data, file=output_filename, row.names=F, sep="\t", quote=F)
-    
+
 
     quit(save = "no", status = 0, runLast = FALSE)
 
