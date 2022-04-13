@@ -118,6 +118,7 @@ workflow ctat_VIF_Terra {
      File? evidence_bai = vif.evidence_bai
 
      File? refined_counts = vif.refined_counts
+     File? refined_distilled = vif.refined_distilled
      File? genome_abundance_refined_plot = vif.genome_abundance_refined_plot
      File? igv_report_html = vif.igv_report_html
 
