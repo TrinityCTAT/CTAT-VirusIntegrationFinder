@@ -127,6 +127,7 @@ workflow ctat_vif {
         File? evidence_bai = ChimericContigEvidenceAnalyzer.evidence_bai
 
         File? refined_counts = SummaryReport.refined_counts
+        File? refined_distilled = SummaryReport.refined_distilled
         File? genome_abundance_refined_plot = SummaryReport.genome_abundance_plot
         File? igv_report_html = SummaryReport.html
 
@@ -1211,6 +1212,10 @@ task SummaryReport {
         --vif_counts ~{vif_counts} \
         --output ~{prefix}.refined.tsv
 
+        ~{util_dir}/distill_to_primary_target_list_via_brkpt_homologies.py \
+          --vif_tsv ~{prefix}.refined.tsv \
+          > ~{prefix}.refined.distilled.tsv 
+
         ~{util_dir}/make_VIF_genome_abundance_plot.Rscript \
         --vif_report ~{prefix}.refined.tsv \
         --title "Genome Wide Abundance" \
@@ -1256,6 +1261,7 @@ task SummaryReport {
     output {
         File html = "~{prefix}.html"
         File refined_counts = "~{prefix}.refined.tsv"
+        File refined_distilled = "~{prefix}.refined.distilled.tsv"
         File genome_abundance_plot = "~{prefix}.genome_plot.png"
     }
     runtime {
