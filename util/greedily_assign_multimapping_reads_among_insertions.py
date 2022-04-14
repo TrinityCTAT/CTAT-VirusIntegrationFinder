@@ -26,7 +26,7 @@ def main():
 
     
     # begin work
-    
+    csv.field_size_limit(sys.maxsize)
     tab_reader = csv.DictReader(open(init_full_tsv, "rt"), delimiter="\t")
 
     """
