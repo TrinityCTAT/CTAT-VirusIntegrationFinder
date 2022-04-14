@@ -106,7 +106,7 @@ RUN wget -q https://github.com/arq5x/bedtools2/releases/download/v2.30.0/bedtool
 
 WORKDIR $SRC
 ENV CTAT_VIF_VER "1.2.2-dev"
-ENV VIF_CO=a5b1ae9946ff530372d3047a5fac2fc7e7518e54
+ENV VIF_CO=e20a1eb2acefeb23e36719f4c03b0e4e93e6a754
 RUN git clone --recursive https://github.com/broadinstitute/CTAT-VirusIntegrationFinder.git && \
         cd CTAT-VirusIntegrationFinder && \
         git checkout ${VIF_CO} && \
