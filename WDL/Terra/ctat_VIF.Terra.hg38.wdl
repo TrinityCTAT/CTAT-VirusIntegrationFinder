@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.1.0/WDL/Terra/ctat_VIF.Terra.wdl" as ctat_VIF_Terra
+import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.2.3/WDL/Terra/ctat_VIF.Terra.wdl" as ctat_VIF_Terra
 #import "ctat_VIF.Terra.wdl" as ctat_VIF_Terra
 
 
