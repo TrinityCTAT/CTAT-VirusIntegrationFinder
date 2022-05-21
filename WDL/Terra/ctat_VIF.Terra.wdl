@@ -106,6 +106,8 @@ workflow ctat_VIF_Terra {
      File? virus_coverage_read_counts_log_image = vif.virus_coverage_read_counts_log_image
      Array[File]? virus_coverage_virus_images = vif.virus_coverage_virus_images
      File? igv_virus_report_html = vif.igv_virus_report_html
+     File? virus_alignments_bam = vif.virus_alignments_bam
+     File? virus_alignments_bai = vif.virus_alignments_bai
 
      File? fasta_extract = vif.fasta_extract
      File? gtf_extract = vif.gtf_extract

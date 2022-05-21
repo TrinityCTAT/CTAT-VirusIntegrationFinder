@@ -115,6 +115,8 @@ workflow ctat_vif {
         File? virus_coverage_read_counts_log_image = VirusReport.read_counts_log_image
         Array[File]? virus_coverage_virus_images = VirusReport.virus_images
         File? igv_virus_report_html = VirusReport.html
+        File? virus_alignments_bam = VirusReport.virus_alignments_bam
+        File? virus_alignments_bai = VirusReport.virus_alignments_bai
 
         File? fasta_extract = ExtractChimericGenomicTargets.fasta_extract
         File? gtf_extract = ExtractChimericGenomicTargets.gtf_extract
