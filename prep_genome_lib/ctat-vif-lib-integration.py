@@ -6,6 +6,11 @@ import argparse
 import logging
 
 
+sys.path.insert(
+    0, os.path.sep.join([os.path.dirname(os.path.realpath(__file__)), "PyLib"])
+    )
+from Pipeliner import Pipeliner, Command
+
 import logging
 FORMAT = "%(asctime)-15s: %(levelname)s %(module)s.%(name)s.%(funcName)s %(message)s"
 logger = logging.getLogger(__file__)
@@ -47,6 +52,10 @@ def main():
     if not os.path.exists(VIF_dir):
         os.makedirs(VIF_dir)
 
+    checkpoints_dir = "VIF_dir/__checkpts.dir"
+    pipeliner = Pipeliner(checkpoints_dir)
+    
+
 
     def run_cmd(cmd):
         logger.info(f"CMD: {cmd}")
@@ -56,8 +65,25 @@ def main():
     # copy the virus db to the VIF dir and index it.
     installed_virus_db = os.path.join(VIF_dir, "virus_db.fasta")
     logger.info("-installing virus db")
-    run_cmd(f"cp {virus_db_fasta} {installed_virus_db}")
-    run_cmd(f"samtools faidx {installed_virus_db}")
+    pipeliner.add_commands([Command(f"cp {virus_db_fasta} {installed_virus_db}", "cp_virus_to_VIF.ok")])
+    pipeliner.add_commands([Command(f"samtools faidx {installed_virus_db}", "faidx_virusdb.ok")])
+    pipeliner.run()
+
+    # mask homologous regions from ref genome:
+    logger.info("-masking virus homologous regions from ref genome")
+    cmdstr = f"makeblastdb -in {ref_genome_fasta} -dbtype nucl"
+    pipeliner.add_commands([Command(cmdstr, "makeblastableref.ok")])
+    pipeliner.run()
+
+    blastn_outfile = f"{VIF_dir}/genome_virus_blastn.outfmt6"
+    cmdstr = f"blastn -q {virus_db_fasta} -db {ref_genome_fasta} -outfmt6 -evalue 1e-10 -num_threads {num_threads} > {blastn_outfile}"
+    pipeliner.add_commands([Command(cmdstr, "blastnvirustogenome.ok")])
+    pipeliner.run()
+
+    # make regions file
+    sys.exit(0)
+
+
     
 
     # create new fasta file including viruses and human genome together:
