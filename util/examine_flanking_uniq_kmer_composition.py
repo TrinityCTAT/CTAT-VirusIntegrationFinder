@@ -10,17 +10,22 @@ def main():
     
     parser.add_argument("--vif_tsv", type=str, required=True, help="vif tsv input file")
     parser.add_argument("--output", type=str, required=True, help="vif output including the kmer metrics")
-
+    parser.add_argument("--min_frac_uniq", type=float, required=False, default=0.0, help="minimum fraction unique for flanking region kmer content k=5")
+    
+    
     args = parser.parse_args()
 
 
     vif_tsv_filename = args.vif_tsv
     output_filename = args.output
-
+    min_frac_uniq = args.min_frac_uniq
+    
     df = pd.read_csv(vif_tsv_filename, sep="\t")
 
     df = df.apply(examine_unique_kmer_fraction, axis=1)  # fU = fraction unique
 
+    df = df[ df['flankA_fU'] >= min_frac_uniq & df['flankB_fU'] >= min_frac_uniq ]
+    
     df.to_csv(output_filename, sep="\t", index=False)
 
     

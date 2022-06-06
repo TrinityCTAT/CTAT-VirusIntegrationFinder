@@ -23,7 +23,8 @@ workflow ctat_vif {
 
         Int min_reads = 5 
         Int max_hits = 50
-
+        Float min_flank_frac_uniq = 0.5
+      
         # star indices needed (local: point to directory name, on cloud: give tar file)
         File? star_index_human_only
         String? star_index_human_only_dirpath
@@ -294,6 +295,7 @@ workflow ctat_vif {
                 bai=select_first([RemoveDuplicates2.bai, STAR_validate.bai]),
                 gtf=ExtractChimericGenomicTargets.gtf_extract,
                 min_reads=min_reads,
+                min_frac_uniq=min_flank_frac_uniq,
                 util_dir=util_dir,
                 preemptible=preemptible,
                 docker=docker,
@@ -1033,6 +1035,7 @@ task ChimericContigEvidenceAnalyzer {
         String docker
         Int min_reads
         String sample_id
+        Float min_frac_uniq
     }
 
     String prefix = sample_id + ".vif"
@@ -1043,8 +1046,16 @@ task ChimericContigEvidenceAnalyzer {
         ~{util_dir}/chimeric_contig_evidence_analyzer.py \
         --patch_db_bam ~{bam} \
         --patch_db_gtf ~{gtf} \
-        --output_prefix ~{prefix}
+        --output_prefix ~{prefix}.tmp
 
+        ~{util_dir}/examine_flanking_uniq_kmer_composition.py \
+          --vif_tsv ~{prefix}.tmp.evidence_counts.tsv \
+          --min_frac_uniq ~{min_frac_uniq} \
+          --output ~{prefix}.evidence_counts.tsv
+
+      
+        mv ~{prefix}.tmp.evidence.bam ~{prefix}.evidence.bam
+      
         samtools index ~{prefix}.evidence.bam
 
 
