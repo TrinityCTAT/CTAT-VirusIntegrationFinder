@@ -93,6 +93,7 @@ RUN STAR_URL="https://github.com/alexdobin/STAR/archive/${STAR_VERSION}.tar.gz" 
 #~~~~~~~~~~~
 ## Bedtools
 #~~~~~~~~~~~
+WORKDIR $SRC
 RUN wget -q https://github.com/arq5x/bedtools2/releases/download/v2.30.0/bedtools-2.30.0.tar.gz && \
    tar xf bedtools-2.30.0.tar.gz && \
    cd bedtools2 && \
@@ -100,13 +101,24 @@ RUN wget -q https://github.com/arq5x/bedtools2/releases/download/v2.30.0/bedtool
    cp bin/* $BIN/ && \
    rm $SRC/bedtools-2.30.0.tar.gz && rm -r $SRC/bedtools2
 
+
+# blast
+WORKDIR $SRC
+ENV BLASTPLUS_VERSION 2.12.0
+RUN wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/${BLASTPLUS_VERSION}/ncbi-blast-${BLASTPLUS_VERSION}+-x64-linux.tar.gz && \
+    tar xvf ncbi-blast-${BLASTPLUS_VERSION}+-x64-linux.tar.gz && \
+    cp ncbi-blast-${BLASTPLUS_VERSION}+/bin/* $BIN && \
+    rm -r ncbi-blast-${BLASTPLUS_VERSION}+
+
+
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## CTAT-VirusIntegrationFinder
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 WORKDIR $SRC
-ENV CTAT_VIF_VER "1.2.3-dev"
-ENV VIF_CO=f91238db5e5a1db89f0051fe634cef31fea267f4
+ENV CTAT_VIF_VER "1.3.0-predev"
+ENV VIF_CO=d4120e5505ec61e784b6875f60a4fc07f90f6ceb
 RUN git clone --recursive https://github.com/broadinstitute/CTAT-VirusIntegrationFinder.git && \
         cd CTAT-VirusIntegrationFinder && \
         git checkout ${VIF_CO} && \
