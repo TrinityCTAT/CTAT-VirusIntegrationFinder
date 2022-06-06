@@ -295,18 +295,18 @@ workflow ctat_vif {
                 bai=select_first([RemoveDuplicates2.bai, STAR_validate.bai]),
                 gtf=ExtractChimericGenomicTargets.gtf_extract,
                 min_reads=min_reads,
-                min_frac_uniq=min_flank_frac_uniq,
                 util_dir=util_dir,
                 preemptible=preemptible,
                 docker=docker,
                 sample_id=sample_id
         }
 
-        if(generate_reports && ChimericContigEvidenceAnalyzer.insertions_recovered) {
+        if(ChimericContigEvidenceAnalyzer.insertions_recovered) {
             call SummaryReport {
                 input:
                     init_counts=insertion_site_candidates_use,
                     vif_counts=ChimericContigEvidenceAnalyzer.evidence_counts,
+                    min_flank_frac_uniq=min_flank_frac_uniq,
                     alignment_bam=ChimericContigEvidenceAnalyzer.evidence_bam,
                     alignment_bai=ChimericContigEvidenceAnalyzer.evidence_bai,
                     chim_targets_gtf=ExtractChimericGenomicTargets.gtf_extract,
@@ -1046,17 +1046,9 @@ task ChimericContigEvidenceAnalyzer {
         ~{util_dir}/chimeric_contig_evidence_analyzer.py \
         --patch_db_bam ~{bam} \
         --patch_db_gtf ~{gtf} \
-        --output_prefix ~{prefix}.tmp
+        --output_prefix ~{prefix}
 
-        ~{util_dir}/examine_flanking_uniq_kmer_composition.py \
-          --vif_tsv ~{prefix}.tmp.evidence_counts.tsv \
-          --min_frac_uniq ~{min_frac_uniq} \
-          --output ~{prefix}.evidence_counts.tsv
-
-      
-        mv ~{prefix}.tmp.evidence.bam ~{prefix}.evidence.bam
-      
-        samtools index ~{prefix}.evidence.bam
+      samtools index ~{prefix}.evidence.bam
 
 
       insertions_file="~{prefix}.evidence_counts.tsv"
@@ -1202,6 +1194,7 @@ task SummaryReport {
     input {
         File init_counts
         File vif_counts
+        Float min_flank_frac_uniq
         File alignment_bam
         File alignment_bai
         File chim_targets_gtf
@@ -1223,12 +1216,21 @@ task SummaryReport {
         ~{util_dir}/refine_VIF_output.Rscript \
         --prelim_counts ~{init_counts} \
         --vif_counts ~{vif_counts} \
-        --output ~{prefix}.refined.tsv
+        --output ~{prefix}.prelim.refined.tsv
 
+
+        ~{util_dir}/examine_flanking_uniq_kmer_composition.py \
+          --vif_tsv ~{prefix}.prelim.refined.tsv \
+          --min_frac_uniq ~{min_flank_frac_uniq} \
+          --output ~{prefix}.refined.tsv
+
+      
         ~{util_dir}/distill_to_primary_target_list_via_brkpt_homologies.py \
           --vif_tsv ~{prefix}.refined.tsv \
           > ~{prefix}.refined.distilled.tsv 
 
+      
+      
         ~{util_dir}/make_VIF_genome_abundance_plot.Rscript \
         --vif_report ~{prefix}.refined.tsv \
         --title "Genome Wide Abundance" \
@@ -1273,6 +1275,7 @@ task SummaryReport {
 
     output {
         File html = "~{prefix}.html"
+        File prelim_refined_counts = "~{prefix}.prelim.refined.tsv"
         File refined_counts = "~{prefix}.refined.tsv"
         File refined_distilled = "~{prefix}.refined.distilled.tsv"
         File genome_abundance_plot = "~{prefix}.genome_plot.png"
