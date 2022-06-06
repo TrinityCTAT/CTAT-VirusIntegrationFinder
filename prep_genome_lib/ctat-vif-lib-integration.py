@@ -4,7 +4,7 @@ import sys, os, re
 import subprocess
 import argparse
 import logging
-
+import pandas as pd
 
 sys.path.insert(
     0, os.path.sep.join([os.path.dirname(os.path.realpath(__file__)), "PyLib"])
@@ -52,7 +52,7 @@ def main():
     if not os.path.exists(VIF_dir):
         os.makedirs(VIF_dir)
 
-    checkpoints_dir = "VIF_dir/__checkpts.dir"
+    checkpoints_dir = f"{VIF_dir}/__checkpts.dir"
     pipeliner = Pipeliner(checkpoints_dir)
     
 
@@ -76,22 +76,49 @@ def main():
     pipeliner.run()
 
     blastn_outfile = f"{VIF_dir}/genome_virus_blastn.outfmt6"
-    cmdstr = f"blastn -q {virus_db_fasta} -db {ref_genome_fasta} -outfmt6 -evalue 1e-10 -num_threads {num_threads} > {blastn_outfile}"
+    cmdstr = f"blastn -query {virus_db_fasta} -db {ref_genome_fasta} -outfmt 6 -evalue 1e-10 -num_threads {num_threads} > {blastn_outfile}"
     pipeliner.add_commands([Command(cmdstr, "blastnvirustogenome.ok")])
     pipeliner.run()
 
+    ## generate masked genome.
     # make regions file
-    sys.exit(0)
+    logger.info("masking virus-homologous regions from the genome")
+    df = pd.read_csv(blastn_outfile, sep="\t", header=None, usecols=[1,2,8,9])
+    df.columns = ["chrom", "perid", "end5", "end3"]
 
-
+    # filter, require min 90% identity
+    df = df[ df['perid'] >= 90 ] 
     
+    df['lend'] = df.apply(lambda x: min(x['end5'], x['end3']), axis=1)
+    df['rend'] = df.apply(lambda x: max(x['end5'], x['end3']), axis=1)
 
+    df['lend'] = df['lend']-1
+    df = df[ ['chrom', 'lend', 'rend'] ]
+    bed_filename = blastn_outfile + ".bed"
+    df.to_csv(bed_filename, sep="\t", header=False, index=False)
+    
+    # do the masking using bedtools
+    virus_masked_genome = f"{VIF_dir}/ref_genome.virus_masked.fa"
+    cmdstr = f"maskFastaFromBed -fi {ref_genome_fasta} -fo {virus_masked_genome} -bed {bed_filename}"
+    pipeliner.add_commands([Command(cmdstr, "virusmaskingrefgenome.ok")])
+    pipeliner.run()
+
+    # before masking: 151122963
+    # after masking:  152498464
+    # so, 1,375,501 new bases masked.
+    
+    
     # create new fasta file including viruses and human genome together:
     combined_genomes_fa = os.path.join(VIF_dir, "hg_plus_viraldb.fasta")
-    logger.info(f"-combining {ref_genome_fasta} and {virus_db_fasta} into {combined_genomes_fa}")
-    run_cmd(f"cat {ref_genome_fasta} {virus_db_fasta} > {combined_genomes_fa}")
-    run_cmd(f"samtools faidx {combined_genomes_fa}")
-    
+    logger.info(f"-combining {virus_masked_genome} and {virus_db_fasta} into {combined_genomes_fa}")
+    cmdstr = f"cat {virus_masked_genome} {virus_db_fasta} > {combined_genomes_fa}"
+    pipeliner.add_commands([Command(cmdstr, "combineMaskedGenomeWithViruses.ok")])
+        
+    cmdstr = f"samtools faidx {combined_genomes_fa}"
+    pipeliner.add_commands([Command(cmdstr, "combinedgenomes.faidx.ok")])
+    pipeliner.run()
+
+        
     # build star index
     logger.info(f"-building star index for {combined_genomes_fa}")
     star_index_cmd = " ".join(["STAR",
@@ -102,9 +129,11 @@ def main():
                                "--limitGenomeGenerateRAM 40419136213",
                                "--sjdbGTFfile {}".format(ref_gtf),
                                "--sjdbOverhang 100"])
-    run_cmd(star_index_cmd)
-    
 
+
+    pipeliner.add_commands([Command(star_index_cmd, "buildCombinedIndex.ok")])
+    pipeliner.run()
+    
     logger.info("-Done.")
 
     sys.exit(0)
