@@ -24,7 +24,7 @@ workflow ctat_VIF_Terra {
     File? drs_path_fastqs
     File? rnaseq_aligned_bam
     Boolean clean_reads = true
-    Int max_hits = 1
+    Int max_hits = 50
     String docker = docker
     CTAT_VIF_config pipe_inputs_config
     Int preemptible
