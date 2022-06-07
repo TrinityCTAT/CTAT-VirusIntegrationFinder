@@ -1035,7 +1035,6 @@ task ChimericContigEvidenceAnalyzer {
         String docker
         Int min_reads
         String sample_id
-        Float min_frac_uniq
     }
 
     String prefix = sample_id + ".vif"
