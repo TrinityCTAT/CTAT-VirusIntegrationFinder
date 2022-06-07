@@ -115,6 +115,7 @@ workflow ctat_VIF_Terra {
      File? star_validate_inserts_bam = vif.star_validate_inserts_bam
      File? star_validate_inserts_bam_index = vif.star_validate_inserts_bam_index
 
+     File? prelim_evidence_counts =  vif.prelim_evidence_counts
      File? evidence_counts =  vif.evidence_counts
      File? evidence_bam = vif.evidence_bam
      File? evidence_bai = vif.evidence_bai
