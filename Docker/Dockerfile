@@ -118,7 +118,7 @@ RUN wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/${BLASTPLUS_VERSION
 
 WORKDIR $SRC
 ENV CTAT_VIF_VER "1.3.0-predev"
-ENV VIF_CO=441df0365fe25f77efdf578c0df2a1e8b6e501c0
+ENV VIF_CO=5b6d71b3d0e4a83a4b41dfb0a0b7ab2c8b18ef83
 RUN git clone --recursive https://github.com/broadinstitute/CTAT-VirusIntegrationFinder.git && \
         cd CTAT-VirusIntegrationFinder && \
         git checkout ${VIF_CO} && \

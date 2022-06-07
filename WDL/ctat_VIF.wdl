@@ -129,6 +129,7 @@ workflow ctat_vif {
         File? evidence_bam = ChimericContigEvidenceAnalyzer.evidence_bam
         File? evidence_bai = ChimericContigEvidenceAnalyzer.evidence_bai
 
+        File? prelim_refined_counts = SummaryReport.prelim_refined_counts
         File? refined_counts = SummaryReport.refined_counts
         File? refined_distilled = SummaryReport.refined_distilled
         File? genome_abundance_refined_plot = SummaryReport.genome_abundance_plot
