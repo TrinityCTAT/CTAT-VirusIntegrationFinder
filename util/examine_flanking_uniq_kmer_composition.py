@@ -24,7 +24,11 @@ def main():
 
     df = df.apply(examine_unique_kmer_fraction, axis=1)  # fU = fraction unique
 
-    df = df[ df['flankA_fU'] >= min_frac_uniq & df['flankB_fU'] >= min_frac_uniq ]
+    df = df[ (df['flankA_fU'] >= min_frac_uniq) & (df['flankB_fU'] >= min_frac_uniq) ]
+
+    df['flankA_fU'] = df['flankA_fU'].apply(lambda x: "{:.3f}".format(x))
+    df['flankB_fU'] = df['flankB_fU'].apply(lambda x: "{:.3f}".format(x))
+    
     
     df.to_csv(output_filename, sep="\t", index=False)
 
@@ -38,9 +42,9 @@ def main():
 
 def examine_unique_kmer_fraction(row):
 
-    row['flankA_fU'] = "{:.3f}".format(fraction_unique(row['flankA']))
-    row['flankB_fU'] = "{:.3f}".format(fraction_unique(row['flankB']))
-
+    row['flankA_fU'] = fraction_unique(row['flankA'])
+    row['flankB_fU'] = fraction_unique(row['flankB'])
+    
     return row
 
 
