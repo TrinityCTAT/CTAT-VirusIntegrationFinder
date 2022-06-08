@@ -55,13 +55,6 @@ def main():
     checkpoints_dir = f"{VIF_dir}/__checkpts.dir"
     pipeliner = Pipeliner(checkpoints_dir)
     
-
-
-    def run_cmd(cmd):
-        logger.info(f"CMD: {cmd}")
-        subprocess.check_call(cmd, shell=True)        
-
-
     # copy the virus db to the VIF dir and index it.
     installed_virus_db = os.path.join(VIF_dir, "virus_db.fasta")
     logger.info("-installing virus db")
