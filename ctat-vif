@@ -77,10 +77,10 @@ def main():
     )
     
     parser.add_argument("--star_init_two_pass_mode", help="STAR init 2-pass mapping mode", choices=['Basic', 'None'],
-        default='Basic')
+        default='None')
 
     parser.add_argument("--star_validate_two_pass_mode", help="STAR validate 2-pass mapping mode", choices=['Basic', 'None'],
-                        default='Basic')
+                        default='None')
     
     parser.add_argument(
         "--no_remove_duplicates", action="store_true", help="do NOT remove duplicates"
