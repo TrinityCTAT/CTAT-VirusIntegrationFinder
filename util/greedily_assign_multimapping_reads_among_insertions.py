@@ -70,11 +70,17 @@ def main():
     writer = csv.DictWriter(sys.stdout, fieldnames=fieldnames, delimiter="\t")
     writer.writeheader()
 
-
+    def sort_ranking(row):
+        total = row['total']
+        is_HPV = 1 if re.search("HPV", row['entry']) else 0
+        # in case of ties, prefer the HPV accession entry over an alternative representation
+        return (total, is_HPV)
 
 
     processed_brkpts = set()
     ev_reads_seen = set()
+
+    rows = sorted(rows, key=sort_ranking, reverse=True)
     
     for row in rows:
         virus, brkpt = (row['chrA'], row['coordA']) if re.match("chr[\dMXY]+$", row['chrB']) else (row['chrB'], row['coordB'])
