@@ -23,7 +23,8 @@ workflow ctat_VIF_Terra_hg38 {
 	  "viral_fasta" : "gs://ctat_genome_libs/GRCh38_gencode_v22/06-06-2022/virus_db.fasta",
       "star_index_human_only" : "gs://ctat_genome_libs/GRCh38_gencode_v22/03-01-2021/ref_genome.fa.star.idx.tar",
       #"star_index_human_plus_virus" : "gs://ctat_genome_libs/GRCh38_gencode_v22/03-01-2021/GRCh38_plus_viraldb_Dec092021.fasta.star.idx.tar",
-	  "star_index_human_plus_virus" : "gs://ctat_genome_libs/GRCh38_gencode_v22/06-06-2022/hg_plus_viraldb.fasta.star.idx.tar",      
+	  #"star_index_human_plus_virus" : "gs://ctat_genome_libs/GRCh38_gencode_v22/06-06-2022/hg_plus_viraldb.fasta.star.idx.tar",
+      "star_index_human_plus_virus" : "gs://ctat_genome_libs/GRCh38_gencode_v22/06-08-2022/hg_plus_viraldb.fasta.star.idx.tar",
 	  "NULL_file" : "gs://ctat_genome_libs/null" 
     }
 
