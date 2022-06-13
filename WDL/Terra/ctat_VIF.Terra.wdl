@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.0.1c/WDL/ctat_VIF.wdl" as ctat_VIF_wf
+import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.3.0/WDL/ctat_VIF.wdl" as ctat_VIF_wf
 
 
 struct CTAT_VIF_config {
@@ -22,13 +22,14 @@ workflow ctat_VIF_Terra {
     File? left
     File? right
     File? drs_path_fastqs
+    File? rnaseq_aligned_bam
     Boolean clean_reads = true
+    Int max_hits = 50
     String docker = docker
     CTAT_VIF_config pipe_inputs_config
     Int preemptible
     
     }
-
 
 
    if (defined(drs_path_fastqs)) {
@@ -40,13 +41,27 @@ workflow ctat_VIF_Terra {
          preemptible = preemptible
      }
   }
+
+
+  if (defined(rnaseq_aligned_bam)) {
+    call revert_bam_to_fastqs {
+      input:
+        sample_id = sample_id,
+        rnaseq_aligned_bam = select_first([rnaseq_aligned_bam]),
+        docker = docker,
+        preemptible = preemptible
+    }
+
+  }
+
   
   call ctat_VIF_wf.ctat_vif as vif {
     input:     
       sample_id = sample_id,
-      left = select_first([unpack_drs.left_fq, left]),
-      right = select_first([unpack_drs.right_fq, right, pipe_inputs_config.NULL_file]),
+      left = select_first([unpack_drs.left_fq, revert_bam_to_fastqs.left_fq, left]),
+      right = select_first([unpack_drs.right_fq, revert_bam_to_fastqs.right_fq, right, pipe_inputs_config.NULL_file]),
       clean_reads = clean_reads,
+      max_hits = max_hits,
       docker = docker,
       preemptible = preemptible,
     
@@ -91,6 +106,8 @@ workflow ctat_VIF_Terra {
      File? virus_coverage_read_counts_log_image = vif.virus_coverage_read_counts_log_image
      Array[File]? virus_coverage_virus_images = vif.virus_coverage_virus_images
      File? igv_virus_report_html = vif.igv_virus_report_html
+     File? virus_alignments_bam = vif.virus_alignments_bam
+     File? virus_alignments_bai = vif.virus_alignments_bai
 
      File? fasta_extract = vif.fasta_extract
      File? gtf_extract = vif.gtf_extract
@@ -102,7 +119,9 @@ workflow ctat_VIF_Terra {
      File? evidence_bam = vif.evidence_bam
      File? evidence_bai = vif.evidence_bai
 
+     File? prelim_refined_counts =  vif.prelim_refined_counts
      File? refined_counts = vif.refined_counts
+     File? refined_distilled = vif.refined_distilled
      File? genome_abundance_refined_plot = vif.genome_abundance_refined_plot
      File? igv_report_html = vif.igv_report_html
 
@@ -168,8 +187,8 @@ task unpack_drs {
         if is_gzipped(fq_files[0]):
             method = "zcat"
 
-        subprocess.check_call(f"{method} {fq_files[0]} {fq_files[1]} | gzip -c > {sample_id}_1.fq.gz", shell=True)
-        subprocess.check_call(f"{method} {fq_files[2]} {fq_files[3]} | gzip -c > {sample_id}_2.fq.gz", shell=True)
+        subprocess.check_call(f"{method} {fq_files[0]} {fq_files[2]} | gzip -c > {sample_id}_1.fq.gz", shell=True)
+        subprocess.check_call(f"{method} {fq_files[1]} {fq_files[3]} | gzip -c > {sample_id}_2.fq.gz", shell=True)
 
     CODE
 
@@ -187,6 +206,62 @@ task unpack_drs {
         cpu: 1
         memory: "4GB"
         maxRetries: 3
+    }
+}
+
+
+
+task revert_bam_to_fastqs {
+  input {
+    String sample_id
+    File rnaseq_aligned_bam
+    String docker
+    Int preemptible
+  }
+
+  command <<<
+
+    set -ex
+
+    # initial potential cleanup of read names in the bam file
+    /usr/local/bin/sam_readname_cleaner.py ~{rnaseq_aligned_bam} ~{sample_id}.cleaned.bam
+
+
+    # revert aligned bam
+    java -Xmx1000m -jar /usr/local/src/picard.jar \
+        RevertSam \
+        INPUT=~{sample_id}.cleaned.bam \
+        OUTPUT_BY_READGROUP=false \
+        VALIDATION_STRINGENCY=SILENT \
+        SORT_ORDER=queryname \
+        OUTPUT=~{sample_id}.reverted.bam 
+
+
+    # bam to fastq
+    java -jar /usr/local/src/picard.jar \
+        SamToFastq I=~{sample_id}.reverted.bam \
+        F=~{sample_id}_1.fastq F2=~{sample_id}_2.fastq \
+        INTERLEAVE=false NON_PF=true \
+        CLIPPING_ATTRIBUTE=XT CLIPPING_ACTION=2
+    
+
+    gzip ~{sample_id}_1.fastq
+    gzip ~{sample_id}_2.fastq
+
+    >>>
+
+    output {
+      File left_fq = "~{sample_id}_1.fastq.gz"
+      File right_fq = "~{sample_id}_2.fastq.gz"
+    }
+
+    runtime {
+        preemptible: preemptible
+        disks: "local-disk " + ceil(50 + size(rnaseq_aligned_bam, "GB")*10 + 1) + " HDD"
+        docker: docker
+        cpu: 1
+        memory: "4GB"
+        maxRetries: 0
     }
 }
 

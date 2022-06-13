@@ -347,6 +347,9 @@ def main():
             )
 
             for chim_event in all_chim_events:
+
+                chim_event.refine_insertion_coordinates()
+                
                 print(
                     chim_event.get_event_accession() + "\t" + str(chim_event), file=ofh
                 )
@@ -515,6 +518,7 @@ class Chimeric_read:
         self.orientB = orientB
         self.splitType = splitType
         self.readname = readname
+        self._refined = False  # can only refine coodinates once!
 
     def __repr__(self):
         return "\t".join(
@@ -566,6 +570,32 @@ class Chimeric_event(Chimeric_read):
 
         return num_chimeric_reads, num_absorbed_reads, num_total_reads
 
+
+    def refine_insertion_coordinates(self):
+        if self._refined:
+            raise RuntimeError("chimeric event already refined, can only do this once")
+        self._refined = True
+
+        if self.splitType != "Span":
+            # Split read, coodinates fixed.
+            return
+
+        # for spanning reads, use closest boundary based on orientation.
+        coordA_vals = list()
+        coordB_vals = list()
+        coordA_vals.append(self.coordA)
+        coordB_vals.append(self.coordB)
+
+        for chim_event in self.chimeric_events_absorbed:
+            coordA_vals.append(chim_event.coordA)
+            coordB_vals.append(chim_event.coordB)
+
+        self.coordA = max(coordA_vals) if self.orientA == '+' else min(coordA_vals)
+        self.coordB = min(coordB_vals) if self.orientB == '+' else max(coordB_vals)
+            
+        return
+
+    
     def __repr__(self):
         (
             num_chimeric_reads,

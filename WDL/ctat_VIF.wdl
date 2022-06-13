@@ -22,15 +22,15 @@ workflow ctat_vif {
         Boolean generate_reports = true
 
         Int min_reads = 5 
-        Int max_hits = 1 # unique by default
-
+        Int max_hits = 50
+        Float min_flank_frac_uniq = 0.5
+      
         # star indices needed (local: point to directory name, on cloud: give tar file)
         File? star_index_human_only
         String? star_index_human_only_dirpath
         
         File? star_index_human_plus_virus
         String? star_index_human_plus_virus_dirpath 
-
       
       
         String igv_virus_reports_memory = "14GB"
@@ -51,11 +51,11 @@ workflow ctat_vif {
 
         # star init settings
         Float star_init_memory = 50
-        String star_init_two_pass_mode = "Basic"
+        String star_init_two_pass_mode = "None"
 
         # star validate settings
         Float star_validate_memory = 75
-        String star_validate_two_pass_mode = "Basic" # or None
+        String star_validate_two_pass_mode = "None" # or Basic
 
 
         # general runtime settings
@@ -108,6 +108,7 @@ workflow ctat_vif {
         File? insertion_site_candidates_filtered_abridged = InsertionSiteCandidates.filtered_abridged
         File? insertion_site_candidates_genome_chimeric_evidence_reads_bam = InsertionSiteCandidates.genome_chimeric_evidence_reads_bam
         File? insertion_site_candidates_genome_chimeric_evidence_reads_bai = InsertionSiteCandidates.genome_chimeric_evidence_reads_bai
+        File? insertion_site_candidates_human_virus_chimJ = InsertionSiteCandidates.human_virus_chimJ
         
         File? genome_abundance_plot = VirusReport.genome_abundance_plot
         File? virus_coverage_read_counts_summary = VirusReport.read_counts_summary
@@ -115,6 +116,8 @@ workflow ctat_vif {
         File? virus_coverage_read_counts_log_image = VirusReport.read_counts_log_image
         Array[File]? virus_coverage_virus_images = VirusReport.virus_images
         File? igv_virus_report_html = VirusReport.html
+        File? virus_alignments_bam = VirusReport.virus_alignments_bam
+        File? virus_alignments_bai = VirusReport.virus_alignments_bai
 
         File? fasta_extract = ExtractChimericGenomicTargets.fasta_extract
         File? gtf_extract = ExtractChimericGenomicTargets.gtf_extract
@@ -126,7 +129,9 @@ workflow ctat_vif {
         File? evidence_bam = ChimericContigEvidenceAnalyzer.evidence_bam
         File? evidence_bai = ChimericContigEvidenceAnalyzer.evidence_bai
 
+        File? prelim_refined_counts = SummaryReport.prelim_refined_counts
         File? refined_counts = SummaryReport.refined_counts
+        File? refined_distilled = SummaryReport.refined_distilled
         File? genome_abundance_refined_plot = SummaryReport.genome_abundance_plot
         File? igv_report_html = SummaryReport.html
 
@@ -184,6 +189,7 @@ workflow ctat_vif {
                 fastq1=select_first([PolyA_stripper.left_trimmed, STAR_init_hgOnly.Unmapped_left_fq]),
                 fastq2=select_first([PolyA_stripper.right_trimmed, STAR_init_hgOnly.Unmapped_right_fq, "/dev/null"]),
                 search_chimeras=true,
+                chimMultimapNmax = max_hits,
                 two_pass_mode = star_init_two_pass_mode,
                 base_name=sample_id + ".hgPlusVirus",
                 star_reference=star_index_human_plus_virus,
@@ -296,11 +302,12 @@ workflow ctat_vif {
                 sample_id=sample_id
         }
 
-        if(generate_reports && ChimericContigEvidenceAnalyzer.insertions_recovered) {
+        if(ChimericContigEvidenceAnalyzer.insertions_recovered) {
             call SummaryReport {
                 input:
                     init_counts=insertion_site_candidates_use,
                     vif_counts=ChimericContigEvidenceAnalyzer.evidence_counts,
+                    min_flank_frac_uniq=min_flank_frac_uniq,
                     alignment_bam=ChimericContigEvidenceAnalyzer.evidence_bam,
                     alignment_bai=ChimericContigEvidenceAnalyzer.evidence_bai,
                     chim_targets_gtf=ExtractChimericGenomicTargets.gtf_extract,
@@ -774,10 +781,16 @@ task InsertionSiteCandidates {
            --vif_full_tsv ~{prefix}.tmp.full.tsv \
            --output_bam ~{prefix}.genome_chimeric_evidence.bam
       
+        # organize insertion candidates by virus chimeric breakends
+        ~{util_dir}/greedily_assign_multimapping_reads_among_insertions.py \
+           --init_full_tsv ~{prefix}.tmp.full.tsv \
+           --include_readnames \
+           > ~{prefix}.tmp.full.virus_breakend_grouped.tsv
+
         # add evidence read stats
         ~{util_dir}/incorporate_read_alignment_stats.py \
           --supp_reads_bam ~{prefix}.genome_chimeric_evidence.bam \
-          --vif_full_tsv ~{prefix}.tmp.full.tsv \
+          --vif_full_tsv ~{prefix}.tmp.full.virus_breakend_grouped.tsv \
           --output ~{prefix}.full.w_read_stats.tsv
 
         # add seq entropy around breakpoints
@@ -785,22 +798,25 @@ task InsertionSiteCandidates {
           --vif_tsv  ~{prefix}.full.w_read_stats.tsv \
           --ref_genome_fasta ~{ref_genome_fasta} \
           --viral_genome_fasta ~{viral_fasta} \
-          --output ~{prefix}.full.tsv
+          --output ~{prefix}.full.w_brkpt_seq_entropy.tsv
+
+        # identify additional primary targets to pursue (set is_primary='Maybe')
+        ~{util_dir}/revise_primary_target_list_via_brkpt_homologies.py \
+           --vif_tsv ~{prefix}.full.w_brkpt_seq_entropy.tsv \
+           > ~{prefix}.full.tsv 
 
         python <<CODE
         import pandas as pd
         min_reads = ~{min_reads}
-        #max_hits = ~{max_hits}
 
         # write abridged tsv
         df = pd.read_csv("~{prefix}.full.tsv", sep="\t")
-        df.drop('readnames', axis=1).to_csv("~{prefix}.full.abridged.tsv", sep="\t", index=False)
+        df.drop(['readnames', 'excluded_reads'], axis=1).to_csv("~{prefix}.full.abridged.tsv", sep="\t", index=False)
 
-        #df = df[ (df.hits <= max_hits) & (df.total >= min_reads)]
         df = df[ df.total >= min_reads ]
 
         df.to_csv("~{prefix}.filtered.tsv", sep="\t", index=False)
-        df.drop('readnames', axis=1).to_csv("~{prefix}.filtered.abridged.tsv", sep="\t", index=False) 
+        df.drop(['readnames', 'excluded_reads'], axis=1).to_csv("~{prefix}.filtered.abridged.tsv", sep="\t", index=False) 
       
         CODE
 
@@ -1032,7 +1048,7 @@ task ChimericContigEvidenceAnalyzer {
         --patch_db_gtf ~{gtf} \
         --output_prefix ~{prefix}
 
-        samtools index ~{prefix}.evidence.bam
+      samtools index ~{prefix}.evidence.bam
 
 
       insertions_file="~{prefix}.evidence_counts.tsv"
@@ -1178,6 +1194,7 @@ task SummaryReport {
     input {
         File init_counts
         File vif_counts
+        Float min_flank_frac_uniq
         File alignment_bam
         File alignment_bai
         File chim_targets_gtf
@@ -1199,8 +1216,21 @@ task SummaryReport {
         ~{util_dir}/refine_VIF_output.Rscript \
         --prelim_counts ~{init_counts} \
         --vif_counts ~{vif_counts} \
-        --output ~{prefix}.refined.tsv
+        --output ~{prefix}.prelim.refined.tsv
 
+
+        ~{util_dir}/examine_flanking_uniq_kmer_composition.py \
+          --vif_tsv ~{prefix}.prelim.refined.tsv \
+          --min_frac_uniq ~{min_flank_frac_uniq} \
+          --output ~{prefix}.refined.tsv
+
+      
+        ~{util_dir}/distill_to_primary_target_list_via_brkpt_homologies.py \
+          --vif_tsv ~{prefix}.refined.tsv \
+          > ~{prefix}.refined.distilled.tsv 
+
+      
+      
         ~{util_dir}/make_VIF_genome_abundance_plot.Rscript \
         --vif_report ~{prefix}.refined.tsv \
         --title "Genome Wide Abundance" \
@@ -1245,7 +1275,9 @@ task SummaryReport {
 
     output {
         File html = "~{prefix}.html"
+        File prelim_refined_counts = "~{prefix}.prelim.refined.tsv"
         File refined_counts = "~{prefix}.refined.tsv"
+        File refined_distilled = "~{prefix}.refined.distilled.tsv"
         File genome_abundance_plot = "~{prefix}.genome_plot.png"
     }
     runtime {

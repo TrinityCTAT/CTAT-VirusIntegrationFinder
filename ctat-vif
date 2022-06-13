@@ -10,7 +10,7 @@ import logging
 import sys
 
 
-VERSION = "1.1.0"
+VERSION = "1.3.0"
 
 
 if sys.version_info[0] < 3:
@@ -73,14 +73,14 @@ def main():
 
     parser.add_argument(
         "--min_reads", type=int, help="Filter insertion sites candidates that do not have at least 'min_reads' for use with chimeric contig construction (2nd phase)",
-        default=10
+        default=5
     )
     
     parser.add_argument("--star_init_two_pass_mode", help="STAR init 2-pass mapping mode", choices=['Basic', 'None'],
-        default='Basic')
+        default='None')
 
     parser.add_argument("--star_validate_two_pass_mode", help="STAR validate 2-pass mapping mode", choices=['Basic', 'None'],
-                        default='Basic')
+                        default='None')
     
     parser.add_argument(
         "--no_remove_duplicates", action="store_true", help="do NOT remove duplicates"
@@ -109,8 +109,10 @@ def main():
 
     parser.add_argument("--version", action='store_true', help="show version tag: {}".format(VERSION))
 
-    parser.add_argument("--max_hits", default=1, type=int, help='maximum number of multimapping allowed for chimeric reads (1=unique chim reads only)')
+    parser.add_argument("--max_hits", default=50, type=int, help='maximum number of multimapping allowed for chimeric reads (1=unique chim reads only)')
 
+    parser.add_argument("--min_flank_frac_uniq", default=0.5, type=float, help="minimum fraction of unique kmers in flanking sequence (k=5)")
+    
     args = parser.parse_args()
 
     if args.version:
@@ -147,6 +149,7 @@ def main():
     star_init_only = args.star_init_only
     min_reads = args.min_reads
     max_hits = args.max_hits
+    min_flank_frac_uniq = args.min_flank_frac_uniq
     
     cpu = args.cpu
     output_directory = os.path.abspath(args.outputdir)
@@ -201,6 +204,7 @@ def main():
 
     input_json['min_reads'] = min_reads
     input_json['max_hits'] = max_hits
+    input_json['min_flank_frac_uniq'] = min_flank_frac_uniq
     input_json['star_init_only'] = star_init_only
     input_json["remove_duplicates"] = remove_duplicates
     if cpu is None:
