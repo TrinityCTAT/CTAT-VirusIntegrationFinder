@@ -1238,47 +1238,52 @@ task SummaryReport {
 
         ~{util_dir}/find_closest.py \
         -i ~{prefix}.refined.tsv \
-        -o summary_results_tsv_with_genes.tsv \
+        -o ~{prefix}.refined.wRefGeneAnnots.tsv \
         --gtf ~{gtf}
 
-        ~{util_dir}/create_insertion_site_inspector_js.py \
-            --VIF_summary_tsv summary_results_tsv_with_genes.tsv \
+        if [[ -e ~{prefix}.refined.wRefGeneAnnots.tsv ]]; then
+
+          ~{util_dir}/create_insertion_site_inspector_js.py \
+            --VIF_summary_tsv ~{prefix}.refined.wRefGeneAnnots.tsv \
             --json_outfile igv.json
 
-        # make bed for igvjs
-        ~{util_dir}/region_gtf_to_bed.py \
+          # make bed for igvjs
+          ~{util_dir}/region_gtf_to_bed.py \
             ~{chim_targets_gtf} \
             > ~{prefix}.bed
 
-        # prep for making the report
-        ~{util_dir}/bamsifter/bamsifter \
-        -c ~{max_coverage} \
-        -o ~{prefix}.reads.bam \
-        ~{alignment_bam}
+          # prep for making the report
+          ~{util_dir}/bamsifter/bamsifter \
+          -c ~{max_coverage} \
+          -o ~{prefix}.reads.bam \
+          ~{alignment_bam}
 
-        # IGV reports expects to find, __PREFIX__.fa, __PREFIX__.bed, __PREFIX__.reads.bam
-        ln -sf ~{chim_targets_fasta} ~{prefix}.fa
+          # IGV reports expects to find, __PREFIX__.fa, __PREFIX__.bed, __PREFIX__.reads.bam
+          ln -sf ~{chim_targets_fasta} ~{prefix}.fa
 
-        ~{util_dir}/make_VIF_igvjs_html.py \
-        --html_template ~{util_dir}/resources/igvjs_VIF.html \
-        --fusions_json igv.json \
-        --input_file_prefix ~{prefix} \
-        --html_output ~{prefix}.html
+          ~{util_dir}/make_VIF_igvjs_html.py \
+            --html_template ~{util_dir}/resources/igvjs_VIF.html \
+            --fusions_json igv.json \
+            --input_file_prefix ~{prefix} \
+            --html_output ~{prefix}.html
 
-        # generate the final report
-        ~{util_dir}/add_to_html.py \
-        --html ~{prefix}.html \
-        --out ~{prefix}.html \
-        --image ~{prefix}.genome_plot.png \
-        ~{image_prefix}~{sep=' --image ' images}
+          # generate the final report
+            ~{ util_dir}/add_to_html.py \
+            --html ~{prefix}.html \
+            --out ~{prefix}.html \
+            --image ~{prefix}.genome_plot.png \
+            ~{image_prefix}~{sep=' --image ' images}
+       fi
+
     >>>
 
     output {
-        File html = "~{prefix}.html"
+        File? html = "~{prefix}.html"
         File prelim_refined_counts = "~{prefix}.prelim.refined.tsv"
         File refined_counts = "~{prefix}.refined.tsv"
+        File? refined_counts_w_genes = "~{prefix}.refined.wRefGeneAnnots.tsv"
         File refined_distilled = "~{prefix}.refined.distilled.tsv"
-        File genome_abundance_plot = "~{prefix}.genome_plot.png"
+        File? genome_abundance_plot = "~{prefix}.genome_plot.png"
     }
     runtime {
         preemptible: preemptible

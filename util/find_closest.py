@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+import sys
 import argparse
 import os
 from subprocess import check_call
@@ -37,6 +38,15 @@ output_file = args.o
 sorted_gtf = os.path.abspath('out.sorted.gtf')
 input_tsv = args.i
 
+
+input_tsv = pd.read_csv(input_tsv, sep='\t')
+if len(input_tsv) == 0:
+    print("no insertions reported.", file=sys.stderr)
+    sys.exit(0)
+
+
+
+
 with open(sorted_gtf, 'wt') as f:
     check_call(['bedtools', 'sort', '-i', gtf], stdout=f)
 
@@ -49,7 +59,7 @@ with open('out.sorted.gtf', 'rt') as f:
 
 # convert tsv to bed
 # entry	chrA	coordA	orientA	chrB	coordB	orientB	primary_brkpt_type	num_primary_reads	num_supp_reads	total
-input_tsv = pd.read_csv(input_tsv, sep='\t')
+
 unsorted_bed_file = os.path.abspath('query.bed')
 query_bed_file = os.path.abspath('query_sorted.bed')
 upstream_gtf = os.path.abspath('upstream.gtf')
