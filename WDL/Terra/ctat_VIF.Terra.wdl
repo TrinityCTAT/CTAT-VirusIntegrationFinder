@@ -182,13 +182,16 @@ task unpack_drs {
             os.rename(fq_files[1], sample_id + "_2.fq")
             subprocess.check_call(f"gzip {sample_id}_*.fq", shell=True)
 
-    elif len(fq_files) == 4:
+    elif len(fq_files) >= 4:
         method = "cat"
         if is_gzipped(fq_files[0]):
             method = "zcat"
 
-        subprocess.check_call(f"{method} {fq_files[0]} {fq_files[2]} | gzip -c > {sample_id}_1.fq.gz", shell=True)
-        subprocess.check_call(f"{method} {fq_files[1]} {fq_files[3]} | gzip -c > {sample_id}_2.fq.gz", shell=True)
+        left_fqs =  " ".join(list(filter(lambda x:re.search("_1\.", x), fq_files)))
+        right_fqs = " ".join( list(filter(lambda x:re.search("_2\.", x), fq_files)))
+    
+        subprocess.check_call(f"{method} {left_fqs} | gzip -c > {sample_id}_1.fq.gz", shell=True)
+        subprocess.check_call(f"{method} {right_fqs} | gzip -c > {sample_id}_2.fq.gz", shell=True)
 
     CODE
 
