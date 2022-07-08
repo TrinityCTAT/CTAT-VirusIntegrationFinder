@@ -52,7 +52,7 @@ def main():
 
     parser.add_argument("--sample_id", type=str, help="sample id", required=True)
     
-    parser.add_argument("--left", help="Path to one of the two paired samples")
+    parser.add_argument("--left", type=str, required=True, help="Path to one of the two paired samples")
 
     parser.add_argument("--right", help="Path to one of the two paired samples")
 
