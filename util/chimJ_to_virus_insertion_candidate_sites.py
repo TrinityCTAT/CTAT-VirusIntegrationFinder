@@ -223,7 +223,10 @@ def main():
 
         logger.info(f"Chimeric alignments before filter duplicates: {df.shape[0]}")
 
-        df["Duplicate"] = df[['chr_donorA', 'start_alnA', 'strand_donorA', 'chr_acceptorB','start_alnB', 'strand_acceptorB']].duplicated(keep="first")
+        df["Duplicate"] = df[['chr_donorA', 'start_alnA', 'brkpt_donorA', 'strand_donorA', 'cigar_alnA',
+                              'chr_acceptorB','start_alnB', 'brkpt_acceptorB', 'strand_acceptorB', 'cigar_alnB']].duplicated(keep="first")
+        
+        #df.to_csv("dups_marked.tsv", sep="\t")
         
         df = df[ df["Duplicate"] == False ]
 
