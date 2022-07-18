@@ -820,6 +820,7 @@ task InsertionSiteCandidates {
       
         CODE
 
+        gzip human_virus_chimJ.tsv
               
     >>>
 
@@ -830,7 +831,7 @@ task InsertionSiteCandidates {
         File filtered_abridged = "~{prefix}.filtered.abridged.tsv"
         File genome_chimeric_evidence_reads_bam = "~{prefix}.genome_chimeric_evidence.bam"
         File genome_chimeric_evidence_reads_bai = "~{prefix}.genome_chimeric_evidence.bam.bai"
-        File human_virus_chimJ = "human_virus_chimJ.tsv"
+        File human_virus_chimJ = "human_virus_chimJ.tsv.gz"
     }
 
     runtime {
