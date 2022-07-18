@@ -23,7 +23,7 @@ workflow ctat_vif {
 
         Int min_reads = 5 
         Int max_hits = 50
-        Float min_flank_frac_uniq = 0.5
+        Float min_flank_frac_uniq = 0.0  #disabled filter
       
         # star indices needed (local: point to directory name, on cloud: give tar file)
         File? star_index_human_only
