@@ -45,7 +45,7 @@ def main():
                             help="maximum amount of read end clipping")
 
 
-    arg_parser.add_argument("--min_seq_entropy", type=float, default=1.5, required=False,
+    arg_parser.add_argument("--min_seq_entropy", type=float, default=0.75, required=False,
                             help='min sequence entropy for consideration as evidence')
 
     arg_parser.add_argument("--min_per_id", type=int, default=95, required=False,
@@ -142,7 +142,7 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
         # FILTER step 1-3
         # 1: MapQuality score > value
         # 2: Entropy > Value 
-        # 3: Missmatches 
+        # 3: Mismatches 
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         if not aligned_read.mapping_quality > 0:
             if DEBUG:
@@ -176,7 +176,7 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # FILTER step 4 + 
         # 4: check if soft or hard clipped, if so, check how many, 
-        #       if greate than specified amount, will filter out 
+        #       if greater than specified amount, will filter out 
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         # check if read name was already added
@@ -199,7 +199,7 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
             continue
         
         # check fragment is over the breakpoint breakpoint 
-        if read_name in contig_readnames_to_anchor_lengths[contig] or (align_start < brkpt and max_rend > brkpt):
+        if (read_name in contig_readnames_to_anchor_lengths[contig]) or (align_start < brkpt and max_rend > brkpt):
             # fragment overlaps breakpoint.
             
             # Check the soft or hard clipping status
@@ -222,10 +222,12 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
             if align_start < brkpt and align_rend > brkpt:
                 # upgrade to split read
                 read_to_contig_and_type[contig][read_name] = 'split'
-        
-        # Doesnt span the breakpoint
-        if DEBUG:
-            removed_tsv.write("\t".join([aligned_read.to_string(),  "Doesnt_Span_Breakpoint\n"]))
+
+        else:
+            # Doesnt span the breakpoint
+            if DEBUG:
+                removed_tsv.write("\t".join([aligned_read.to_string(),  "Doesnt_Span_Breakpoint {}, align_start: {}, max_rend: {}\n".format(brkpt, align_start, max_rend)]))
+
     
     logger.info("counting up passing reads")
     # count up the passing reads.
