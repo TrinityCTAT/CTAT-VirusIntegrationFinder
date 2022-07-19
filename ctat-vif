@@ -111,7 +111,7 @@ def main():
 
     parser.add_argument("--max_hits", default=50, type=int, help='maximum number of multimapping allowed for chimeric reads (1=unique chim reads only)')
 
-    parser.add_argument("--min_flank_frac_uniq", default=0.5, type=float, help="minimum fraction of unique kmers in flanking sequence (k=5)")
+    parser.add_argument("--min_flank_frac_uniq", default=0.0, type=float, help="minimum fraction of unique kmers in flanking sequence (k=5)")
     
     args = parser.parse_args()
 
