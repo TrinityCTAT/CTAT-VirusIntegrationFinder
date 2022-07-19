@@ -153,13 +153,13 @@ def analyze_bam_n_gtf(bam_file, gtf_file, ofh_tsv, min_anchor, max_end_clip, min
         read_seq_entropy = seq_entropy(aligned_read.query_sequence)
         if read_seq_entropy < min_seq_entropy:
             if DEBUG:
-                removed_tsv.write("\t".join([aligned_read.to_string(),  "Min_Sequence_Entropy {} < {}\n".format(read_seq_entropy, min_seq_entropy]))
+                removed_tsv.write("\t".join([aligned_read.to_string(),  "Min_Sequence_Entropy {} < {}\n".format(read_seq_entropy, min_seq_entropy)]))
             continue
 
         read_per_id = per_id(aligned_read)
         if read_per_id < min_per_id:
             if DEBUG:
-                removed_tsv.write("\t".join([aligned_read.to_string(),  "Mismatch_count (read per_id {} < min_per_id {})\n".format(read_per_id, min_per_id]))
+                removed_tsv.write("\t".join([aligned_read.to_string(),  "Mismatch_count (read per_id {} < min_per_id {})\n".format(read_per_id, min_per_id)]))
             continue
 
         
