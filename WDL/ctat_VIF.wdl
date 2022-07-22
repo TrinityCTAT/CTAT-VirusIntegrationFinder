@@ -557,7 +557,9 @@ task STAR_init {
       touch ~{base_name}.Unmapped.out.mate1
       touch ~{base_name}.Unmapped.out.mate2  # because of Terra bug - doesn't allow missing optional outputs to be used as optional inputs later.
 
-      gzip ~{base_name}.Chimeric.out.junction
+      if [[ -e "~{base_name}.Chimeric.out.junction" ]]; then
+          gzip ~{base_name}.Chimeric.out.junction
+      fi
       
     >>>
 
