@@ -556,6 +556,8 @@ task STAR_init {
       # always have at least the Unmapped.out.mate1 file
       touch ~{base_name}.Unmapped.out.mate1
       touch ~{base_name}.Unmapped.out.mate2  # because of Terra bug - doesn't allow missing optional outputs to be used as optional inputs later.
+
+      gzip ~{base_name}.Chimeric.out.junction
       
     >>>
 
@@ -566,7 +568,7 @@ task STAR_init {
         File bai = "~{base_name}.Aligned.sortedByCoord.out.bam.bai"
         File output_log_final = "~{base_name}.Log.final.out"
         File output_SJ = "~{base_name}.SJ.out.tab"
-        File? chimeric_junction = "~{base_name}.Chimeric.out.junction"
+        File? chimeric_junction = "~{base_name}.Chimeric.out.junction.gz"
         File Unmapped_left_fq = "~{base_name}.Unmapped.out.mate1"
         File? Unmapped_right_fq = "~{base_name}.Unmapped.out.mate2"
     }

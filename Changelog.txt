@@ -1,3 +1,9 @@
+# v1.4.0 - July 22, 2022
+- turning off fraction unique flanking sequence filter by default
+- include breakpoint and cigar alignment in duplicate read alignment definition
+- under evidence read elimination: changing min read seq entropy to 0.75 from 1.5
+- gzip chimJ outputs
+
 # v1.3.0 - June 13, 2022
 - improved sensitivity and overall accuracy for virus integrations, allowing for multimapping reads.
 - using STAR single-pass mode
