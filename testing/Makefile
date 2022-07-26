@@ -27,6 +27,21 @@ test_kickstart_p2:
 		-O VIF.full.no_remove_dups.outdir.kickstart_p2
 
 
+test_kickstart_p3:
+
+	../ctat-vif \
+		--kickstart_p2_hg_unmapped_left_fq $(CWD)/__testdata/test.hgOnly.Unmapped.out.mate1.gz \
+		--kickstart_p2_hg_unmapped_right_fq $(CWD)/__testdata/test.hgOnly.Unmapped.out.mate2.gz \
+        --kickstart_p3_human_virus_chimJ $(CWD)/__testdata/human_virus_chimJ.tsv.gz \
+        --kickstart_p3_human_virus_bam $(CWD)/__testdata/test.hgPlusVirus.Aligned.sortedByCoord.out.bam \
+        --kickstart_p3_human_virus_bai $(CWD)/__testdata/test.hgPlusVirus.Aligned.sortedByCoord.out.bam.bai \
+		--sample_id test \
+        --no_remove_duplicates \
+        --genome_lib_dir ${CTAT_GENOME_LIB} \
+		-O VIF.full.no_remove_dups.outdir.kickstart_p3
+
+
+
 test_SE:
 	../ctat-vif \
 		--left reads_1.fastq.gz \
