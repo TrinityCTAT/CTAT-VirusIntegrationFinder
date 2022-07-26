@@ -1,3 +1,20 @@
+# v1.4.0 - July 22, 2022
+- turning off fraction unique flanking sequence filter by default
+- include breakpoint and cigar alignment in duplicate read alignment definition
+- under evidence read elimination: changing min read seq entropy to 0.75 from 1.5
+- gzip chimJ outputs
+
+# v1.3.0 - June 13, 2022
+- improved sensitivity and overall accuracy for virus integrations, allowing for multimapping reads.
+- using STAR single-pass mode
+- uses nr virus db, no repeat masking within virus db
+- masking K113 in human genome in 2nd phase search.
+- maxhits = 50
+- virus integrations organized according to virus breakpoint coordinates.
+- human genome insertions organized according to flanking sequence similarity
+- low complexity insertion flank sequences filtered to further exclude likely false positives
+
+
 # v1.1.0 - Feb 22, 2022
 - incorporated read cleaning step between STAR phases 1 & 2 involving trimmomatic and polyA-stripper. Can disable with --no_clean_reads parameter or using the wdl clean_reads boolean setting.
 - splicing info added to report to indicate canonical splicing types

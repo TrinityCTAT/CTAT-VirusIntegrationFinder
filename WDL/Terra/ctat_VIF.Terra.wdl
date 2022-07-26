@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.3.2/WDL/ctat_VIF.wdl" as ctat_VIF_wf
+import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.4.0/WDL/ctat_VIF.wdl" as ctat_VIF_wf
 
 
 struct CTAT_VIF_config {
@@ -99,7 +99,8 @@ workflow ctat_VIF_Terra {
      File? insertion_site_candidates_filtered_abridged = vif.insertion_site_candidates_filtered_abridged
      File? insertion_site_candidates_genome_chimeric_evidence_reads_bam = vif.insertion_site_candidates_genome_chimeric_evidence_reads_bam
      File? insertion_site_candidates_genome_chimeric_evidence_reads_bai = vif.insertion_site_candidates_genome_chimeric_evidence_reads_bai
-
+     File? insertion_site_candidates_human_virus_chimJ = vif.insertion_site_candidates_human_virus_chimJ
+     
      File? genome_abundance_plot = vif.genome_abundance_plot
      File? virus_coverage_read_counts_summary = vif.virus_coverage_read_counts_summary
      File? virus_coverage_read_counts_image = vif.virus_coverage_read_counts_image
