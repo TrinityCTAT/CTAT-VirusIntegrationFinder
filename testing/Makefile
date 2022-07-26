@@ -1,4 +1,5 @@
 
+CWD = $(CURDIR)
 
 
 test:
@@ -11,6 +12,19 @@ test:
 		-O VIF.full.no_remove_dups.outdir
 
 all: test star_init_only remove_dups novirus test_SE redherrings
+
+
+
+
+test_kickstart_p2:
+
+	../ctat-vif \
+		--kickstart_p2_hg_unmapped_left_fq $(CWD)/__testdata/test.hgOnly.Unmapped.out.mate1.gz \
+		--kickstart_p2_hg_unmapped_right_fq $(CWD)/__testdata/test.hgOnly.Unmapped.out.mate2.gz \
+		--sample_id test \
+        --no_remove_duplicates \
+        --genome_lib_dir ${CTAT_GENOME_LIB} \
+		-O VIF.full.no_remove_dups.outdir.kickstart_p2
 
 
 test_SE:

@@ -52,7 +52,7 @@ def main():
 
     parser.add_argument("--sample_id", type=str, help="sample id", required=True)
     
-    parser.add_argument("--left", type=str, required=True, help="Path to one of the two paired samples")
+    parser.add_argument("--left", type=str, required=False, help="Path to one of the two paired samples")
 
     parser.add_argument("--right", help="Path to one of the two paired samples")
 
@@ -112,6 +112,16 @@ def main():
     parser.add_argument("--max_hits", default=50, type=int, help='maximum number of multimapping allowed for chimeric reads (1=unique chim reads only)')
 
     parser.add_argument("--min_flank_frac_uniq", default=0.0, type=float, help="minimum fraction of unique kmers in flanking sequence (k=5)")
+
+    ## kickstart to phase 2
+    parser.add_argument("--kickstart_p2_hg_unmapped_left_fq", type=str, default=None, help="kickstart to phase 2 using unmapped left /1 reads ")
+    parser.add_argument("--kickstart_p2_hg_unmapped_right_fq", type=str, default=None, help="kickstart to phase 2 using unmapped right /2 reads ")
+
+    ## kickstart to phase 3
+    parser.add_argument("--kickstart_p3_human_virus_chimJ", type=str, default=None, help="kickstart to phase 3 using human/virus chimeric reads file; requires p2 inputs")
+    parser.add_argument("--kickstart_p3_human_virus_bam", type=str, default=None, help="kickstart to phase 3 using human & virus alignments bam file; requires p2 inputs")
+    parser.add_argument("--kickstart_p3_human_virus_bai", type=str, default=None, help="kicstart to phase 3 using human & virus bam indexed bai file; requires p2 inputs")
+        
     
     args = parser.parse_args()
 
@@ -129,6 +139,16 @@ def main():
     ctat_genome_lib_path = os.path.abspath(args.genome_lib_dir)
 
 
+    if (not left) and (not args.kickstart_p2_hg_unmapped_left_fq):
+        exit("Error, need to specify --left or --kickstart_p2_hg_unmapped_left_fq")
+
+    if args.kickstart_p3_human_virus_chimJ and not (args.kickstart_p3_human_virus_bam and args.kickstart_p3_human_virus_bai):
+        exit("Must specify kickstart_p3_human_virus_bam and kickstart_p3_human_virus_bam when kickstart_p3_human_virus_chimJ is specified")
+
+    if args.kickstart_p3_human_virus_chimJ and not args.kickstart_p2_hg_unmapped_left_fq:
+        exit("Must specify kickstart_p2_hg_unmapped_left_fq when kickstart_p3_human_virus_chimJ is used")
+    
+    
     viral_fasta = args.viral_fasta
     if not viral_fasta:
         viral_fasta = os.path.join(ctat_genome_lib_path, "VIF/virus_db.fasta")
@@ -213,6 +233,19 @@ def main():
     input_json["util_dir"] = util_dir
     input_json["docker"] = "a/b"  # hack to make cromwell happy
 
+
+    ## kicstart options:
+    if args.kickstart_p2_hg_unmapped_left_fq:
+        input_json["hg_unmapped_left_fq"] = args.kickstart_p2_hg_unmapped_left_fq
+
+        if args.kickstart_p2_hg_unmapped_right_fq:
+            input_json["hg_unmapped_right_fq"] = args.kickstart_p2_hg_unmapped_right_fq
+
+    if args.kickstart_p3_human_virus_chimJ:
+        input_json["human_virus_chimJ"] = args.kickstart_p3_human_virus_chimJ
+        input_json["human_virus_bam"] = args.kickstart_p3_human_virus_bam
+        input_json["human_virus_bai"] = args.kickstart_p3_human_virus_bai
+        
     
     #_, json_file = tempfile.mkstemp(suffix=".json")
     #_, meta_file = tempfile.mkstemp(suffix=".json")

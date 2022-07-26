@@ -5,7 +5,7 @@ workflow ctat_vif {
     input {
         String sample_id
       
-        File left
+        File? left
         File? right
 
         File ref_genome_fasta
@@ -62,8 +62,18 @@ workflow ctat_vif {
         Int preemptible = 2
         String docker = "trinityctat/ctat_vif:latest"
 
+        ####################
+        ## Kickstart options:
+      
         # run stage 2 only
-        File? insertion_site_candidates
+        File? hg_unmapped_left_fq
+        File? hg_unmapped_right_fq
+
+        # run state 3 only (needs stage 2 inputs above too!)
+        File? human_virus_chimJ
+        File? human_virus_bam
+        File? human_virus_bai
+      
     }
 
     parameter_meta {
@@ -75,7 +85,6 @@ workflow ctat_vif {
         ref_genome_gtf:{help:"Host annotations GTF"}
         viral_fasta:{help:"Viral fasta"}
         ref_genome_incl_viral:{help:"The star index already includes the viral genomes"}
-        insertion_site_candidates:{help:"Previously generated candidates"}
         star_reference:{help:"STAR index archive containing both host and viral genomes"}
         star_cpu:{help:"STAR aligner number of CPUs"}
         star_memory:{help:"STAR aligner memory"}
@@ -87,17 +96,17 @@ workflow ctat_vif {
     output {
 
         # STAR_init_hgOnly        
-        File? star_init_hgOnly_bam = select_first([STAR_init_hgOnly.bam])
-        File? star_init_hgOnly_bam_index = select_first([STAR_init_hgOnly.bai])
+        File? star_init_hgOnly_bam = STAR_init_hgOnly.bam
+        File? star_init_hgOnly_bam_index = STAR_init_hgOnly.bai
         File? star_init_hgOnly_log_final = STAR_init_hgOnly.output_log_final
         File? star_init_hgOnly_SJ = STAR_init_hgOnly.output_SJ
         #File? star_init_hgOnly_chimeric_junction = STAR_init_hgOnly.chimeric_junction
-        File? star_init_hgOnly_ummapped_left_fq = STAR_init_hgOnly.Unmapped_left_fq
-        File? star_init_hgOnly_unmapped_right_fq = STAR_init_hgOnly.Unmapped_right_fq
+        File? star_init_hgOnly_ummapped_left_fq = select_first([hg_unmapped_left_fq, STAR_init_hgOnly.Unmapped_left_fq, "/dev/null"])
+        File? star_init_hgOnly_unmapped_right_fq = select_first([hg_unmapped_right_fq, STAR_init_hgOnly.Unmapped_right_fq, "/dev/null"])
         
         # STAR_init_hgPlusVirus
-        File? star_init_hgPlusVirus_bam = select_first([STAR_init_hgPlusVirus.bam])
-        File? star_init_hgPlusVirus_bam_index = select_first([STAR_init_hgPlusVirus.bai])
+        File? star_init_hgPlusVirus_bam = select_first([human_virus_bam, STAR_init_hgPlusVirus.bam, "/dev/null"])
+        File? star_init_hgPlusVirus_bam_index = select_first([human_virus_bai, STAR_init_hgPlusVirus.bai, "/dev/null"])
         File? star_init_hgPlusVirus_log_final = STAR_init_hgPlusVirus.output_log_final
         File? star_init_hgPlusVirus_SJ = STAR_init_hgPlusVirus.output_SJ
         File? star_init_hgPlusVirus_chimeric_junction = STAR_init_hgPlusVirus.chimeric_junction
@@ -108,7 +117,7 @@ workflow ctat_vif {
         File? insertion_site_candidates_filtered_abridged = InsertionSiteCandidates.filtered_abridged
         File? insertion_site_candidates_genome_chimeric_evidence_reads_bam = InsertionSiteCandidates.genome_chimeric_evidence_reads_bam
         File? insertion_site_candidates_genome_chimeric_evidence_reads_bai = InsertionSiteCandidates.genome_chimeric_evidence_reads_bai
-        File? insertion_site_candidates_human_virus_chimJ = InsertionSiteCandidates.human_virus_chimJ
+        File? insertion_site_candidates_human_virus_chimJ = select_first([human_virus_chimJ, InsertionSiteCandidates.human_virus_chimJ, "/dev/null"])
         
         File? genome_abundance_plot = VirusReport.genome_abundance_plot
         File? virus_coverage_read_counts_summary = VirusReport.read_counts_summary
@@ -138,11 +147,11 @@ workflow ctat_vif {
     }
 
     
-    if ( !defined(insertion_site_candidates) ) {
+    if ( !defined(hg_unmapped_left_fq) ) {
         call STAR_init as STAR_init_hgOnly {
             input:
                 util_dir=util_dir,
-                fastq1=left,
+                fastq1=select_first([left]),
                 fastq2=right,
                 search_chimeras=false,
                 two_pass_mode = star_init_two_pass_mode,
@@ -158,15 +167,15 @@ workflow ctat_vif {
                 docker = docker,
                 preemptible = preemptible
             }
+    }
 
-
-      if (clean_reads) {
+    if (clean_reads) {
             
         call Trimmomatic as interim_trimmomatic {
           input:
             sample_id=sample_id,
-            left=STAR_init_hgOnly.Unmapped_left_fq,
-            right=STAR_init_hgOnly.Unmapped_right_fq,
+            left=select_first([STAR_init_hgOnly.Unmapped_left_fq, hg_unmapped_left_fq]),
+            right=select_first([STAR_init_hgOnly.Unmapped_right_fq, hg_unmapped_right_fq]),
             util_dir=util_dir,
             preemptible=preemptible,
             docker = docker
@@ -181,9 +190,11 @@ workflow ctat_vif {
             preemptible=preemptible,
             docker = docker
         }
-      }
-      
-      call STAR_init as STAR_init_hgPlusVirus {
+    }
+
+    if (! defined(human_virus_chimJ) ) {
+
+         call STAR_init as STAR_init_hgPlusVirus {
             input:
                 util_dir=util_dir,
                 fastq1=select_first([PolyA_stripper.left_trimmed, STAR_init_hgOnly.Unmapped_left_fq]),
@@ -202,13 +213,14 @@ workflow ctat_vif {
                 autodetect_cpu = autodetect_cpu,
                 docker = docker,
                 preemptible = preemptible
-        }
-
-        call InsertionSiteCandidates {
+            }
+      }
+          
+      call InsertionSiteCandidates {
             input:
-                chimeric_junction=select_first([STAR_init_hgPlusVirus.chimeric_junction]),
-                bam=select_first([STAR_init_hgPlusVirus.bam]),
-                bai=select_first([STAR_init_hgPlusVirus.bai]),
+                chimeric_junction=select_first([human_virus_chimJ, STAR_init_hgPlusVirus.chimeric_junction]),
+                bam=select_first([human_virus_bam, STAR_init_hgPlusVirus.bam]),
+                bai=select_first([human_virus_bai, STAR_init_hgPlusVirus.bai]),
                 ref_genome_fasta=ref_genome_fasta,
                 viral_fasta=viral_fasta,
                 remove_duplicates=remove_duplicates,
@@ -218,13 +230,13 @@ workflow ctat_vif {
                 preemptible=preemptible,
                 docker=docker,
                 sample_id=sample_id
-        }
+      }
         
-        if(generate_reports) {
+      if(generate_reports) {
             call VirusReport {
                 input:
-                    bam=select_first([STAR_init_hgPlusVirus.bam]),
-                    bai=select_first([STAR_init_hgPlusVirus.bai]),
+                    bam=select_first([human_virus_bam, STAR_init_hgPlusVirus.bam]),
+                    bai=select_first([human_virus_bai, STAR_init_hgPlusVirus.bai]),
                     remove_duplicates=remove_duplicates,
                     viral_fasta=viral_fasta,
                     insertion_site_candidates=InsertionSiteCandidates.filtered_abridged,
@@ -234,19 +246,17 @@ workflow ctat_vif {
                     docker=docker,
                     sample_id=sample_id
             }
-        }
-
     }
 
-    if(!star_init_only) {
-      
-        File insertion_site_candidates_use = select_first([insertion_site_candidates, InsertionSiteCandidates.filtered_abridged])
+    
 
+    if (!star_init_only) {
+      
         call ExtractChimericGenomicTargets {
             input:
                 fasta=ref_genome_fasta,
                 viral_fasta=viral_fasta,
-                insertion_site_candidates_abridged=insertion_site_candidates_use,
+                insertion_site_candidates_abridged=select_first([InsertionSiteCandidates.filtered_abridged, "/dev/null"]),
                 util_dir=util_dir,
                 preemptible=preemptible,
                 docker=docker,
@@ -258,8 +268,8 @@ workflow ctat_vif {
         call STAR_validate {
             input:
                 util_dir=util_dir,
-                fastq1=select_first([STAR_init_hgOnly.Unmapped_left_fq, left]),
-                fastq2= if defined(STAR_init_hgOnly.Unmapped_right_fq) then STAR_init_hgOnly.Unmapped_right_fq else right, 
+                fastq1=select_first([hg_unmapped_left_fq, STAR_init_hgOnly.Unmapped_left_fq]),
+                fastq2=select_first([hg_unmapped_right_fq, STAR_init_hgOnly.Unmapped_right_fq, "/dev/null"]),
                 two_pass_mode = star_validate_two_pass_mode,
                 base_name=sample_id+".validate_inserts",
                 star_reference=star_index_human_plus_virus,                                                                                                                                            
@@ -305,7 +315,7 @@ workflow ctat_vif {
         if(ChimericContigEvidenceAnalyzer.insertions_recovered) {
             call SummaryReport {
                 input:
-                    init_counts=insertion_site_candidates_use,
+                    init_counts=select_first([InsertionSiteCandidates.filtered_abridged]),
                     vif_counts=ChimericContigEvidenceAnalyzer.evidence_counts,
                     min_flank_frac_uniq=min_flank_frac_uniq,
                     alignment_bam=ChimericContigEvidenceAnalyzer.evidence_bam,
@@ -553,9 +563,11 @@ task STAR_init {
 
       samtools index "~{base_name}.Aligned.sortedByCoord.out.bam"
 
+      gzip ~{base_name}.Unmapped.out.mate*
+      
       # always have at least the Unmapped.out.mate1 file
-      touch ~{base_name}.Unmapped.out.mate1
-      touch ~{base_name}.Unmapped.out.mate2  # because of Terra bug - doesn't allow missing optional outputs to be used as optional inputs later.
+      touch ~{base_name}.Unmapped.out.mate1.gz
+      touch ~{base_name}.Unmapped.out.mate2.gz  # because of Terra bug - doesn't allow missing optional outputs to be used as optional inputs later.
 
       if [[ -e "~{base_name}.Chimeric.out.junction" ]]; then
           gzip ~{base_name}.Chimeric.out.junction
@@ -571,8 +583,8 @@ task STAR_init {
         File output_log_final = "~{base_name}.Log.final.out"
         File output_SJ = "~{base_name}.SJ.out.tab"
         File? chimeric_junction = "~{base_name}.Chimeric.out.junction.gz"
-        File Unmapped_left_fq = "~{base_name}.Unmapped.out.mate1"
-        File? Unmapped_right_fq = "~{base_name}.Unmapped.out.mate2"
+        File Unmapped_left_fq = "~{base_name}.Unmapped.out.mate1.gz"
+        File? Unmapped_right_fq = "~{base_name}.Unmapped.out.mate2.gz"
     }
 
     runtime {
