@@ -278,7 +278,7 @@ def main():
 
     ## prioritize by total read support.
     all_chim_events = sorted(
-        all_chim_events, key=lambda x: x.get_read_support()[2], reverse=True
+        all_chim_events, key=lambda x: (x.get_read_support()[2], str(x)), reverse=True
     )
 
     ## #####################
@@ -362,7 +362,7 @@ def main():
                     + "\t"
                     + str(chim_event)
                     + "\t"
-                    + ",".join(supporting_reads),
+                    + ",".join(sorted(supporting_reads)),
                     file=ofh_full,
                 )
 
@@ -485,7 +485,7 @@ def gather_top_event_reads(reads_list):
     #   Puts split first 
     sorted_brkpts = sorted(
         brkpt_counter.keys(),
-        key=lambda x: (priority[brkpt_type[x]], brkpt_counter[x]),
+        key=lambda x: (priority[brkpt_type[x]], brkpt_counter[x], str(x)),
         reverse=True,
     )
 
