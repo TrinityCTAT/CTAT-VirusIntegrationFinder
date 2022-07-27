@@ -11,7 +11,7 @@ test:
         --genome_lib_dir ${CTAT_GENOME_LIB} \
 		-O VIF.full.no_remove_dups.outdir
 
-all: test star_init_only remove_dups novirus test_SE redherrings
+all: test test_kickstart_p2 test_kickstart_p3   star_init_only remove_dups novirus test_SE redherrings
 
 
 
