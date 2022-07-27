@@ -14,14 +14,33 @@ workflow ctat_VIF_Terra_hg38 {
     Boolean clean_reads = true
     Int max_hits = 50
     String docker = "trinityctat/ctat_vif:latest"
-    Int preemptible = 0
+    Int preemptible = 1
 
+
+    Int star_cpu = 12
+    Float star_init_memory = 50
+    Float star_validate_memory= 75
+
+    
+    ####################
+    ## Kickstart options:
+      
+    # run stage 2 only
+    File? hg_unmapped_left_fq
+    File? hg_unmapped_right_fq
+
+    # run state 3 only (needs stage 2 inputs above too!)
+    File? human_virus_chimJ
+    File? human_virus_bam
+    File? human_virus_bai
+
+    
     CTAT_VIF_config pipe_inputs_config = {
       "ref_genome_fasta" : "gs://ctat_genome_libs/GRCh38_gencode_v22/03-01-2021/ref_genome.fa",
       "ref_genome_gtf" : "gs://ctat_genome_libs/GRCh38_gencode_v22/03-01-2021/ref_annot.gtf",
-	  "viral_fasta" : "gs://ctat_genome_libs/GRCh38_gencode_v22/06-06-2022/virus_db.fasta",
       "star_index_human_only" : "gs://ctat_genome_libs/GRCh38_gencode_v22/03-01-2021/ref_genome.fa.star.idx.tar",
       "star_index_human_plus_virus" : "gs://ctat_genome_libs/GRCh38_gencode_v22/06-08-2022/hg_plus_viraldb.fasta.star.idx.tar",
+	  "viral_fasta" : "gs://ctat_genome_libs/GRCh38_gencode_v22/06-08-2022/virus_db.fasta",
 	  "NULL_file" : "gs://ctat_genome_libs/null" 
     }
 
@@ -37,7 +56,19 @@ workflow ctat_VIF_Terra_hg38 {
       drs_path_fastqs = drs_path_fastqs,
       docker = docker,
       pipe_inputs_config = pipe_inputs_config,
-      preemptible = preemptible
+      preemptible = preemptible,
+
+      star_cpu = star_cpu,
+      star_init_memory = star_init_memory,
+      star_validate_memory = star_validate_memory,
+      
+      hg_unmapped_left_fq = hg_unmapped_left_fq,
+      hg_unmapped_right_fq = hg_unmapped_right_fq,
+
+      human_virus_chimJ = human_virus_chimJ,
+      human_virus_bam = human_virus_bam,
+      human_virus_bai = human_virus_bai
+    
    }
 
 

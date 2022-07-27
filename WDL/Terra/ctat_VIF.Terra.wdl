@@ -27,11 +27,11 @@ workflow ctat_VIF_Terra {
     Int max_hits = 50
     String docker = docker
     CTAT_VIF_config pipe_inputs_config
-    Int preemptible
+    Int preemptible = 1
 
-    Int star_cpu
-    Float star_init_memory
-    Float star_validate_memory
+    Int star_cpu = 12
+    Float star_init_memory = 50
+    Float star_validate_memory = 75
 
     
     ####################
