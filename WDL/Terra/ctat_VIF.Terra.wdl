@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.4.0/WDL/ctat_VIF.wdl" as ctat_VIF_wf
+import "https://raw.githubusercontent.com/broadinstitute/CTAT-VirusIntegrationFinder/Terra-1.5.0-predev/WDL/ctat_VIF.wdl" as ctat_VIF_wf
 
 
 struct CTAT_VIF_config {
@@ -28,8 +28,25 @@ workflow ctat_VIF_Terra {
     String docker = docker
     CTAT_VIF_config pipe_inputs_config
     Int preemptible
+
+    Int star_cpu
+    Float star_init_memory
+    Float star_validate_memory
+
     
-    }
+    ####################
+    ## Kickstart options:
+      
+    # run stage 2 only
+    File? hg_unmapped_left_fq
+    File? hg_unmapped_right_fq
+
+    # run state 3 only (needs stage 2 inputs above too!)
+    File? human_virus_chimJ
+    File? human_virus_bam
+    File? human_virus_bai
+    
+  }
 
 
    if (defined(drs_path_fastqs)) {
@@ -58,7 +75,7 @@ workflow ctat_VIF_Terra {
   call ctat_VIF_wf.ctat_vif as vif {
     input:     
       sample_id = sample_id,
-      left = select_first([unpack_drs.left_fq, revert_bam_to_fastqs.left_fq, left]),
+      left = if (defined(unpack_drs.left_fq) || defined(revert_bam_to_fastqs.left_fq) || defined(left)) then  select_first([unpack_drs.left_fq, revert_bam_to_fastqs.left_fq, left]) else pipe_inputs_config.NULL_file,
       right = select_first([unpack_drs.right_fq, revert_bam_to_fastqs.right_fq, right, pipe_inputs_config.NULL_file]),
       clean_reads = clean_reads,
       max_hits = max_hits,
@@ -69,8 +86,19 @@ workflow ctat_VIF_Terra {
       ref_genome_gtf = pipe_inputs_config.ref_genome_gtf,
       viral_fasta = pipe_inputs_config.viral_fasta,
       star_index_human_only = pipe_inputs_config.star_index_human_only,
-      star_index_human_plus_virus = pipe_inputs_config.star_index_human_plus_virus
-    
+      star_index_human_plus_virus = pipe_inputs_config.star_index_human_plus_virus,
+
+
+      star_cpu = star_cpu,
+      star_init_memory = star_init_memory,
+      star_validate_memory = star_validate_memory,
+      
+      hg_unmapped_left_fq = hg_unmapped_left_fq,
+      hg_unmapped_right_fq = hg_unmapped_right_fq,
+
+      human_virus_chimJ = human_virus_chimJ,
+      human_virus_bam = human_virus_bam,
+      human_virus_bai = human_virus_bai
 
    }
 
