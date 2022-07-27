@@ -197,8 +197,8 @@ workflow ctat_vif {
          call STAR_init as STAR_init_hgPlusVirus {
             input:
                 util_dir=util_dir,
-                fastq1=select_first([PolyA_stripper.left_trimmed, STAR_init_hgOnly.Unmapped_left_fq]),
-                fastq2=select_first([PolyA_stripper.right_trimmed, STAR_init_hgOnly.Unmapped_right_fq, "/dev/null"]),
+                fastq1=select_first([PolyA_stripper.left_trimmed, hg_unmapped_left_fq, STAR_init_hgOnly.Unmapped_left_fq]),
+                fastq2=select_first([PolyA_stripper.right_trimmed, hg_unmapped_right_fq, STAR_init_hgOnly.Unmapped_right_fq, "/dev/null"]),
                 search_chimeras=true,
                 chimMultimapNmax = max_hits,
                 two_pass_mode = star_init_two_pass_mode,
