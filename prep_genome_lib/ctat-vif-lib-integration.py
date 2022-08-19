@@ -75,18 +75,18 @@ def main():
 
     ## generate masked genome.
     # make regions file
-    logger.info("masking virus-homologous regions from the genome")
-    df = pd.read_csv(blastn_outfile, sep="\t", header=None, usecols=[1,2,8,9])
-    df.columns = ["chrom", "perid", "end5", "end3"]
+    if sum(1 for l in open(blastn_outfile))>0:
+        df = pd.read_csv(blastn_outfile, sep="\t", header=None, usecols=[1,2,8,9])
+        df.columns = ["chrom", "perid", "end5", "end3"]
+        df = df[ df['perid'] >= 90 ]  # filter, require min 90% identity
+        df['lend'] = df.apply(lambda x: min(x['end5'], x['end3']), axis=1)
+        df['rend'] = df.apply(lambda x: max(x['end5'], x['end3']), axis=1)
+        df['lend'] = df['lend']-1 
+        df = df[ ['chrom', 'lend', 'rend'] ]
 
-    # filter, require min 90% identity
-    df = df[ df['perid'] >= 90 ] 
-    
-    df['lend'] = df.apply(lambda x: min(x['end5'], x['end3']), axis=1)
-    df['rend'] = df.apply(lambda x: max(x['end5'], x['end3']), axis=1)
-
-    df['lend'] = df['lend']-1
-    df = df[ ['chrom', 'lend', 'rend'] ]
+    else: 
+        df = pd.DataFrame(columns=['chrom', 'lend', 'rend'])
+        
     bed_filename = blastn_outfile + ".bed"
     df.to_csv(bed_filename, sep="\t", header=False, index=False)
     
