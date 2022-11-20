@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 MAINTAINER bhaas@broadinstitute.org
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get -qq update && apt-get -qq -y install --no-install-recommends \
@@ -43,10 +43,9 @@ RUN ln -sf /usr/bin/python3 /usr/bin/python
 #~~~~~~~~~~~
 # Python 
 #~~~~~~~~~~~
-RUN pip3 install --upgrade pip && pip3 install \
-	igv-reports==1.0.2 \
-	pandas==1.1.5 \
-	argparse==1.4.0 
+RUN pip3 install --upgrade pip && pip3 install pandas argparse 
+
+RUN pip3 install igv-reports==1.0.2
 
 ENV SRC /usr/local/src
 ENV BIN /usr/local/bin
@@ -57,7 +56,7 @@ ENV BIN /usr/local/bin
 RUN R -e 'install.packages("BiocManager", repos="http://cran.us.r-project.org")'
 RUN R -e 'BiocManager::install("tidyverse")'
 RUN R -e 'BiocManager::install("argparse")'
-RUN R -e "install.packages(c('argparse', 'tidyr', 'tidyverse'), repos = 'http://cran.us.r-project.org')"
+# RUN R -e "install.packages(c('argparse', 'tidyr', 'tidyverse'), repos = 'http://cran.us.r-project.org')"
 
 #~~~~~~~~~~~
 ## Samtools
