@@ -160,7 +160,7 @@ def main():
 
     # Read in the junction file 
     df = pd.read_csv(chimJ_filename, sep = "\t")
-    df = df.astype({'read_name':'string'}) # in case they look like integers.
+    df = df.astype({'read_name':'str'}) # in case they look like integers.
 
     #~~~~~~~~~~~~~~~~~~~
     # multimapping reads
