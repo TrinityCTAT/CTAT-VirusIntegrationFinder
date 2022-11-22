@@ -267,13 +267,14 @@ task revert_bam_to_fastqs {
 
 
     # bam to fastq
-    java -jar /usr/local/src/picard.jar \
-        SamToFastq I=~{sample_id}.reverted.bam \
-        F=~{sample_id}_1.fastq F2=~{sample_id}_2.fastq \
-        INTERLEAVE=false NON_PF=true \
-        CLIPPING_ATTRIBUTE=XT CLIPPING_ACTION=2
-    
+    #java -jar /usr/local/src/picard.jar \
+    #    SamToFastq I=~{sample_id}.reverted.bam \
+    #    F=~{sample_id}_1.fastq F2=~{sample_id}_2.fastq \
+    #    INTERLEAVE=false NON_PF=true \
+    #    CLIPPING_ATTRIBUTE=XT CLIPPING_ACTION=2
 
+    bamToFastq -i ~{sample_id}.reverted.bam -fq ~{sample_id}_1.fastq -fq2 ~{sample_id}_2.fastq
+    
     gzip ~{sample_id}_1.fastq
     gzip ~{sample_id}_2.fastq
 
