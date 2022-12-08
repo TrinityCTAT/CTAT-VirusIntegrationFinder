@@ -10,7 +10,7 @@ import logging
 import sys
 
 
-VERSION = "1.5.0-predev"
+VERSION = "1.5.0"
 
 
 if sys.version_info[0] < 3:
