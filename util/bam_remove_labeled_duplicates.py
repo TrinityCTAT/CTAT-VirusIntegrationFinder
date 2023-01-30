@@ -40,6 +40,14 @@ def main():
     )
 
     parser.add_argument(
+        "--output_dups_bam",
+        dest="output_dups_bam",
+        required=False,
+        type=str,
+        help="output bam file",
+    )
+
+    parser.add_argument(
         "--debug",
         "-d",
         dest="debug",
@@ -52,6 +60,8 @@ def main():
 
     input_bam_filename = args.input_bam
     output_bam_filename = args.output_bam
+
+    output_dups_bam_filename = args.output_dups_bam
 
     if args.debug:
         logger.setLevel(logging.DEBUG)
@@ -67,11 +77,17 @@ def main():
 
     bamwriter = pysam.AlignmentFile(output_bam_filename, "wb", template=bamreader)
 
+    if output_dups_bam_filename:
+        dups_bamwriter = pysam.AlignmentFile(
+            output_dups_bam_filename, "wb", template=bamreader
+        )
+
     duplicate_counter = 0
     for read in bamreader.fetch():
-
         if read.is_duplicate:
             duplicate_counter += 1
+            if dups_bamwriter:
+                dups_bamwriter.write(read)
         else:
             bamwriter.write(read)
 
