@@ -5,7 +5,8 @@ import pysam
 from collections import defaultdict
 import logging
 import argparse
-import pandas as pd
+#import pandas as pd
+import csv
 import statistics as st
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
@@ -35,13 +36,15 @@ def main():
 
 
     logger.info("-capturing reads of interest from {}".format(vif_full_tsv))
-    vif_df = pd.read_csv(vif_full_tsv, sep="\t")
-    vif_df = vif_df.astype({'readnames':'str'}) # in case they look like integers
-    for _, row in vif_df.iterrows():
+
+    fh = open(vif_full_tsv, "rt")
+    reader = csv.DictReader(fh, delimiter="\t")
+    for row in reader:
         readnames = row['readnames'].split(",")
         for readname in readnames:
             ev_reads.add(readname)
 
+    fh.close()
 
     logger.info("-capturing read alignment stats from bam file: {}".format(bam_filename))
     
@@ -101,12 +104,18 @@ def main():
 
     logger.info("-generating alignment stats report")
 
-    vif_df["hits"] = ""
-    vif_df["min_per_id"] = ""
-    vif_df["max_end_clipping"] = ""
-    vif_df["min_anchor_len"] = ""
+    fh = open(vif_full_tsv, "rt")
+    reader = csv.DictReader(fh, delimiter="\t")
+    fieldnames = list(reader.fieldnames)
+    fieldnames.extend(['hits', 'min_per_id', 'max_end_clipping', 'min_anchor_len'])
 
-    for i, row in vif_df.iterrows():
+    ofh = open(outputfilename, 'wt')
+    writer = csv.DictWriter(ofh, fieldnames=fieldnames, delimiter="\t")
+    writer.writeheader()
+    
+    logger.info("-writing outputfile: {}".format(outputfilename))
+
+    for row in reader:
         readnames = row['readnames'].split(",")
         hits = list()
         min_per_ids = list()
@@ -124,22 +133,23 @@ def main():
             min_anchor_lengths.append(read_to_min_anchor_len[readname])
 
         if args.detailed:
-            vif_df.loc[i, 'hits'] = ",".join([str(x) for x in hits])
-            vif_df.loc[i, 'min_per_id'] = ",".join(["{:.1f}".format(x) for x in min_per_ids])
-            vif_df.loc[i, 'max_end_clipping'] = ",".join([str(x) for x in max_end_clipping])
-            vif_df.loc[i, 'min_anchor_len'] = ",".join([str(x) for x in min_anchor_lengths])
+            row['hits'] = ",".join([str(x) for x in hits])
+            row['min_per_id'] = ",".join(["{:.1f}".format(x) for x in min_per_ids])
+            row['max_end_clipping'] = ",".join([str(x) for x in max_end_clipping])
+            row['min_anchor_len'] = ",".join([str(x) for x in min_anchor_lengths])
 
         else:
-            vif_df.loc[i, 'hits'] = "{:.3f}".format(st.mean(hits))
-            vif_df.loc[i, 'min_per_id'] = "{:.1f}".format(st.mean(min_per_ids))
-            vif_df.loc[i, 'max_end_clipping'] = "{:.3f}".format(st.mean(max_end_clipping))
-            vif_df.loc[i, 'min_anchor_len'] = "{:.3f}".format(st.mean(min_anchor_lengths))
+            row['hits'] = "{:.3f}".format(st.mean(hits))
+            row['min_per_id'] = "{:.1f}".format(st.mean(min_per_ids))
+            row['max_end_clipping'] = "{:.3f}".format(st.mean(max_end_clipping))
+            row['min_anchor_len'] = "{:.3f}".format(st.mean(min_anchor_lengths))
     
-    #vif_df.drop('readnames', axis=1, inplace=True)
 
-    logger.info("-writing outputfile: {}".format(outputfilename))
-    vif_df.to_csv(outputfilename, sep="\t", index=False)
+        writer.writerow(row)
 
+    fh.close()
+    ofh.close()
+    
     logger.info("-done")
 
     sys.exit(0)
