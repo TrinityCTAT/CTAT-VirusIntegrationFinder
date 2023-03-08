@@ -120,6 +120,7 @@ def main():
                                "--genomeDir {}.star.idx".format(combined_genomes_fa),
                                "--genomeFastaFiles {}".format(combined_genomes_fa),
                                "--limitGenomeGenerateRAM 40419136213",
+                               "--limitSjdbInsertNsj 10000000 ",
                                "--sjdbGTFfile {}".format(ref_gtf),
                                "--sjdbOverhang 100"])
 
