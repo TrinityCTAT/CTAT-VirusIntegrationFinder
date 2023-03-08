@@ -233,8 +233,19 @@ def main():
         logger.info(f"Chimeric alignments AFTER filter duplicates: {df.shape[0]}")
 
 
-    # Run through each line in the chimeric junctions file 
+    # Run through each line in the chimeric junctions file
+
+    nrows = df.shape[0]
+
+    logger.info("Organizing chimeric support")
+
+    counter = 0
     for idx, row in df.iterrows():
+        counter += 1
+        # progress monitoring
+        if counter % 1000 == 0:
+            sys.stderr.write("\r[{} = {:.3f}%]     ".format(counter, counter/nrows*100))
+
         # print(idx, row)
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # Create Dictionary holding read objects for each genome-virus pairing
@@ -255,15 +266,20 @@ def main():
         ## dictionary holds all chromosome virus groupings 
         genome_pair_to_evidence[genome_pair].add(chim_read)
 
-
+    sys.stderr.write("\n\n") 
+    
     #########################################
     # Gather all Chimeric events 
     #########################################
     # empty list to hold all events at the end 
     all_chim_events = list()
 
+    logger.info("Gathering all chimeric events")
+
     # Loop over the different chimeric pairs (genome_pair_to_evidence dict keys)
     for genome_pair in genome_pair_to_evidence:
+
+        logger.info(f"-processing genome pair: {genome_pair}")
 
         # Get the Chimeric_read object for the given Chrom-Virus pairing
         chim_reads = genome_pair_to_evidence[genome_pair]
@@ -276,6 +292,7 @@ def main():
 
         all_chim_events.extend(chim_events)
 
+    logger.info("Prioritizing by read support")
     ## prioritize by total read support.
     all_chim_events = sorted(
         all_chim_events, key=lambda x: (x.get_read_support()[2], str(x)), reverse=True
@@ -289,6 +306,8 @@ def main():
     output_filename_detailed_abridged = output_prefix + ".abridged.detailed.tsv"
     ofh_detailed = open(output_filename_detailed_abridged, "wt")
 
+    logger.info("Writing outputs")
+    
     with open(output_filename_abridged, "wt") as ofh:
         with open(output_filename_full, "wt") as ofh_full:
 
@@ -402,17 +421,17 @@ def group_chim_reads_into_events(chim_reads_list, viral_db_entries, human_aggreg
 
     what are top event reads?
     '''
+    
 
-    chim_events = list()
+    sorted_chim_events = chim_events_from_reads(chim_reads_list)
 
-    remaining_reads = chim_reads_list
+    chim_events = [sorted_chim_events.pop(0)]
 
     # while reads still remain, run 
-    while remaining_reads:
-        # Get the insertion event with the most insertions (counts)
-        top_event_reads, remaining_reads = gather_top_event_reads(remaining_reads)
-        chim_event = Chimeric_event(top_event_reads)
-
+    while sorted_chim_events:
+        
+        chim_event = sorted_chim_events.pop(0)
+        
         # IF this chimeric event is the same orientation and within a specified distance from another event 
         #   combine the event with the existing event in the chim_events list
         # IF NOT, add the new event to the chim_events list
@@ -461,12 +480,14 @@ def supplements_existing_event(chim_event, chim_events_list, viral_db_entries, h
     return False
 
 
-def gather_top_event_reads(reads_list):
+def chim_events_from_reads(reads_list):
 
     # count reads according to breakpoint.
 
     brkpt_counter = defaultdict(int)
     brkpt_type = dict()
+
+    brkpt_to_read_list = defaultdict(list)
 
     # Get break point types (split or span) into dictonary form 
     #   example {'218269983^39325': 'Span'}
@@ -475,13 +496,14 @@ def gather_top_event_reads(reads_list):
         brkpt = "{}^{}".format(read.coordA, read.coordB)
         brkpt_counter[brkpt] += 1
         brkpt_type[brkpt] = read.splitType
+        brkpt_to_read_list[brkpt].append(read)
 
     # prioritize split reads over spanning reads.
     priority = {"Split": 1, "Span": 0}
 
     # sort the breakpoint values 
     # example output ['215417625^39519', '75063812^39394]
-    # Sort forst by read type (split,span) then by read count
+    # Sort first by read type (split,span) then by read count
     #   Puts split first 
     sorted_brkpts = sorted(
         brkpt_counter.keys(),
@@ -489,21 +511,14 @@ def gather_top_event_reads(reads_list):
         reverse=True,
     )
 
-    # Take the first value 
-    top_brkpt = sorted_brkpts[0]
+    chimeric_events = list()
+    for brkpt in sorted_brkpts:
+        reads_list = brkpt_to_read_list[brkpt]
+        chim_event = Chimeric_event(reads_list)
+        chimeric_events.append(chim_event)
 
-    top_event_reads = list()
-    remaining_reads = list()
 
-    # Loop over reads to get the top breakpoint
-    for read in reads_list:
-        brkpt = "{}^{}".format(read.coordA, read.coordB)
-        if brkpt == top_brkpt:
-            top_event_reads.append(read)
-        else:
-            remaining_reads.append(read)
-
-    return top_event_reads, remaining_reads
+    return chimeric_events
 
 
 class Chimeric_read:
