@@ -38,6 +38,7 @@ def main():
     logger.info("-capturing reads of interest from {}".format(vif_full_tsv))
 
     fh = open(vif_full_tsv, "rt")
+    csv.field_size_limit(sys.maxsize)
     reader = csv.DictReader(fh, delimiter="\t")
     for row in reader:
         readnames = row['readnames'].split(",")
