@@ -93,6 +93,10 @@ def main():
         else:
             seq_region = extract_seqrange(acc, ref_genome_fasta_filename, anchor_left, anchor_right)
 
+        if seq_region == "":
+            logger.error("no seq_region extracted for {acc} {ref_genome_fasta_filename} {anchor_left} {anchor_right}")
+            return seq_region # problem extracting
+
         if orient == '-':
             seq_region = revcomp(seq_region)
 
@@ -135,8 +139,11 @@ def main():
 def extract_seqrange(acc, fasta_filename, lend, rend):
 
     cmd = f"samtools faidx {fasta_filename} {acc}:{lend}-{rend}"
+    #logger.info(cmd)
 
-    logger.info(cmd)
+    if lend < 1 or rend < 1:
+        logger.error(f"{acc}:{lend}-{rend} is not valid.... returning empty string")
+        return ""
 
     seq_txt = subprocess.check_output(cmd, shell=True).decode()
     seq_txt = "".join(seq_txt.split("\n")[1:])
@@ -214,7 +221,7 @@ def get_splice_info(flankA, flankB):
 
 
 def run_cmd(cmd):
-    logger.info("CMD: {}".format(cmd))
+    #logger.info("CMD: {}".format(cmd))
     subprocess.check_call(cmd, shell=True)
     return
 
