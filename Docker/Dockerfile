@@ -82,7 +82,7 @@ ENV PICARD_HOME $SRC/picard.jar
 ## STAR Aligner
 #~~~~~~~~~~~
 WORKDIR $SRC
-ENV STAR_VERSION=2.7.8a
+ENV STAR_VERSION=2.7.11b
 RUN STAR_URL="https://github.com/alexdobin/STAR/archive/${STAR_VERSION}.tar.gz" &&\
     wget -P $SRC $STAR_URL &&\
     tar xf $SRC/${STAR_VERSION}.tar.gz -C $SRC && \
