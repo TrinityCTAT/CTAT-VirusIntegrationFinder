@@ -131,9 +131,23 @@ RUN git clone --recursive https://github.com/broadinstitute/CTAT-VirusIntegratio
 #RUN wget -q https://raw.githubusercontent.com/klarman-cell-observatory/cumulus/master/docker/monitor_script.sh -O $SRC/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh
 #RUN chmod a+rx $SRC/CTAT-VirusIntegrationFinder/WDL/monitor_script.sh
 
-RUN apt-get -qq -y remove automake build-essential cmake curl git gcc g++ wget && \
-    apt-get -qq -y autoremove && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
+
+###################
+# tidyverse needs proper installation
+
+RUN apt-get install -y r-base r-base-dev libharfbuzz-dev libfribidi-dev libtiff5-dev gfortran
+
+
+RUN R -e 'BiocManager::install("tidyverse")'
+
+
+
+
+
+    
+#RUN apt-get -qq -y remove automake build-essential cmake curl git gcc g++ wget && \
+#    apt-get -qq -y autoremove && \
+#    apt-get clean && \
+#    rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
 
 COPY sam_readname_cleaner.py $BIN/
