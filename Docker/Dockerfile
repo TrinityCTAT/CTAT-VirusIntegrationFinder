@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 MAINTAINER bhaas@broadinstitute.org
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get -qq update && apt-get -qq -y install --no-install-recommends \
@@ -34,8 +34,7 @@ RUN apt-get -qq update && apt-get -qq -y install --no-install-recommends \
     wget \
     x11-common \
     zlib1g \
-    zlib1g-dev \
-    zlibc
+    zlib1g-dev
 
 # make python3 be the default python
 RUN ln -sf /usr/bin/python3 /usr/bin/python
@@ -43,9 +42,12 @@ RUN ln -sf /usr/bin/python3 /usr/bin/python
 #~~~~~~~~~~~
 # Python 
 #~~~~~~~~~~~
-RUN pip3 install --upgrade pip && pip3 install pandas argparse 
 
-RUN pip3 install igv-reports==1.0.2
+#RUN pip3 install --upgrade pip --break-system-packages &&
+
+RUN pip3 install pandas argparse --break-system-packages
+
+RUN pip3 install igv-reports==1.0.2 --break-system-packages
 
 ENV SRC /usr/local/src
 ENV BIN /usr/local/bin
@@ -93,12 +95,12 @@ RUN STAR_URL="https://github.com/alexdobin/STAR/archive/${STAR_VERSION}.tar.gz" 
 ## Bedtools
 #~~~~~~~~~~~
 WORKDIR $SRC
-RUN wget -q https://github.com/arq5x/bedtools2/releases/download/v2.30.0/bedtools-2.30.0.tar.gz && \
-   tar xf bedtools-2.30.0.tar.gz && \
+RUN wget -q https://github.com/arq5x/bedtools2/releases/download/v2.31.1/bedtools-2.31.1.tar.gz && \
+   tar xf bedtools-2.31.1.tar.gz && \
    cd bedtools2 && \
    make && \
    cp bin/* $BIN/ && \
-   rm $SRC/bedtools-2.30.0.tar.gz && rm -r $SRC/bedtools2
+   rm $SRC/bedtools-2.31.1.tar.gz && rm -r $SRC/bedtools2
 
 
 # blast
